@@ -124,14 +124,21 @@
     })();
 
     async function loadData() {
+      // Load orgs first so we can resolve acceptant_org manually
+      const { data: orgData } = await sb.from('organisations').select('*');
+      const allOrgs = orgData || [];
+
       const [s, a, r] = await Promise.all([
         sb.from('scenarios').select('*').order('code'),
-        sb.from('activities').select('*, organisations(id, name, code), acceptant_org:acceptant_org_id(id, name, code)').order('sort_order'),
+        sb.from('activities').select('*, organisations(id, name, code)').order('sort_order'),
         sb.from('activity_results').select('*').eq('user_id', currentUser.id)
       ]);
       scenarios = s.data || [];
-      activities = a.data || [];
-      // Index results by activity_id
+      // Resolve acceptant_org manually to avoid Supabase alias issues
+      activities = (a.data || []).map(act => ({
+        ...act,
+        acceptant_org: allOrgs.find(o => o.id === act.acceptant_org_id) || null
+      }));
       results = {};
       (r.data || []).forEach(x => results[x.activity_id] = x);
     }

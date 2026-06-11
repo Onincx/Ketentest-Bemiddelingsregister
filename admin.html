@@ -260,7 +260,9 @@
     })();
 
     async function loadAll() {
-      await Promise.all([loadOrgs(), loadUsers(), loadScenarios(), loadActivities()]);
+      // Orgs must load first so loadActivities can resolve acceptant_org
+      await loadOrgs();
+      await Promise.all([loadUsers(), loadScenarios(), loadActivities()]);
       renderOrgs(); renderUsers(); renderScenarios();
     }
 
@@ -277,8 +279,14 @@
       scenarios = data || [];
     }
     async function loadActivities() {
-      const { data } = await sb.from('activities').select('*, organisations(name), acceptant_org:acceptant_org_id(name)').order('sort_order');
-      activities = data || [];
+      const { data, error } = await sb.from('activities').select('*, organisations(name)').order('sort_order');
+      if (error) { console.error('loadActivities error:', error); activities = []; return; }
+      const raw = data || [];
+      // Resolve acceptant_org manually using already-loaded orgs list
+      activities = raw.map(a => ({
+        ...a,
+        acceptant_org: orgs.find(o => o.id === a.acceptant_org_id) || null
+      }));
     }
 
     // ---- TABS ----
@@ -597,11 +605,21 @@
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
       if (!description) { showAlert('Vul de omschrijving in.'); return; }
 
+      let dbError;
       if (id) {
-        await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order }).eq('id', id);
+        const res = await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order }).eq('id', id);
+        dbError = res.error;
       } else {
-        await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order });
+        const res = await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order });
+        dbError = res.error;
       }
+
+      if (dbError) {
+        showAlert('Fout bij opslaan: ' + dbError.message);
+        console.error('Supabase error:', dbError);
+        return;
+      }
+
       closeModal('modalActivity');
       await loadActivities(); renderScenarios();
       showAlert('Activiteit opgeslagen.', 'success');
