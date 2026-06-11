@@ -9,10 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
   <style>
-    .activity-row { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 1fr; gap: 0; align-items: start; }
+    .activity-row { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 140px; gap: 0; align-items: center; }
     .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .activity-row:last-child > div { border-bottom: none; }
-    .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 1fr; gap: 0; background: var(--surface); }
+    .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 140px; gap: 0; background: var(--surface); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
     .result-toggle { display: flex; gap: 4px; }
     .rtbtn { border: 1px solid var(--border); background: transparent; border-radius: var(--radius); padding: 4px 10px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s; color: var(--text-muted); }
@@ -23,6 +23,19 @@
     .notes-mini:focus { outline: none; border-color: var(--brand-mid); }
     .scenario-progress { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 6px; }
     .scenario-progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
+    .notes-tooltip { position: relative; display: inline-block; }
+    .notes-tooltip .tooltip-box {
+      display: none; position: absolute; right: 0; top: 28px; z-index: 50;
+      background: #1a1a1a; color: #fff; font-size: 12px; line-height: 1.5;
+      padding: 8px 12px; border-radius: 6px; width: 240px;
+      white-space: pre-wrap; word-break: break-word;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .notes-tooltip:hover .tooltip-box { display: block; }
+    .note-icon-btn { border: none; background: none; cursor: pointer; padding: 4px 6px; border-radius: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
+    .note-icon-btn.has-note { color: var(--brand-mid); background: var(--brand-light); }
+    .note-icon-btn.no-note { color: var(--text-muted); }
+    .note-icon-btn:hover { background: var(--surface); }
     .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
     .my-org { background: var(--accent-light); color: #0f6e56; }
     @media (max-width: 700px) {
@@ -229,7 +242,7 @@
       const myOrgId = currentProfile?.organisation_id;
       return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
-          <div>#</div><div>Activiteit</div><div>Verwacht resultaat</div><div>Verantw. org.</div><div>Acceptant</div><div>Uitkomst &amp; notities</div>
+          <div>#</div><div>Activiteit</div><div>Verwacht resultaat</div><div>Verantw. org.</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
         ${acts.map(a => {
           const r = results[a.id] || {};
@@ -239,24 +252,32 @@
           const orgCode = a.organisations?.code || '';
           const accName = a.acceptant_org?.name || '';
           const accCode = a.acceptant_org?.code || '';
+          const hasNote = !!(r.notes && r.notes.trim());
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
             <div style="font-size:13px;">${a.description}</div>
             <div style="font-size:13px; color:var(--text-muted);">${a.expected_result || ''}</div>
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
             <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
-            <div>
+            <div style="display:flex; align-items:center; gap:6px; padding:8px 12px;">
               ${canEdit ? `
-              <div class="result-toggle" style="margin-bottom:6px;">
-                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','ok')"><i class="ti ti-check"></i> OK</button>
-                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','nok')"><i class="ti ti-x"></i> NOK</button>
+              <div class="result-toggle">
+                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','ok')"><i class="ti ti-check"></i></button>
+                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','nok')"><i class="ti ti-x"></i></button>
                 ${r.result && r.result !== 'open' ? `<button class="rtbtn" onclick="setResult('${a.id}','${a.scenario_id}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
               </div>
-              <textarea class="notes-mini" id="notes-${a.id}" placeholder="Opmerkingen..."
-                oninput="scheduleAutosave('${a.id}','${a.scenario_id}')">${r.notes || ''}</textarea>
+              <div class="notes-tooltip">
+                <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}" onclick="openNoteModal('${a.id}','${a.scenario_id}')" title="${hasNote ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
+                  <i class="ti ti-message${hasNote ? '-filled' : ''}"></i>${hasNote ? ' <span style=\'font-size:11px;font-weight:600;\'>!</span>' : ''}
+                </button>
+                ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
+              </div>
               ` : `
               <span class="badge badge-${r.result || 'open'}">${{ ok:'Geslaagd', nok:'Mislukt', open:'Open' }[r.result || 'open']}</span>
-              ${r.notes ? `<p style="font-size:12px; color:var(--text-muted); margin-top:4px">${r.notes}</p>` : ''}
+              ${hasNote ? `<div class="notes-tooltip">
+                <button class="note-icon-btn has-note" title="Opmerking"><i class="ti ti-message-filled"></i></button>
+                <div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>
+              </div>` : ''}
               `}
             </div>
           </div>`;
@@ -270,6 +291,48 @@
       const open = body.style.display === 'none';
       body.style.display = open ? '' : 'none';
       chev.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    // Notitie modal
+    function openNoteModal(activityId, scenarioId) {
+      const r = results[activityId] || {};
+      const existing = r.notes || '';
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'noteModalOverlay';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:440px;" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3><i class="ti ti-message" style="margin-right:6px;"></i>Opmerking</h3>
+            <button class="btn btn-ghost btn-icon" onclick="document.getElementById('noteModalOverlay').remove()"><i class="ti ti-x"></i></button>
+          </div>
+          <div class="modal-body">
+            <textarea class="notes-area" id="noteModalText" placeholder="Voeg een opmerking, bevinding of afwijking toe..." style="min-height:120px;">${existing}</textarea>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="document.getElementById('noteModalOverlay').remove()">Annuleren</button>
+            <button class="btn btn-primary" onclick="saveNoteFromModal('${activityId}','${scenarioId}')"><i class="ti ti-device-floppy"></i> Opslaan</button>
+          </div>
+        </div>`;
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      document.body.appendChild(modal);
+    }
+
+    async function saveNoteFromModal(activityId, scenarioId) {
+      const notes = document.getElementById('noteModalText').value;
+      await saveNotes(activityId, scenarioId, notes);
+      document.getElementById('noteModalOverlay').remove();
+      // Re-render the scenario to update the icon
+      const s = scenarios.find(x => x.id === scenarioId);
+      if (s) {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
+        const bodyEl = document.getElementById(`body-${scenarioId}`);
+        if (bodyEl && bodyEl.style.display !== 'none') {
+          const tableWrap = bodyEl.querySelector('div[style*="border:1px"]');
+          if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
+        }
+      }
     }
 
     async function setResult(activityId, scenarioId, result) {
@@ -293,7 +356,7 @@
           const isAcceptant = act.acceptant_org?.id === myOrgId;
           const canEdit = isAcceptant || currentProfile?.role === 'admin';
           const r = results[activityId] || {};
-          const lastCell = row.children[4];
+          const lastCell = row.children[5];
           if (canEdit) {
             lastCell.innerHTML = `
               <div class="result-toggle" style="margin-bottom:6px;">
@@ -323,8 +386,8 @@
       autosaveTimers[activityId] = setTimeout(() => saveNotes(activityId, scenarioId), 800);
     }
 
-    async function saveNotes(activityId, scenarioId) {
-      const notes = document.getElementById(`notes-${activityId}`)?.value || '';
+    async function saveNotes(activityId, scenarioId, notes) {
+      if (notes === undefined) notes = document.getElementById(`notes-${activityId}`)?.value || '';
       const result = results[activityId]?.result || 'open';
       const existing = results[activityId];
       if (existing) {

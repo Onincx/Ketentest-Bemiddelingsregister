@@ -576,8 +576,10 @@
       document.getElementById('activityExpected').value = '';
       document.getElementById('activityOrg').value = '';
       document.getElementById('activityAcceptant').value = '';
+      // Bereken het volgende unieke nummer: hoogste bestaande + 1
       const acts = activities.filter(a => a.scenario_id === scenarioId);
-      document.getElementById('activityOrder').value = acts.length + 1;
+      const maxOrder = acts.reduce((max, a) => Math.max(max, a.sort_order || 0), 0);
+      document.getElementById('activityOrder').value = maxOrder + 1;
       document.getElementById('modalActivityTitle').textContent = 'Activiteit toevoegen';
       openModal('modalActivity');
     }
@@ -604,6 +606,12 @@
       const acceptant_org_id = document.getElementById('activityAcceptant').value || null;
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
       if (!description) { showAlert('Vul de omschrijving in.'); return; }
+
+      // Controleer of het nummer al in gebruik is binnen dit scenario
+      const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);
+      if (scenarioActivities.some(a => a.sort_order === sort_order)) {
+        showAlert(`Nummer ${sort_order} is al in gebruik. Kies een ander nummer.`); return;
+      }
 
       let dbError;
       if (id) {
