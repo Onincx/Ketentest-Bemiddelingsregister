@@ -130,7 +130,7 @@
 
       const [s, a, r] = await Promise.all([
         sb.from('scenarios').select('*').order('code'),
-        sb.from('activities').select('*, organisations(id, name, code)').order('sort_order'),
+        sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').order('sort_order'),
         sb.from('activity_results').select('*').eq('user_id', currentUser.id)
       ]);
       scenarios = s.data || [];

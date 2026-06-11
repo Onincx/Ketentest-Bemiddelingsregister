@@ -279,7 +279,7 @@
       scenarios = data || [];
     }
     async function loadActivities() {
-      const { data, error } = await sb.from('activities').select('*, organisations(name)').order('sort_order');
+      const { data, error } = await sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').order('sort_order');
       if (error) { console.error('loadActivities error:', error); activities = []; return; }
       const raw = data || [];
       // Resolve acceptant_org manually using already-loaded orgs list
