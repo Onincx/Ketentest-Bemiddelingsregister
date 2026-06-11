@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ketentest — Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
+  <style>
+    .activity-row { display: grid; grid-template-columns: 32px 1fr 1fr 180px 1fr; gap: 0; align-items: start; }
+    .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    .activity-row:last-child > div { border-bottom: none; }
+    .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 180px 1fr; gap: 0; background: var(--surface); }
+    .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
+    .result-toggle { display: flex; gap: 4px; }
+    .rtbtn { border: 1px solid var(--border); background: transparent; border-radius: var(--radius); padding: 4px 10px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s; color: var(--text-muted); }
+    .rtbtn:hover { background: var(--surface); }
+    .rtbtn.ok { background: var(--accent-light); color: #0f6e56; border-color: #5dcaa5; }
+    .rtbtn.nok { background: var(--danger-light); color: var(--danger); border-color: #f09595; }
+    .notes-mini { width: 100%; font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; min-height: 52px; font-family: inherit; color: var(--text); background: var(--white); }
+    .notes-mini:focus { outline: none; border-color: var(--brand-mid); }
+    .scenario-progress { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 6px; }
+    .scenario-progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
+    .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .my-org { background: var(--accent-light); color: #0f6e56; }
+    @media (max-width: 700px) {
+      .activity-row, .activity-header { grid-template-columns: 1fr; }
+      .activity-header { display: none; }
+    }
+    .export-bar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-dot"></div>
+      Bemiddelingsregister
+    </div>
+    <a href="app.html" class="active"><i class="ti ti-list-check"></i> Ketentest</a>
+    <div id="adminLink" style="display:none;"><a href="admin.html"><i class="ti ti-settings"></i> Beheer</a></div>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
+        <i class="ti ti-logout"></i> Uitloggen
+      </button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <div id="alert" class="alert" style="display:none;"></div>
+
+    <!-- Stats -->
+    <div class="stats-grid" id="statsGrid" style="display:none;">
+      <div class="stat-card">
+        <div class="stat-label">Totaal scenario's</div>
+        <div class="stat-value" id="statTotal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Geslaagd</div>
+        <div class="stat-value green" id="statOk">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Mislukt</div>
+        <div class="stat-value red" id="statNok">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Open</div>
+        <div class="stat-value orange" id="statOpen">0</div>
+      </div>
+    </div>
+
+    <!-- Filter + export -->
+    <div class="export-bar" style="margin-bottom:20px;" id="filterBar" style="display:none;">
+      <div style="display:flex; gap:6px; flex-wrap:wrap; flex:1">
+        <button class="btn btn-outline btn-sm active-filter" id="f-all" onclick="setFilter('all', this)">Alle</button>
+        <button class="btn btn-outline btn-sm" id="f-open" onclick="setFilter('open', this)">Open</button>
+        <button class="btn btn-outline btn-sm" id="f-ok" onclick="setFilter('ok', this)">Geslaagd</button>
+        <button class="btn btn-outline btn-sm" id="f-nok" onclick="setFilter('nok', this)">Mislukt</button>
+        <button class="btn btn-outline btn-sm" id="f-mine" onclick="setFilter('mine', this)"><i class="ti ti-building"></i> Mijn organisatie</button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()"><i class="ti ti-download"></i> Exporteren</button>
+    </div>
+
+    <!-- Progress overall -->
+    <div class="progress-wrap" style="margin-bottom:24px;" id="overallProgress">
+      <div class="progress-bar" id="overallBar" style="width:0%"></div>
+    </div>
+
+    <!-- Scenario list -->
+    <div id="scenarioList">
+      <div class="empty-state"><i class="ti ti-loader" style="animation: spin 1s linear infinite;"></i><p>Laden...</p></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script>
+    let currentUser = null, currentProfile = null;
+    let scenarios = [], activities = [], results = {};
+    let activeFilter = 'all';
+    const autosaveTimers = {};
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+      currentProfile = await getUserProfile(currentUser.id);
+
+      document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
+      if (currentProfile?.organisations?.name) {
+        document.getElementById('navOrg').textContent = currentProfile.organisations.name;
+      }
+      if (currentProfile?.role === 'admin') {
+        document.getElementById('adminLink').style.display = '';
+      }
+
+      await loadData();
+      document.getElementById('statsGrid').style.display = '';
+      document.getElementById('filterBar').style.display = '';
+      renderAll();
+    })();
+
+    async function loadData() {
+      const [s, a, r] = await Promise.all([
+        sb.from('scenarios').select('*').order('code'),
+        sb.from('activities').select('*, organisations(id, name, code)').order('sort_order'),
+        sb.from('activity_results').select('*').eq('user_id', currentUser.id)
+      ]);
+      scenarios = s.data || [];
+      activities = a.data || [];
+      // Index results by activity_id
+      results = {};
+      (r.data || []).forEach(x => results[x.activity_id] = x);
+    }
+
+    function getScenarioStatus(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return 'open';
+      const statuses = acts.map(a => results[a.id]?.result || 'open');
+      if (statuses.every(s => s === 'ok')) return 'ok';
+      if (statuses.some(s => s === 'nok')) return 'nok';
+      if (statuses.some(s => s !== 'open')) return 'open';
+      return 'open';
+    }
+
+    function getScenarioPct(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return 0;
+      const done = acts.filter(a => results[a.id]?.result && results[a.id].result !== 'open').length;
+      return Math.round((done / acts.length) * 100);
+    }
+
+    function updateStats() {
+      const total = scenarios.length;
+      const ok = scenarios.filter(s => getScenarioStatus(s.id) === 'ok').length;
+      const nok = scenarios.filter(s => getScenarioStatus(s.id) === 'nok').length;
+      const open = total - ok - nok;
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statOk').textContent = ok;
+      document.getElementById('statNok').textContent = nok;
+      document.getElementById('statOpen').textContent = open;
+      const done = total > 0 ? Math.round(((ok + nok) / total) * 100) : 0;
+      document.getElementById('overallBar').style.width = done + '%';
+    }
+
+    function setFilter(f, el) {
+      activeFilter = f;
+      document.querySelectorAll('.export-bar .btn').forEach(b => b.style.background = '');
+      document.querySelectorAll('[id^="f-"]').forEach(b => b.style.fontWeight = '400');
+      el.style.fontWeight = '600';
+      renderAll();
+    }
+
+    function renderAll() {
+      updateStats();
+      const myOrgId = currentProfile?.organisation_id;
+      let filtered = scenarios;
+
+      if (activeFilter === 'ok') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'ok');
+      else if (activeFilter === 'nok') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'nok');
+      else if (activeFilter === 'open') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'open');
+      else if (activeFilter === 'mine') {
+        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.organisation_id === myOrgId));
+      }
+
+      const list = document.getElementById('scenarioList');
+      if (!filtered.length) {
+        list.innerHTML = '<div class="empty-state"><i class="ti ti-filter-off"></i><p>Geen scenario\'s gevonden voor dit filter.</p></div>';
+        return;
+      }
+
+      list.innerHTML = filtered.map(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
+        const status = getScenarioStatus(s.id);
+        const pct = getScenarioPct(s.id);
+        const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[status];
+
+        return `<div class="section-card" id="sc-${s.id}">
+          <div class="section-card-header" onclick="toggleScenario('${s.id}')">
+            <div style="flex:1; min-width:0">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap">
+                <span style="font-size:12px; font-weight:600; color:var(--text-muted)">${s.code}</span>
+                <strong style="font-size:15px">${s.title}</strong>
+                <span class="badge badge-${status}">${statusLabel}</span>
+              </div>
+              <div class="scenario-progress"><div class="scenario-progress-bar" style="width:${pct}%"></div></div>
+            </div>
+            <i class="ti ti-chevron-down" id="chev-${s.id}" style="font-size:16px; color:var(--text-muted); transition:transform 0.2s; margin-left:12px; flex-shrink:0;"></i>
+          </div>
+          <div id="body-${s.id}" style="display:none; padding:0 20px 16px;">
+            ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin-bottom:16px; padding-top:4px">${s.description}</p>` : ''}
+            ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:8px 0;">Nog geen activiteiten aan dit scenario gekoppeld.</p>'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function renderActivities(acts) {
+      const myOrgId = currentProfile?.organisation_id;
+      return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
+        <div class="activity-header">
+          <div>#</div><div>Activiteit</div><div>Verwacht resultaat</div><div>Organisatie</div><div>Uitkomst &amp; notities</div>
+        </div>
+        ${acts.map(a => {
+          const r = results[a.id] || {};
+          const isMyOrg = a.organisation_id === myOrgId;
+          const canEdit = isMyOrg || currentProfile?.role === 'admin';
+          const orgName = a.organisations?.name || '';
+          const orgCode = a.organisations?.code || '';
+          return `<div class="activity-row" id="row-${a.id}">
+            <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
+            <div style="font-size:13px;">${a.description}</div>
+            <div style="font-size:13px; color:var(--text-muted);">${a.expected_result || ''}</div>
+            <div>${orgName ? `<span class="org-pill ${isMyOrg ? 'my-org' : ''}">${orgCode || orgName}</span>` : '—'}</div>
+            <div>
+              ${canEdit ? `
+              <div class="result-toggle" style="margin-bottom:6px;">
+                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','ok')"><i class="ti ti-check"></i> OK</button>
+                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','nok')"><i class="ti ti-x"></i> NOK</button>
+                ${r.result ? `<button class="rtbtn" onclick="setResult('${a.id}','${a.scenario_id}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
+              </div>
+              <textarea class="notes-mini" id="notes-${a.id}" placeholder="Opmerkingen..."
+                oninput="scheduleAutosave('${a.id}','${a.scenario_id}')">${r.notes || ''}</textarea>
+              ` : `
+              <span class="badge badge-${r.result || 'open'}">${{ ok:'Geslaagd', nok:'Mislukt', open:'Open' }[r.result || 'open']}</span>
+              ${r.notes ? `<p style="font-size:12px; color:var(--text-muted); margin-top:4px">${r.notes}</p>` : ''}
+              `}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+
+    function toggleScenario(id) {
+      const body = document.getElementById(`body-${id}`);
+      const chev = document.getElementById(`chev-${id}`);
+      const open = body.style.display === 'none';
+      body.style.display = open ? '' : 'none';
+      chev.style.transform = open ? 'rotate(180deg)' : '';
+    }
+
+    async function setResult(activityId, scenarioId, result) {
+      const notes = document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '';
+      const existing = results[activityId];
+
+      if (existing) {
+        await sb.from('activity_results').update({ result, notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        results[activityId] = { ...existing, result, notes };
+      } else {
+        const { data } = await sb.from('activity_results').insert({ activity_id: activityId, user_id: currentUser.id, result, notes }).select().single();
+        results[activityId] = data;
+      }
+      updateStats();
+      // Re-render just the row area
+      const row = document.getElementById(`row-${activityId}`);
+      if (row) {
+        const act = activities.find(a => a.id === activityId);
+        if (act) {
+          const myOrgId = currentProfile?.organisation_id;
+          const isMyOrg = act.organisation_id === myOrgId;
+          const canEdit = isMyOrg || currentProfile?.role === 'admin';
+          const r = results[activityId] || {};
+          const lastCell = row.children[4];
+          if (canEdit) {
+            lastCell.innerHTML = `
+              <div class="result-toggle" style="margin-bottom:6px;">
+                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${activityId}','${scenarioId}','ok')"><i class="ti ti-check"></i> OK</button>
+                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${activityId}','${scenarioId}','nok')"><i class="ti ti-x"></i> NOK</button>
+                ${r.result ? `<button class="rtbtn" onclick="setResult('${activityId}','${scenarioId}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
+              </div>
+              <textarea class="notes-mini" id="notes-${activityId}" placeholder="Opmerkingen..."
+                oninput="scheduleAutosave('${activityId}','${scenarioId}')">${r.notes || ''}</textarea>`;
+          }
+        }
+      }
+      // Update scenario badge
+      const sc = document.getElementById(`sc-${scenarioId}`);
+      if (sc) {
+        const newStatus = getScenarioStatus(scenarioId);
+        const badge = sc.querySelector('.badge');
+        if (badge) { badge.className = `badge badge-${newStatus}`; badge.textContent = { ok:'Geslaagd', nok:'Mislukt', open:'Open' }[newStatus]; }
+        const pct = getScenarioPct(scenarioId);
+        const pb = sc.querySelector('.scenario-progress-bar');
+        if (pb) pb.style.width = pct + '%';
+      }
+    }
+
+    function scheduleAutosave(activityId, scenarioId) {
+      clearTimeout(autosaveTimers[activityId]);
+      autosaveTimers[activityId] = setTimeout(() => saveNotes(activityId, scenarioId), 800);
+    }
+
+    async function saveNotes(activityId, scenarioId) {
+      const notes = document.getElementById(`notes-${activityId}`)?.value || '';
+      const result = results[activityId]?.result || 'open';
+      const existing = results[activityId];
+      if (existing) {
+        await sb.from('activity_results').update({ notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        results[activityId] = { ...existing, notes };
+      } else {
+        const { data } = await sb.from('activity_results').insert({ activity_id: activityId, user_id: currentUser.id, result, notes }).select().single();
+        results[activityId] = data;
+      }
+    }
+
+    function exportCSV() {
+      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verwacht resultaat', 'Organisatie', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
+      scenarios.forEach(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
+        acts.forEach(a => {
+          const r = results[a.id] || {};
+          rows.push([s.code, s.title, a.sort_order, a.description, a.expected_result || '', a.organisations?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
+        });
+      });
+      const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url;
+      a.download = `ketentest_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click(); URL.revokeObjectURL(url);
+    }
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>

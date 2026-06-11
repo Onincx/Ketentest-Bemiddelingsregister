@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inloggen — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
+</head>
+<body>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18.5C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fill-opacity="0.9"/>
+            <path d="M7 10L9 12L13 8" stroke="#1a3a5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="login-logo-text">
+          <h2>Bemiddelingsregister</h2>
+          <p>Ketentest platform</p>
+        </div>
+      </div>
+
+      <h1 style="font-size:20px; margin-bottom:6px;">Welkom terug</h1>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Log in om de testscenario's te bekijken en bij te werken.</p>
+
+      <div id="alert" class="alert alert-error" style="display:none;"></div>
+
+      <div class="form-group">
+        <label for="email">E-mailadres</label>
+        <input type="email" id="email" placeholder="naam@organisatie.nl" autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label for="password">Wachtwoord</label>
+        <input type="password" id="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn btn-primary" id="loginBtn" onclick="doLogin()" style="width:100%; justify-content:center; padding:11px;">
+        Inloggen
+      </button>
+
+      <p style="font-size:13px; color:var(--text-muted); margin-top:20px; text-align:center;">
+        Geen account? Je ontvangt een uitnodiging van de beheerder.
+      </p>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script>
+    // Redirect als al ingelogd
+    (async () => {
+      const user = await getCurrentUser();
+      if (user) {
+        const profile = await getUserProfile(user.id);
+        window.location.href = profile?.role === 'admin' ? 'admin.html' : 'app.html';
+      }
+    })();
+
+    document.getElementById('password').addEventListener('keydown', e => {
+      if (e.key === 'Enter') doLogin();
+    });
+
+    async function doLogin() {
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      hideAlert();
+
+      if (!email || !password) {
+        showAlert('Vul je e-mailadres en wachtwoord in.'); return;
+      }
+
+      const btn = document.getElementById('loginBtn');
+      btn.innerHTML = '<span class="spinner"></span> Inloggen...';
+      btn.disabled = true;
+
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showAlert('Inloggen mislukt. Controleer je e-mailadres en wachtwoord.');
+        btn.innerHTML = 'Inloggen'; btn.disabled = false;
+        return;
+      }
+
+      const profile = await getUserProfile(data.user.id);
+      window.location.href = profile?.role === 'admin' ? 'admin.html' : 'app.html';
+    }
+  </script>
+</body>
+</html>
