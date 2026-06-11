@@ -304,7 +304,7 @@
                     onclick="${canEdit ? `openNoteModal('${a.id}','${a.scenario_id}')` : ''}"
                     style="${canEdit ? '' : 'cursor:default;'}"
                     title="${hasNote ? 'Opmerking bekijken/bewerken' : (canEdit ? 'Opmerking toevoegen' : 'Geen opmerking')}">
-                    <i class="ti ti-pencil"></i>
+                    <i class="ti ti-notebook"></i>
                     ${hasNote ? '<span style="font-size:11px;">notitie</span>' : ''}
                   </button>
                   ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
@@ -398,7 +398,7 @@
                 <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" onclick="setResult('${activityId}','${scenarioId}','nok')" title="Markeer als NOK"><i class="ti ti-x"></i> NOK</button>
                 <div class="notes-tooltip">
                   <button class="note-icon-btn ${hasNoteNow ? 'has-note' : 'no-note'}" onclick="openNoteModal('${activityId}','${scenarioId}')" title="${hasNoteNow ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
-                    <i class="ti ti-pencil"></i>
+                    <i class="ti ti-notebook"></i>
                     ${hasNoteNow ? '<span style="font-size:11px;">notitie</span>' : ''}
                   </button>
                   ${hasNoteNow ? `<div class="tooltip-box">${(r.notes||'').replace(/</g,'&lt;')}</div>` : ''}
