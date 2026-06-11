@@ -263,37 +263,32 @@
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
             <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px;">
-              ${canEdit ? `
               <div class="result-toggle">
-                <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
-                  onclick="setResult('${a.id}','${a.scenario_id}','ok')"
-                  title="Markeer als OK">
-                  <i class="ti ti-check"></i> OK
-                </button>
-                <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}"
-                  onclick="setResult('${a.id}','${a.scenario_id}','nok')"
-                  title="Markeer als NOK">
-                  <i class="ti ti-x"></i> NOK
-                </button>
+                ${canEdit ? `
+                  <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
+                    onclick="setResult('${a.id}','${a.scenario_id}','ok')"
+                    title="Markeer als OK">
+                    <i class="ti ti-check"></i> OK
+                  </button>
+                  <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}"
+                    onclick="setResult('${a.id}','${a.scenario_id}','nok')"
+                    title="Markeer als NOK">
+                    <i class="ti ti-x"></i> NOK
+                  </button>
+                ` : `
+                  <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-check"></i> OK</span>
+                  <span class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-x"></i> NOK</span>
+                `}
                 <div class="notes-tooltip">
                   <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}"
-                    onclick="openNoteModal('${a.id}','${a.scenario_id}')"
-                    title="${hasNote ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
+                    onclick="${canEdit ? `openNoteModal('${a.id}','${a.scenario_id}')` : ''}"
+                    style="${canEdit ? '' : 'cursor:default;'}"
+                    title="${hasNote ? 'Opmerking bekijken/bewerken' : (canEdit ? 'Opmerking toevoegen' : 'Geen opmerking')}">
                     <i class="ti ti-message${hasNote ? '-filled' : ''}"></i>
                   </button>
                   ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
                 </div>
               </div>
-              ` : `
-              <div class="result-toggle">
-                <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-check"></i> OK</span>
-                <span class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-x"></i> NOK</span>
-                ${hasNote ? `<div class="notes-tooltip">
-                  <button class="note-icon-btn has-note" title="Opmerking" style="cursor:default;"><i class="ti ti-message-filled"></i></button>
-                  <div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>
-                </div>` : ''}
-              </div>
-              `}
             </div>
           </div>`;
         }).join('')}

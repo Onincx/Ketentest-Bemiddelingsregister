@@ -636,9 +636,16 @@
     function deleteActivity(id, desc) {
       document.getElementById('confirmMsg').textContent = `Activiteit "${desc}..." verwijderen?`;
       document.getElementById('confirmBtn').onclick = async () => {
-        await sb.from('activities').delete().eq('id', id);
+        const { error } = await sb.from('activities').delete().eq('id', id);
+        if (error) {
+          showAlert('Verwijderen mislukt: ' + error.message);
+          console.error('delete activity error:', error);
+          closeModal('modalConfirm');
+          return;
+        }
         closeModal('modalConfirm');
         await loadActivities(); renderScenarios();
+        showAlert('Activiteit verwijderd.', 'success');
       };
       openModal('modalConfirm');
     }
