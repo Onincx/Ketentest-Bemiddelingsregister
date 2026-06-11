@@ -209,8 +209,12 @@
           <input type="text" id="activityExpected" placeholder="Wat is het verwachte resultaat?">
         </div>
         <div class="form-group">
-          <label>Gekoppelde organisatie</label>
+          <label>Verantwoordelijke organisatie</label>
           <select id="activityOrg"><option value="">Selecteer organisatie...</option></select>
+        </div>
+        <div class="form-group">
+          <label>Acceptant <span style="color:var(--text-muted); font-weight:400;">(mag OK/NOK zetten)</span></label>
+          <select id="activityAcceptant"><option value="">Selecteer organisatie...</option></select>
         </div>
         <div class="form-group">
           <label>Volgorde</label>
@@ -273,7 +277,7 @@
       scenarios = data || [];
     }
     async function loadActivities() {
-      const { data } = await sb.from('activities').select('*, organisations(name)').order('sort_order');
+      const { data } = await sb.from('activities').select('*, organisations(name), acceptant_org:acceptant_org_id(name)').order('sort_order');
       activities = data || [];
     }
 
@@ -454,7 +458,10 @@
     function renderScenarios() {
       const wrap = document.getElementById('scenarioAdminList');
       const actOrgSel = document.getElementById('activityOrg');
-      actOrgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+      const actAccSel = document.getElementById('activityAcceptant');
+      const orgOptions = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+      actOrgSel.innerHTML = orgOptions;
+      actAccSel.innerHTML = orgOptions;
 
       if (!scenarios.length) {
         wrap.innerHTML = '<div class="empty-state"><i class="ti ti-list-check"></i><p>Nog geen testscenario\'s. Voeg er een toe.</p></div>';
@@ -483,7 +490,8 @@
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">#</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Activiteit</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Verwacht resultaat</th>
-                <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Organisatie</th>
+                <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Verantwoordelijke org.</th>
+                <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Acceptant</th>
                 <th></th>
               </tr></thead>
               <tbody>${acts.map(a => `<tr>
@@ -491,6 +499,7 @@
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.description}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); color:var(--text-muted)">${a.expected_result}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.organisations?.name ? `<span class="org-badge">${a.organisations.name}</span>` : '—'}</td>
+                <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.acceptant_org?.name ? `<span class="org-badge" style="background:#fef3c7;color:#92400e;">${a.acceptant_org.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:right;">
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="editActivity('${a.id}')"><i class="ti ti-pencil"></i></button>
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteActivity('${a.id}','${a.description.substring(0,30)}')"><i class="ti ti-trash" style="color:var(--danger)"></i></button>
@@ -558,6 +567,7 @@
       document.getElementById('activityDesc').value = '';
       document.getElementById('activityExpected').value = '';
       document.getElementById('activityOrg').value = '';
+      document.getElementById('activityAcceptant').value = '';
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       document.getElementById('activityOrder').value = acts.length + 1;
       document.getElementById('modalActivityTitle').textContent = 'Activiteit toevoegen';
@@ -571,6 +581,7 @@
       document.getElementById('activityDesc').value = a.description;
       document.getElementById('activityExpected').value = a.expected_result;
       document.getElementById('activityOrg').value = a.organisation_id || '';
+      document.getElementById('activityAcceptant').value = a.acceptant_org_id || '';
       document.getElementById('activityOrder').value = a.sort_order;
       document.getElementById('modalActivityTitle').textContent = 'Activiteit bewerken';
       openModal('modalActivity');
@@ -582,13 +593,14 @@
       const description = document.getElementById('activityDesc').value.trim();
       const expected_result = document.getElementById('activityExpected').value.trim();
       const organisation_id = document.getElementById('activityOrg').value || null;
+      const acceptant_org_id = document.getElementById('activityAcceptant').value || null;
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
       if (!description) { showAlert('Vul de omschrijving in.'); return; }
 
       if (id) {
-        await sb.from('activities').update({ description, expected_result, organisation_id, sort_order }).eq('id', id);
+        await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order }).eq('id', id);
       } else {
-        await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, sort_order });
+        await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order });
       }
       closeModal('modalActivity');
       await loadActivities(); renderScenarios();

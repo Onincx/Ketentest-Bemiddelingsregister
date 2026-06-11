@@ -9,10 +9,10 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
   <style>
-    .activity-row { display: grid; grid-template-columns: 32px 1fr 1fr 180px 1fr; gap: 0; align-items: start; }
+    .activity-row { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 1fr; gap: 0; align-items: start; }
     .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .activity-row:last-child > div { border-bottom: none; }
-    .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 180px 1fr; gap: 0; background: var(--surface); }
+    .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 1fr; gap: 0; background: var(--surface); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
     .result-toggle { display: flex; gap: 4px; }
     .rtbtn { border: 1px solid var(--border); background: transparent; border-radius: var(--radius); padding: 4px 10px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s; color: var(--text-muted); }
@@ -126,7 +126,7 @@
     async function loadData() {
       const [s, a, r] = await Promise.all([
         sb.from('scenarios').select('*').order('code'),
-        sb.from('activities').select('*, organisations(id, name, code)').order('sort_order'),
+        sb.from('activities').select('*, organisations(id, name, code), acceptant_org:acceptant_org_id(id, name, code)').order('sort_order'),
         sb.from('activity_results').select('*').eq('user_id', currentUser.id)
       ]);
       scenarios = s.data || [];
@@ -183,7 +183,7 @@
       else if (activeFilter === 'nok') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'nok');
       else if (activeFilter === 'open') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'open');
       else if (activeFilter === 'mine') {
-        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.organisation_id === myOrgId));
+        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
       }
 
       const list = document.getElementById('scenarioList');
@@ -222,25 +222,28 @@
       const myOrgId = currentProfile?.organisation_id;
       return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
-          <div>#</div><div>Activiteit</div><div>Verwacht resultaat</div><div>Organisatie</div><div>Uitkomst &amp; notities</div>
+          <div>#</div><div>Activiteit</div><div>Verwacht resultaat</div><div>Verantw. org.</div><div>Acceptant</div><div>Uitkomst &amp; notities</div>
         </div>
         ${acts.map(a => {
           const r = results[a.id] || {};
-          const isMyOrg = a.organisation_id === myOrgId;
-          const canEdit = isMyOrg || currentProfile?.role === 'admin';
+          const isAcceptant = a.acceptant_org?.id === myOrgId;
+          const canEdit = isAcceptant || currentProfile?.role === 'admin';
           const orgName = a.organisations?.name || '';
           const orgCode = a.organisations?.code || '';
+          const accName = a.acceptant_org?.name || '';
+          const accCode = a.acceptant_org?.code || '';
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
             <div style="font-size:13px;">${a.description}</div>
             <div style="font-size:13px; color:var(--text-muted);">${a.expected_result || ''}</div>
-            <div>${orgName ? `<span class="org-pill ${isMyOrg ? 'my-org' : ''}">${orgCode || orgName}</span>` : '—'}</div>
+            <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
+            <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
             <div>
               ${canEdit ? `
               <div class="result-toggle" style="margin-bottom:6px;">
                 <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','ok')"><i class="ti ti-check"></i> OK</button>
                 <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','nok')"><i class="ti ti-x"></i> NOK</button>
-                ${r.result ? `<button class="rtbtn" onclick="setResult('${a.id}','${a.scenario_id}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
+                ${r.result && r.result !== 'open' ? `<button class="rtbtn" onclick="setResult('${a.id}','${a.scenario_id}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
               </div>
               <textarea class="notes-mini" id="notes-${a.id}" placeholder="Opmerkingen..."
                 oninput="scheduleAutosave('${a.id}','${a.scenario_id}')">${r.notes || ''}</textarea>
@@ -280,8 +283,8 @@
         const act = activities.find(a => a.id === activityId);
         if (act) {
           const myOrgId = currentProfile?.organisation_id;
-          const isMyOrg = act.organisation_id === myOrgId;
-          const canEdit = isMyOrg || currentProfile?.role === 'admin';
+          const isAcceptant = act.acceptant_org?.id === myOrgId;
+          const canEdit = isAcceptant || currentProfile?.role === 'admin';
           const r = results[activityId] || {};
           const lastCell = row.children[4];
           if (canEdit) {
@@ -327,12 +330,12 @@
     }
 
     function exportCSV() {
-      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verwacht resultaat', 'Organisatie', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
+      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verwacht resultaat', 'Verantw. organisatie', 'Acceptant', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
       scenarios.forEach(s => {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
         acts.forEach(a => {
           const r = results[a.id] || {};
-          rows.push([s.code, s.title, a.sort_order, a.description, a.expected_result || '', a.organisations?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
+          rows.push([s.code, s.title, a.sort_order, a.description, a.expected_result || '', a.organisations?.name || '', a.acceptant_org?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
         });
       });
       const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
