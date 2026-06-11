@@ -14,11 +14,14 @@
     .activity-row:last-child > div { border-bottom: none; }
     .activity-header { display: grid; grid-template-columns: 32px 1fr 1fr 160px 160px 140px; gap: 0; background: var(--surface); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
-    .result-toggle { display: flex; gap: 4px; }
-    .rtbtn { border: 1px solid var(--border); background: transparent; border-radius: var(--radius); padding: 4px 10px; font-size: 12px; font-weight: 500; cursor: pointer; transition: all 0.12s; color: var(--text-muted); }
-    .rtbtn:hover { background: var(--surface); }
-    .rtbtn.ok { background: var(--accent-light); color: #0f6e56; border-color: #5dcaa5; }
-    .rtbtn.nok { background: var(--danger-light); color: var(--danger); border-color: #f09595; }
+    .result-toggle { display: flex; gap: 5px; align-items: center; }
+    .rtbtn { border: 1.5px solid; border-radius: var(--radius); padding: 5px 11px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+    .rtbtn-ok        { background: #f0fdf4; color: #86efac; border-color: #86efac; }
+    .rtbtn-ok:hover  { background: #dcfce7; color: #16a34a; border-color: #16a34a; }
+    .rtbtn-ok.active { background: #16a34a; color: #fff;    border-color: #16a34a; }
+    .rtbtn-nok        { background: #fff5f5; color: #fca5a5; border-color: #fca5a5; }
+    .rtbtn-nok:hover  { background: #fee2e2; color: #dc2626; border-color: #dc2626; }
+    .rtbtn-nok.active { background: #dc2626; color: #fff;    border-color: #dc2626; }
     .notes-mini { width: 100%; font-size: 12px; padding: 5px 8px; border: 1px solid var(--border); border-radius: var(--radius); resize: vertical; min-height: 52px; font-family: inherit; color: var(--text); background: var(--white); }
     .notes-mini:focus { outline: none; border-color: var(--brand-mid); }
     .scenario-progress { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 6px; }
@@ -262,22 +265,34 @@
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px;">
               ${canEdit ? `
               <div class="result-toggle">
-                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','ok')"><i class="ti ti-check"></i></button>
-                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${a.id}','${a.scenario_id}','nok')"><i class="ti ti-x"></i></button>
-                ${r.result && r.result !== 'open' ? `<button class="rtbtn" onclick="setResult('${a.id}','${a.scenario_id}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
-              </div>
-              <div class="notes-tooltip">
-                <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}" onclick="openNoteModal('${a.id}','${a.scenario_id}')" title="${hasNote ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
-                  <i class="ti ti-message${hasNote ? '-filled' : ''}"></i>${hasNote ? ' <span style=\'font-size:11px;font-weight:600;\'>!</span>' : ''}
+                <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
+                  onclick="setResult('${a.id}','${a.scenario_id}','ok')"
+                  title="Markeer als OK">
+                  <i class="ti ti-check"></i> OK
                 </button>
-                ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
+                <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}"
+                  onclick="setResult('${a.id}','${a.scenario_id}','nok')"
+                  title="Markeer als NOK">
+                  <i class="ti ti-x"></i> NOK
+                </button>
+                <div class="notes-tooltip">
+                  <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}"
+                    onclick="openNoteModal('${a.id}','${a.scenario_id}')"
+                    title="${hasNote ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
+                    <i class="ti ti-message${hasNote ? '-filled' : ''}"></i>
+                  </button>
+                  ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
+                </div>
               </div>
               ` : `
-              <span class="badge badge-${r.result || 'open'}">${{ ok:'Geslaagd', nok:'Mislukt', open:'Open' }[r.result || 'open']}</span>
-              ${hasNote ? `<div class="notes-tooltip">
-                <button class="note-icon-btn has-note" title="Opmerking"><i class="ti ti-message-filled"></i></button>
-                <div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>
-              </div>` : ''}
+              <div class="result-toggle">
+                <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-check"></i> OK</span>
+                <span class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" style="cursor:default;"><i class="ti ti-x"></i> NOK</span>
+                ${hasNote ? `<div class="notes-tooltip">
+                  <button class="note-icon-btn has-note" title="Opmerking" style="cursor:default;"><i class="ti ti-message-filled"></i></button>
+                  <div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>
+                </div>` : ''}
+              </div>
               `}
             </div>
           </div>`;
@@ -336,6 +351,8 @@
     }
 
     async function setResult(activityId, scenarioId, result) {
+      // Toggle: klikken op al-actieve knop zet hem uit
+      if (results[activityId]?.result === result) result = 'open';
       const notes = document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '';
       const existing = results[activityId];
 
@@ -358,14 +375,18 @@
           const r = results[activityId] || {};
           const lastCell = row.children[5];
           if (canEdit) {
+            const hasNoteNow = !!(r.notes && r.notes.trim());
             lastCell.innerHTML = `
-              <div class="result-toggle" style="margin-bottom:6px;">
-                <button class="rtbtn ${r.result === 'ok' ? 'ok' : ''}" onclick="setResult('${activityId}','${scenarioId}','ok')"><i class="ti ti-check"></i> OK</button>
-                <button class="rtbtn ${r.result === 'nok' ? 'nok' : ''}" onclick="setResult('${activityId}','${scenarioId}','nok')"><i class="ti ti-x"></i> NOK</button>
-                ${r.result ? `<button class="rtbtn" onclick="setResult('${activityId}','${scenarioId}','open')" title="Reset"><i class="ti ti-refresh"></i></button>` : ''}
-              </div>
-              <textarea class="notes-mini" id="notes-${activityId}" placeholder="Opmerkingen..."
-                oninput="scheduleAutosave('${activityId}','${scenarioId}')">${r.notes || ''}</textarea>`;
+              <div class="result-toggle">
+                <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" onclick="setResult('${activityId}','${scenarioId}','ok')" title="Markeer als OK"><i class="ti ti-check"></i> OK</button>
+                <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" onclick="setResult('${activityId}','${scenarioId}','nok')" title="Markeer als NOK"><i class="ti ti-x"></i> NOK</button>
+                <div class="notes-tooltip">
+                  <button class="note-icon-btn ${hasNoteNow ? 'has-note' : 'no-note'}" onclick="openNoteModal('${activityId}','${scenarioId}')" title="${hasNoteNow ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
+                    <i class="ti ti-message${hasNoteNow ? '-filled' : ''}"></i>
+                  </button>
+                  ${hasNoteNow ? `<div class="tooltip-box">${(r.notes||'').replace(/</g,'&lt;')}</div>` : ''}
+                </div>
+              </div>`;
           }
         }
       }
