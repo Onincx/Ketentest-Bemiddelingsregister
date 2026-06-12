@@ -7,7 +7,6 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
   <style>
     .org-badge { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 10px; font-size: 12px; font-weight: 500; display: inline-block; }
     .activity-indent { padding-left: 32px; }
@@ -22,12 +21,12 @@
       <div class="logo-dot"></div>
       Bemiddelingsregister
     </div>
-    <a href="admin.html" class="active"><i class="ti ti-settings"></i> Beheer</a>
-    <a href="app.html"><i class="ti ti-list-check"></i> Ketentest</a>
+    <a href="admin.html" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Beheer</a>
+    <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest</a>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
-        <i class="ti ti-logout"></i> Uitloggen
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen
       </button>
     </div>
   </nav>
@@ -37,9 +36,9 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" onclick="showTab('organisations')"><i class="ti ti-building"></i> Organisaties</button>
-      <button class="tab-btn" onclick="showTab('users')"><i class="ti ti-users"></i> Gebruikers</button>
-      <button class="tab-btn" onclick="showTab('scenarios')"><i class="ti ti-list-check"></i> Testscenario's</button>
+      <button class="tab-btn active" onclick="showTab('organisations')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Organisaties</button>
+      <button class="tab-btn" onclick="showTab('users')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Gebruikers</button>
+      <button class="tab-btn" onclick="showTab('scenarios')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</button>
     </div>
 
     <!-- TAB: Organisaties -->
@@ -50,7 +49,7 @@
           <p>Beheer de deelnemende organisaties aan de ketentest.</p>
         </div>
         <button class="btn btn-primary" onclick="openModal('modalOrg')">
-          <i class="ti ti-plus"></i> Organisatie toevoegen
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Organisatie toevoegen
         </button>
       </div>
       <div class="card" style="padding:0;">
@@ -71,7 +70,7 @@
           <p>Nodig gebruikers uit en koppel ze aan een organisatie.</p>
         </div>
         <button class="btn btn-primary" onclick="openModal('modalUser')">
-          <i class="ti ti-user-plus"></i> Gebruiker uitnodigen
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg> Gebruiker uitnodigen
         </button>
       </div>
       <div class="card" style="padding:0;">
@@ -92,7 +91,7 @@
           <p>Beheer scenario's, teststappen en koppel activiteiten aan organisaties.</p>
         </div>
         <button class="btn btn-primary" onclick="openModal('modalScenario')">
-          <i class="ti ti-plus"></i> Scenario toevoegen
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Scenario toevoegen
         </button>
       </div>
       <div id="scenarioAdminList"></div>
@@ -104,7 +103,7 @@
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 id="modalOrgTitle">Organisatie toevoegen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalOrg')"><i class="ti ti-x"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalOrg')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="orgId">
@@ -129,7 +128,7 @@
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 id="modalUserTitle">Gebruiker uitnodigen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalUser')"><i class="ti ti-x"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalUser')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="userId">
@@ -166,7 +165,7 @@
     <div class="modal" style="max-width:560px;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 id="modalScenarioTitle">Scenario toevoegen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalScenario')"><i class="ti ti-x"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="scenarioId">
@@ -195,7 +194,7 @@
     <div class="modal" style="max-width:560px;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3 id="modalActivityTitle">Activiteit toevoegen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalActivity')"><i class="ti ti-x"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalActivity')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="activityId">
@@ -233,7 +232,7 @@
     <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
       <div class="modal-header">
         <h3>Bevestigen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalConfirm')"><i class="ti ti-x"></i></button>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalConfirm')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <p id="confirmMsg" style="font-size:14px; color:var(--text-muted);"></p>
@@ -304,7 +303,7 @@
     function renderOrgs() {
       const tb = document.getElementById('orgTable');
       if (!orgs.length) {
-        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="ti ti-building"></i><p>Nog geen organisaties. Voeg er een toe.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg><p>Nog geen organisaties. Voeg er een toe.</p></div></td></tr>';
         return;
       }
       tb.innerHTML = orgs.map(o => {
@@ -316,8 +315,8 @@
           <td>${count} gebruiker${count !== 1 ? 's' : ''}</td>
           <td style="color:var(--text-muted)">${date}</td>
           <td style="text-align:right;">
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="editOrg('${o.id}')" title="Bewerken"><i class="ti ti-pencil"></i></button>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteOrg('${o.id}','${o.name}')" title="Verwijderen"><i class="ti ti-trash" style="color:var(--danger)"></i></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editOrg('${o.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteOrg('${o.id}','${o.name}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
           </td>
         </tr>`;
       }).join('');
@@ -375,7 +374,7 @@
       orgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
 
       if (!users.length) {
-        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="ti ti-users"></i><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
         return;
       }
       tb.innerHTML = users.map(u => `<tr>
@@ -385,8 +384,8 @@
         <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : 'Gebruiker'}</span></td>
         <td><span class="badge ${u.activated ? 'badge-ok' : 'badge-open'}">${u.activated ? 'Actief' : 'Uitgenodigd'}</span></td>
         <td style="text-align:right;">
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="editUser('${u.id}')" title="Bewerken"><i class="ti ti-pencil"></i></button>
-          <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteUser('${u.id}','${u.email}')" title="Verwijderen"><i class="ti ti-trash" style="color:var(--danger)"></i></button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="editUser('${u.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteUser('${u.id}','${u.email}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
         </td>
       </tr>`).join('');
     }
@@ -472,7 +471,7 @@
       actAccSel.innerHTML = orgOptions;
 
       if (!scenarios.length) {
-        wrap.innerHTML = '<div class="empty-state"><i class="ti ti-list-check"></i><p>Nog geen testscenario\'s. Voeg er een toe.</p></div>';
+        wrap.innerHTML = '<div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg><p>Nog geen testscenario\'s. Voeg er een toe.</p></div>';
         return;
       }
 
@@ -486,9 +485,9 @@
               <span style="font-size:12px; color:var(--text-muted)">${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
             </div>
             <div style="display:flex; gap:6px" onclick="event.stopPropagation()">
-              <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><i class="ti ti-plus"></i> Activiteit</button>
-              <button class="btn btn-ghost btn-sm btn-icon" onclick="editScenario('${s.id}')"><i class="ti ti-pencil"></i></button>
-              <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteScenario('${s.id}','${s.title}')"><i class="ti ti-trash" style="color:var(--danger)"></i></button>
+              <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Activiteit</button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="editScenario('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteScenario('${s.id}','${s.title}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
             </div>
           </div>
           <div class="section-card-body" id="sc-${s.id}" style="display:none;">
@@ -509,8 +508,8 @@
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.organisations?.name ? `<span class="org-badge">${a.organisations.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.acceptant_org?.name ? `<span class="org-badge" style="background:#fef3c7;color:#92400e;">${a.acceptant_org.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:right;">
-                  <button class="btn btn-ghost btn-sm btn-icon" onclick="editActivity('${a.id}')"><i class="ti ti-pencil"></i></button>
-                  <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteActivity('${a.id}','${a.description.substring(0,30)}')"><i class="ti ti-trash" style="color:var(--danger)"></i></button>
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="editActivity('${a.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteActivity('${a.id}','${a.description.substring(0,30)}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
                 </td>
               </tr>`).join('')}</tbody>
             </table>` : '<p style="font-size:13px; color:var(--text-muted); font-style:italic;">Nog geen activiteiten. Klik op "+ Activiteit" om er een toe te voegen.</p>'}
