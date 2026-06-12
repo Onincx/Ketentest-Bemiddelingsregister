@@ -492,8 +492,20 @@
           </div>
           <div class="section-card-body" id="sc-${s.id}" style="display:none;">
             <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px">${s.description || ''}</p>
-            ${acts.length ? `<table style="width:100%; font-size:13px; border-collapse:collapse;">
+            ${acts.length ? `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <label style="font-size:13px; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="sel-all-${s.id}" onchange="toggleSelectAll('${s.id}', this.checked)" style="width:15px; height:15px; cursor:pointer;">
+                Alles selecteren
+              </label>
+              <button class="btn btn-danger btn-sm" id="del-btn-${s.id}" style="display:none;" onclick="deleteSelected('${s.id}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                Verwijder geselecteerde (<span id="sel-count-${s.id}">0</span>)
+              </button>
+            </div>
+            <table style="width:100%; font-size:13px; border-collapse:collapse;">
               <thead><tr>
+                <th style="width:36px; padding:8px 10px; border-bottom:1px solid var(--border);"></th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">#</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Activiteit</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Verwacht resultaat</th>
@@ -501,13 +513,16 @@
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Acceptant</th>
                 <th></th>
               </tr></thead>
-              <tbody>${acts.map(a => `<tr>
+              <tbody>${acts.map(a => `<tr id="act-row-${a.id}">
+                <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:center;">
+                  <input type="checkbox" class="act-cb-${s.id}" data-id="${a.id}" onchange="updateSelectionCount('${s.id}')" style="width:15px; height:15px; cursor:pointer;">
+                </td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); color:var(--text-muted)">${a.sort_order}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.description}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); color:var(--text-muted)">${a.expected_result}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.organisations?.name ? `<span class="org-badge">${a.organisations.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.acceptant_org?.name ? `<span class="org-badge" style="background:#fef3c7;color:#92400e;">${a.acceptant_org.name}</span>` : '—'}</td>
-                <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:right;">
+                <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap;">
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="editActivity('${a.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
                   <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteActivity('${a.id}','${a.description.substring(0,30)}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
                 </td>
@@ -630,6 +645,40 @@
       closeModal('modalActivity');
       await loadActivities(); renderScenarios();
       showAlert('Activiteit opgeslagen.', 'success');
+    }
+
+    function toggleSelectAll(scenarioId, checked) {
+      document.querySelectorAll(`.act-cb-${scenarioId}`).forEach(cb => cb.checked = checked);
+      updateSelectionCount(scenarioId);
+    }
+
+    function updateSelectionCount(scenarioId) {
+      const checked = document.querySelectorAll(`.act-cb-${scenarioId}:checked`);
+      const btn = document.getElementById(`del-btn-${scenarioId}`);
+      const count = document.getElementById(`sel-count-${scenarioId}`);
+      const allCb = document.getElementById(`sel-all-${scenarioId}`);
+      const total = document.querySelectorAll(`.act-cb-${scenarioId}`).length;
+      if (count) count.textContent = checked.length;
+      if (btn) btn.style.display = checked.length > 0 ? '' : 'none';
+      if (allCb) allCb.indeterminate = checked.length > 0 && checked.length < total;
+      if (allCb) allCb.checked = checked.length === total && total > 0;
+    }
+
+    function deleteSelected(scenarioId) {
+      const checked = [...document.querySelectorAll(`.act-cb-${scenarioId}:checked`)];
+      const ids = checked.map(cb => cb.dataset.id);
+      if (!ids.length) return;
+      const count = ids.length;
+      document.getElementById('confirmMsg').textContent = `Weet je zeker dat je ${count} activiteit${count !== 1 ? 'en' : ''} wilt verwijderen?`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        for (const id of ids) {
+          await sb.from('activities').delete().eq('id', id);
+        }
+        closeModal('modalConfirm');
+        await loadActivities(); renderScenarios();
+        showAlert(`${count} activiteit${count !== 1 ? 'en' : ''} verwijderd.`, 'success');
+      };
+      openModal('modalConfirm');
     }
 
     function deleteActivity(id, desc) {
