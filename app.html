@@ -350,7 +350,6 @@
       list.innerHTML = renderTabs(filtered) + '<div id="scenarioGrid"></div>';
       const grid = document.getElementById('scenarioGrid');
 
-      const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
       grid.innerHTML = filtered.map(s => {
         const acts = activities.filter(a => a.scenario_id === s.id);
         const status = getScenarioStatus(s.id);
