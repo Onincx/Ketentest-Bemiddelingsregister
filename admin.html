@@ -602,25 +602,26 @@
         document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
         document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
       } else {
-        // Uitnodigen: Supabase auth admin invite
-        const siteUrl = window.location.origin;
-        const { data, error } = await sb.auth.admin.inviteUserByEmail(email, {
-          redirectTo: `${siteUrl}/invite.html`
+        // Maak gebruiker aan via signUp (geen wachtwoord nodig, stuur reset link)
+        const siteUrl = window.location.origin + window.location.pathname.replace('admin.html','');
+        const tempPassword = crypto.randomUUID(); // tijdelijk wachtwoord
+        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
+          email,
+          password: tempPassword,
+          options: { emailRedirectTo: siteUrl + 'invite.html' }
         });
 
-        if (error) {
-          // Fallback: maak profiel aan, stuur uitnodiging handmatig
-          const { data: existing } = await sb.from('users').select('id').eq('email', email).single();
-          if (!existing) {
-            showAlert('Fout bij uitnodigen: ' + error.message, 'error', 'alertUser');
-            btn.disabled = false; btn.textContent = 'Uitnodiging versturen';
-            return;
-          }
+        if (signUpError) {
+          showAlert('Fout bij aanmaken: ' + signUpError.message, 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Uitnodiging versturen';
+          return;
         }
 
-        const userId = data?.user?.id;
+        const userId = signUpData?.user?.id;
         if (userId) {
           await sb.from('users').upsert({ id: userId, email, name, organisation_id: orgId || null, role, activated: false });
+          // Stuur wachtwoord-reset e-mail zodat gebruiker een eigen wachtwoord kan instellen
+          await sb.auth.resetPasswordForEmail(email, { redirectTo: siteUrl + 'invite.html' });
         }
       }
 
