@@ -159,6 +159,7 @@
           <input type="text" id="orgCode" placeholder="bijv. GEM-AMS" style="text-transform:uppercase;">
         </div>
       </div>
+      <div id="alertOrg" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalOrg')">Annuleren</button>
         <button class="btn btn-primary" onclick="saveOrg()">Opslaan</button>
@@ -225,6 +226,7 @@
           <textarea id="scenarioDesc" placeholder="Wat wordt er in dit scenario getest?"></textarea>
         </div>
       </div>
+      <div id="alertScenario" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalScenario')">Annuleren</button>
         <button class="btn btn-primary" onclick="saveScenario()">Opslaan</button>
@@ -301,6 +303,7 @@
           <input type="number" id="activityOrder" value="1" min="1">
         </div>
       </div>
+      <div id="alertActivity" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalActivity')">Annuleren</button>
         <button class="btn btn-primary" onclick="saveActivity()">Opslaan</button>
@@ -327,6 +330,7 @@
           <input type="number" id="optionOrder" value="1" min="1">
         </div>
       </div>
+      <div id="alertOption" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalOption')">Annuleren</button>
         <button class="btn btn-primary" onclick="saveOption()">Opslaan</button>
@@ -436,7 +440,14 @@
     }
 
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
-    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+      // Reset eventuele alerts in de modal
+      ['alertActivity','alertOrg','alertScenario','alertOption','alertUser'].forEach(a => {
+        const el = document.getElementById(a);
+        if (el) el.style.display = 'none';
+      });
+    }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
     function editOrg(id) {
@@ -452,7 +463,7 @@
       const id = document.getElementById('orgId').value;
       const name = document.getElementById('orgName').value.trim();
       const code = document.getElementById('orgCode').value.trim().toUpperCase();
-      if (!name || !code) { showAlert('Vul alle velden in.'); return; }
+      if (!name || !code) { showAlert('Vul alle velden in.', 'error', 'alertOrg'); return; }
 
       if (id) {
         await sb.from('organisations').update({ name, code }).eq('id', id);
@@ -691,7 +702,7 @@
       const category = document.getElementById('optionCategory').value;
       const label = document.getElementById('optionLabel').value.trim();
       const sort_order = parseInt(document.getElementById('optionOrder').value) || 1;
-      if (!label) { showAlert('Vul een label in.'); return; }
+      if (!label) { showAlert('Vul een label in.', 'error', 'alertOption'); return; }
       if (id) {
         await sb.from('activity_options').update({ label, sort_order }).eq('id', id);
       } else {
@@ -790,7 +801,7 @@
       const code = document.getElementById('scenarioCode').value.trim();
       const title = document.getElementById('scenarioTitle').value.trim();
       const description = document.getElementById('scenarioDesc').value.trim();
-      if (!code || !title) { showAlert('Vul ID en titel in.'); return; }
+      if (!code || !title) { showAlert('Vul ID en titel in.', 'error', 'alertScenario'); return; }
 
       if (id) {
         await sb.from('scenarios').update({ code, title, description }).eq('id', id);
@@ -874,10 +885,10 @@
       const option_exp_soort_id = document.getElementById('activityExpSoort').value || null;
       const option_exp_type_id  = document.getElementById('activityExpType').value || null;
       if (!option_actie_id || !option_soort_id || !option_type_id) {
-        showAlert('Kies een waarde voor Actie, Soort én Type bij Omschrijving.'); return;
+        showAlert('Kies een waarde voor Actie, Soort én Type bij Omschrijving.', 'error', 'alertActivity'); return;
       }
       if (!option_exp_actie_id || !option_exp_soort_id || !option_exp_type_id) {
-        showAlert('Kies een waarde voor Actie, Soort én Type bij Verwacht resultaat.'); return;
+        showAlert('Kies een waarde voor Actie, Soort én Type bij Verwacht resultaat.', 'error', 'alertActivity'); return;
       }
       // Stel omschrijving en verwacht resultaat automatisch samen
       const actieLabel = activityOptions.find(o => o.id === option_actie_id)?.label || '';
@@ -895,7 +906,7 @@
       // Controleer of het nummer al in gebruik is binnen dit scenario
       const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);
       if (scenarioActivities.some(a => a.sort_order === sort_order)) {
-        showAlert(`Nummer ${sort_order} is al in gebruik. Kies een ander nummer.`); return;
+        showAlert(`Nummer ${sort_order} is al in gebruik. Kies een ander nummer.`, 'error', 'alertActivity'); return;
       }
 
       let dbError;
@@ -908,7 +919,7 @@
       }
 
       if (dbError) {
-        showAlert('Fout bij opslaan: ' + dbError.message);
+        showAlert('Fout bij opslaan: ' + dbError.message, 'error', 'alertActivity');
         console.error('Supabase error:', dbError);
         return;
       }
