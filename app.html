@@ -306,10 +306,8 @@
           const count = scenarios.filter(s => getScenarioPrefix(s.code) === p).length;
           return `<button class="scenario-tab ${isActive ? 'active' : ''}"
             onclick="setTab('${p}')"
-            style="${isActive
-              ? `color:${c.bg}; border-bottom-color:${c.bg}; background:${c.light};`
-              : `color:${c.bg}; opacity:0.65;`}">
-            ${p} <span class="tab-count" style="${isActive ? `background:${c.light}; border-color:${c.bg}; color:${c.bg};` : ''}">${count}</span>
+            style="color:${c.bg}; border-bottom-color:${isActive ? c.bg : 'transparent'}; background:${isActive ? c.light : 'transparent'};">
+            ${p} <span class="tab-count" style="background:${c.light}; border-color:${c.bg}33; color:${c.bg};">${count}</span>
           </button>`;
         }).join('')}
       </div>`;
@@ -352,6 +350,7 @@
       list.innerHTML = renderTabs(filtered) + '<div id="scenarioGrid"></div>';
       const grid = document.getElementById('scenarioGrid');
 
+      const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
       grid.innerHTML = filtered.map(s => {
         const acts = activities.filter(a => a.scenario_id === s.id);
         const status = getScenarioStatus(s.id);
@@ -363,9 +362,12 @@
         const acceptanten = [...new Map(acts.filter(a => a.acceptant_org).map(a => [a.acceptant_org.id, a.acceptant_org])).values()];
         const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[status];
 
-        return `<div class="scenario-tile status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}', event)">
+        const prefixIdx = allPrefixes.indexOf(getScenarioPrefix(s.code));
+        const tileColor = TAB_COLORS[prefixIdx % TAB_COLORS.length];
+        return `<div class="scenario-tile status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}', event)"
+          style="border-left: 3px solid ${tileColor.bg}; background: linear-gradient(135deg, ${tileColor.light} 0%, #ffffff 60%);">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-            <span class="tile-code">${s.code}</span>
+            <span class="tile-code" style="color:${tileColor.bg};">${s.code}</span>
             <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
           </div>
           <div class="tile-title">${s.title}</div>
