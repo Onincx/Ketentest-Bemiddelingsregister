@@ -338,6 +338,41 @@
     </div>
   </div>
 
+  <!-- Modal: Kopieer activiteiten van scenario -->
+  <div class="modal-overlay" id="modalCopy" style="display:none;" onclick="closeModalOverlay(event,'modalCopy')">
+    <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Activiteiten kopiëren van scenario</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalCopy')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="copyTargetScenarioId">
+        <div class="form-group">
+          <label>Kopieer activiteiten van</label>
+          <select id="copySourceScenarioId" onchange="previewCopyActivities()">
+            <option value="">Kies een scenario...</option>
+          </select>
+        </div>
+        <div id="copyPreview" style="display:none;">
+          <p style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">Te kopiëren activiteiten</p>
+          <div id="copyPreviewList" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; font-size:13px;"></div>
+          <p style="font-size:12px; color:var(--text-muted); margin-top:10px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Volgordenummers worden automatisch opgehoogd. Je kunt de activiteiten daarna individueel aanpassen.
+          </p>
+        </div>
+        <div id="alertCopy" class="alert" style="display:none; margin-top:12px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalCopy')">Annuleren</button>
+        <button class="btn btn-primary" id="copyConfirmBtn" disabled onclick="executeCopy()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Activiteiten kopiëren
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Confirm delete -->
   <div class="modal-overlay" id="modalConfirm" style="display:none;" onclick="closeModalOverlay(event,'modalConfirm')">
     <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
@@ -610,6 +645,7 @@
             </div>
             <div style="display:flex; gap:6px" onclick="event.stopPropagation()">
               <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Activiteit</button>
+              <button class="btn btn-outline btn-sm" onclick="openCopyModal('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Kopieer van</button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="editScenario('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteScenario('${s.id}','${s.title}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
             </div>
@@ -961,6 +997,100 @@
         showAlert(`${count} activiteit${count !== 1 ? 'en' : ''} verwijderd.`, 'success');
       };
       openModal('modalConfirm');
+    }
+
+    function openCopyModal(targetScenarioId) {
+      document.getElementById('copyTargetScenarioId').value = targetScenarioId;
+      document.getElementById('copySourceScenarioId').value = '';
+      document.getElementById('copyPreview').style.display = 'none';
+      document.getElementById('copyConfirmBtn').disabled = true;
+      document.getElementById('alertCopy').style.display = 'none';
+
+      // Vul dropdown met alle andere scenario's
+      const otherScenarios = scenarios.filter(s => s.id !== targetScenarioId);
+      const sel = document.getElementById('copySourceScenarioId');
+      sel.innerHTML = '<option value="">Kies een scenario...</option>' +
+        otherScenarios.map(s => `<option value="${s.id}">${s.code} — ${s.title}</option>`).join('');
+
+      openModal('modalCopy');
+    }
+
+    function previewCopyActivities() {
+      const sourceId = document.getElementById('copySourceScenarioId').value;
+      const preview = document.getElementById('copyPreview');
+      const list = document.getElementById('copyPreviewList');
+      const btn = document.getElementById('copyConfirmBtn');
+
+      if (!sourceId) {
+        preview.style.display = 'none';
+        btn.disabled = true;
+        return;
+      }
+
+      const sourceActs = activities.filter(a => a.scenario_id === sourceId).sort((a,b) => a.sort_order - b.sort_order);
+
+      if (!sourceActs.length) {
+        list.innerHTML = '<p style="padding:12px; color:var(--text-muted); font-style:italic;">Dit scenario heeft geen activiteiten.</p>';
+        preview.style.display = '';
+        btn.disabled = true;
+        return;
+      }
+
+      list.innerHTML = sourceActs.map((a, i) => `
+        <div style="padding:9px 12px; ${i < sourceActs.length-1 ? 'border-bottom:1px solid var(--border);' : ''} display:flex; gap:10px; align-items:baseline;">
+          <span style="color:var(--text-muted); font-size:11px; min-width:20px;">${a.sort_order}</span>
+          <span>${a.description || '—'}</span>
+          ${a.organisations?.name ? `<span style="background:var(--brand-light); color:var(--brand); border-radius:99px; padding:1px 8px; font-size:11px; margin-left:auto;">${a.organisations.code || a.organisations.name}</span>` : ''}
+        </div>`).join('');
+
+      preview.style.display = '';
+      btn.disabled = false;
+    }
+
+    async function executeCopy() {
+      const sourceId = document.getElementById('copySourceScenarioId').value;
+      const targetId = document.getElementById('copyTargetScenarioId').value;
+      if (!sourceId || !targetId) return;
+
+      const btn = document.getElementById('copyConfirmBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:0.7">Bezig...</span>';
+
+      const sourceActs = activities.filter(a => a.scenario_id === sourceId).sort((a,b) => a.sort_order - b.sort_order);
+      const targetActs = activities.filter(a => a.scenario_id === targetId);
+      const maxOrder = targetActs.reduce((max, a) => Math.max(max, a.sort_order || 0), 0);
+
+      let errorOccurred = false;
+      for (let i = 0; i < sourceActs.length; i++) {
+        const a = sourceActs[i];
+        const { error } = await sb.from('activities').insert({
+          scenario_id: targetId,
+          description: a.description,
+          expected_result: a.expected_result,
+          organisation_id: a.organisation_id,
+          acceptant_org_id: a.acceptant_org_id,
+          option_actie_id: a.option_actie_id,
+          option_soort_id: a.option_soort_id,
+          option_type_id: a.option_type_id,
+          option_exp_actie_id: a.option_exp_actie_id,
+          option_exp_soort_id: a.option_exp_soort_id,
+          option_exp_type_id: a.option_exp_type_id,
+          sort_order: maxOrder + i + 1
+        });
+        if (error) { errorOccurred = true; console.error(error); break; }
+      }
+
+      if (errorOccurred) {
+        showAlert('Er ging iets mis bij het kopiëren. Probeer opnieuw.', 'error', 'alertCopy');
+        btn.disabled = false;
+        btn.innerHTML = 'Activiteiten kopiëren';
+        return;
+      }
+
+      closeModal('modalCopy');
+      await loadActivities();
+      renderScenarios();
+      showAlert(`${sourceActs.length} activiteit${sourceActs.length !== 1 ? 'en' : ''} gekopieerd.`, 'success');
     }
 
     function deleteActivity(id, desc) {
