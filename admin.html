@@ -71,7 +71,7 @@
           <h1>Gebruikers</h1>
           <p>Nodig gebruikers uit en koppel ze aan een organisatie.</p>
         </div>
-        <button class="btn btn-primary" onclick="openModal('modalUser')">
+        <button class="btn btn-primary" onclick="openNewUserModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg> Gebruiker uitnodigen
         </button>
       </div>
@@ -554,6 +554,19 @@
           <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteUser('${u.id}','${u.email}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
         </td>
       </tr>`).join('');
+    }
+
+    function openNewUserModal() {
+      document.getElementById('userId').value = '';
+      document.getElementById('userEmail').value = '';
+      document.getElementById('userEmail').disabled = false;
+      document.getElementById('userName').value = '';
+      document.getElementById('userOrg').value = '';
+      document.getElementById('userRole').value = 'user';
+      document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
+      document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
+      document.getElementById('alertUser').style.display = 'none';
+      openModal('modalUser');
     }
 
     function editUser(id) {
