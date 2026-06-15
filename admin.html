@@ -879,7 +879,10 @@
     }
 
     // ---- ACTIVITIES ----
+    let activeScenarioId = null;
+
     function openAddActivity(scenarioId) {
+      activeScenarioId = scenarioId;
       document.getElementById('activityId').value = '';
       document.getElementById('activityScenarioId').value = scenarioId;
       document.getElementById('activityOrg').value = '';
@@ -903,6 +906,7 @@
 
     function editActivity(id) {
       const a = activities.find(x => x.id === id);
+      activeScenarioId = a.scenario_id;
       document.getElementById('activityId').value = a.id;
       document.getElementById('activityScenarioId').value = a.scenario_id;
       document.getElementById('activityOrg').value = a.organisation_id || '';
@@ -975,6 +979,13 @@
       closeModal('modalActivity');
       await loadActivities(); renderScenarios();
       showAlert('Activiteit opgeslagen.', 'success');
+      // Scroll naar het scenario waar de activiteit bij hoort
+      if (activeScenarioId) {
+        setTimeout(() => {
+          const el = document.getElementById('sc-' + activeScenarioId);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 50);
+      }
     }
 
     function toggleSelectAll(scenarioId, checked) {
