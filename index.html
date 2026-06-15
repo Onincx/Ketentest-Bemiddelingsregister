@@ -57,7 +57,9 @@
       const user = await getCurrentUser();
       if (user) {
         const profile = await getUserProfile(user.id);
-        window.location.href = profile?.role === 'admin' ? 'admin.html' : 'app.html';
+        if (profile?.role === 'admin') window.location.href = 'admin.html';
+        else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
+        else window.location.href = 'app.html';
       }
     })();
 
@@ -87,7 +89,9 @@
       }
 
       const profile = await getUserProfile(data.user.id);
-      window.location.href = profile?.role === 'admin' ? 'admin.html' : 'app.html';
+      if (profile?.role === 'admin') window.location.href = 'admin.html';
+      else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
+      else window.location.href = 'app.html';
     }
   </script>
 </body>

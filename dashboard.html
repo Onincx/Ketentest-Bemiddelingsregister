@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .dash-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+    .dash-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px; }
+    .dash-card h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .dash-card h3 .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .org-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .org-row-label { font-size: 13px; color: var(--text); min-width: 140px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .org-bar-wrap { flex: 1; height: 8px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; gap: 1px; }
+    .org-bar-ok { background: #16a34a; border-radius: 99px; transition: width 0.4s; }
+    .org-bar-nok { background: #dc2626; border-radius: 99px; transition: width 0.4s; }
+    .org-pct { font-size: 12px; font-weight: 600; color: var(--text-muted); min-width: 36px; text-align: right; }
+    .org-counts { font-size: 11px; color: var(--text-muted); min-width: 80px; text-align: right; }
+    .scenario-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .scenario-row:last-child { border-bottom: none; }
+    .scenario-code { font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 60px; }
+    .scenario-title { font-size: 13px; color: var(--text); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .nok-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+    .nok-row:last-child { border-bottom: none; }
+    .nok-badge { background: #fee2e2; color: #dc2626; border-radius: 99px; padding: 2px 8px; font-size: 11px; font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+    .nok-desc { font-size: 13px; color: var(--text); flex: 1; }
+    .nok-meta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+    .empty-dash { font-size: 13px; color: var(--text-muted); font-style: italic; padding: 8px 0; }
+    .uninvited-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+    .uninvited-row:last-child { border-bottom: none; }
+    .last-updated { font-size: 11px; color: var(--text-muted); margin-top: 16px; text-align: right; }
+    .big-stat { text-align: center; padding: 8px 0; }
+    .big-stat-value { font-size: 36px; font-weight: 700; }
+    .big-stat-label { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    @media (max-width: 700px) { .dash-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+  <nav class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-dot"></div>
+      Bemiddelingsregister
+    </div>
+    <a href="dashboard.html" class="active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a href="app.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+      Ketentest
+    </a>
+    <div id="adminLink" style="display:none;">
+      <a href="admin.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Beheer
+      </a>
+    </div>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Uitloggen
+      </button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Dashboard</h1>
+        <p>Voortgang en status van de ketentest Bemiddelingsregister</p>
+      </div>
+      <button class="btn btn-outline" onclick="loadDashboard()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Vernieuwen
+      </button>
+    </div>
+
+    <!-- Totaal statistieken -->
+    <div class="stats-grid" id="totalStats" style="margin-bottom:24px;">
+      <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
+      <div class="stat-card"><div class="stat-label">Activiteiten totaal</div><div class="stat-value" id="ds-activities">—</div></div>
+      <div class="stat-card"><div class="stat-label">Afgerond</div><div class="stat-value green" id="ds-done">—</div></div>
+      <div class="stat-card"><div class="stat-label">NOK's</div><div class="stat-value red" id="ds-nok">—</div></div>
+    </div>
+
+    <!-- Totale voortgangsbalk -->
+    <div style="margin-bottom:24px;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+        <span style="font-weight:500;">Totale voortgang</span>
+        <span id="ds-pct" style="color:var(--text-muted);">0%</span>
+      </div>
+      <div class="progress-wrap" style="height:10px;">
+        <div class="progress-bar" id="ds-bar" style="width:0%; height:10px;"></div>
+      </div>
+    </div>
+
+    <!-- Dashboard secties -->
+    <div class="dash-grid">
+
+      <!-- Voortgang per organisatie -->
+      <div class="dash-card">
+        <h3><div class="dot" style="background:var(--brand-mid);"></div>Voortgang per organisatie</h3>
+        <div id="orgProgress"><p class="empty-dash">Laden...</p></div>
+      </div>
+
+      <!-- Voortgang per scenario -->
+      <div class="dash-card">
+        <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per scenario</h3>
+        <div id="scenarioProgress"><p class="empty-dash">Laden...</p></div>
+      </div>
+
+      <!-- NOK overzicht -->
+      <div class="dash-card" style="grid-column: 1 / -1;">
+        <h3><div class="dot" style="background:#dc2626;"></div>Openstaande NOK's</h3>
+        <div id="nokOverview"><p class="empty-dash">Laden...</p></div>
+      </div>
+
+      <!-- Wie heeft nog niets ingevuld -->
+      <div class="dash-card" style="grid-column: 1 / -1;">
+        <h3><div class="dot" style="background:#e67e22;"></div>Nog geen activiteit ingevuld</h3>
+        <div id="uninvitedOverview"><p class="empty-dash">Laden...</p></div>
+      </div>
+
+    </div>
+
+    <p class="last-updated" id="lastUpdated"></p>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script>
+    let currentUser = null, currentProfile = null;
+    let scenarios = [], activities = [], results = [], users = [], orgs = [];
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+      currentProfile = await getUserProfile(currentUser.id);
+
+      // Alleen admin en manager mogen dashboard zien
+      if (!['admin','manager'].includes(currentProfile?.role)) {
+        window.location.href = 'app.html'; return;
+      }
+
+      document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
+      if (currentProfile?.role === 'admin') {
+        document.getElementById('adminLink').style.display = '';
+      }
+
+      await loadDashboard();
+    })();
+
+    async function loadDashboard() {
+      const [s, a, r, u, o] = await Promise.all([
+        sb.from('scenarios').select('*').order('code'),
+        sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').order('sort_order'),
+        sb.from('activity_results').select('*'),
+        sb.from('users').select('*, organisations(name)'),
+        sb.from('organisations').select('*').order('name'),
+      ]);
+
+      scenarios  = s.data || [];
+      activities = a.data || [];
+      results    = r.data || [];
+      users      = u.data || [];
+      orgs       = o.data || [];
+
+      renderDashboard();
+    }
+
+    function getResult(activityId) {
+      return results.find(r => r.activity_id === activityId)?.result || 'open';
+    }
+
+    function renderDashboard() {
+      const totalActs = activities.length;
+      const doneActs  = results.filter(r => r.result === 'ok' || r.result === 'nok').length;
+      const nokActs   = results.filter(r => r.result === 'nok').length;
+      const okScenarios = scenarios.filter(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id);
+        return acts.length > 0 && acts.every(a => getResult(a.id) === 'ok');
+      }).length;
+
+      document.getElementById('ds-scenarios').textContent = scenarios.length;
+      document.getElementById('ds-activities').textContent = totalActs;
+      document.getElementById('ds-done').textContent = `${okScenarios} / ${scenarios.length}`;
+      document.getElementById('ds-nok').textContent = nokActs;
+
+      const pct = totalActs > 0 ? Math.round((doneActs / totalActs) * 100) : 0;
+      document.getElementById('ds-pct').textContent = pct + '%';
+      document.getElementById('ds-bar').style.width = pct + '%';
+
+      renderOrgProgress();
+      renderScenarioProgress();
+      renderNokOverview();
+      renderUninvited();
+
+      document.getElementById('lastUpdated').textContent =
+        'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
+    }
+
+    function renderOrgProgress() {
+      const el = document.getElementById('orgProgress');
+      if (!orgs.length) { el.innerHTML = '<p class="empty-dash">Geen organisaties gevonden.</p>'; return; }
+
+      const rows = orgs.map(org => {
+        const orgActs = activities.filter(a => a.organisation_id === org.id);
+        const total = orgActs.length;
+        if (total === 0) return null;
+        const ok  = orgActs.filter(a => getResult(a.id) === 'ok').length;
+        const nok = orgActs.filter(a => getResult(a.id) === 'nok').length;
+        const pct = Math.round(((ok + nok) / total) * 100);
+        return { org, total, ok, nok, pct };
+      }).filter(Boolean).sort((a,b) => b.pct - a.pct);
+
+      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan organisaties.</p>'; return; }
+
+      el.innerHTML = rows.map(({ org, total, ok, nok, pct }) => `
+        <div class="org-row">
+          <span class="org-row-label" title="${org.name}">${org.name}</span>
+          <div class="org-bar-wrap">
+            ${ok  > 0 ? `<div class="org-bar-ok" style="width:${Math.round(ok/total*100)}%"></div>` : ''}
+            ${nok > 0 ? `<div class="org-bar-nok" style="width:${Math.round(nok/total*100)}%"></div>` : ''}
+          </div>
+          <span class="org-pct">${pct}%</span>
+          <span class="org-counts">${ok+nok}/${total}</span>
+        </div>`).join('');
+    }
+
+    function renderScenarioProgress() {
+      const el = document.getElementById('scenarioProgress');
+      if (!scenarios.length) { el.innerHTML = '<p class="empty-dash">Geen scenario\'s gevonden.</p>'; return; }
+
+      const rows = scenarios.map(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id);
+        const total = acts.length;
+        if (total === 0) return { s, total: 0, ok: 0, nok: 0, pct: 0 };
+        const ok  = acts.filter(a => getResult(a.id) === 'ok').length;
+        const nok = acts.filter(a => getResult(a.id) === 'nok').length;
+        const pct = Math.round(((ok + nok) / total) * 100);
+        return { s, total, ok, nok, pct };
+      }).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
+
+      el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ s, total, ok, nok, pct }) => `
+        <div class="scenario-row">
+          <span class="scenario-code">${s.code}</span>
+          <span class="scenario-title" title="${s.title}">${s.title}</span>
+          <div class="org-bar-wrap" style="min-width:80px; max-width:80px;">
+            ${ok  > 0 ? `<div class="org-bar-ok" style="width:${total>0?Math.round(ok/total*100):0}%"></div>` : ''}
+            ${nok > 0 ? `<div class="org-bar-nok" style="width:${total>0?Math.round(nok/total*100):0}%"></div>` : ''}
+          </div>
+          <span class="org-pct">${pct}%</span>
+          <span class="${nok > 0 ? 'badge badge-nok' : (ok === total && total > 0 ? 'badge badge-ok' : 'badge badge-open')}" style="font-size:10px; padding:1px 7px;">
+            ${nok > 0 ? 'NOK' : (ok === total && total > 0 ? 'OK' : 'Open')}
+          </span>
+        </div>`).join('') + `</div>`;
+    }
+
+    function renderNokOverview() {
+      const el = document.getElementById('nokOverview');
+      const nokResults = results.filter(r => r.result === 'nok');
+      if (!nokResults.length) {
+        el.innerHTML = '<p class="empty-dash">Geen NOK\'s gevonden. Alles loopt goed!</p>';
+        return;
+      }
+
+      const rows = nokResults.map(r => {
+        const act = activities.find(a => a.id === r.activity_id);
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        const org = act?.organisations?.name || '—';
+        return { r, act, scen, org };
+      }).filter(x => x.act && x.scen);
+
+      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ r, act, scen, org }) => `
+        <div class="nok-row">
+          <span class="nok-badge">NOK</span>
+          <div>
+            <div class="nok-desc">${act.description || '—'}</div>
+            <div class="nok-meta">
+              ${scen.code} — ${scen.title}
+              ${org !== '—' ? ` · <strong>${org}</strong>` : ''}
+              ${r.notes ? ` · <em>"${r.notes.substring(0,80)}${r.notes.length>80?'...':''}"</em>` : ''}
+            </div>
+          </div>
+        </div>`).join('') + `</div>`;
+    }
+
+    function renderUninvited() {
+      const el = document.getElementById('uninvitedOverview');
+
+      // Gebruikers die aan een organisatie zijn gekoppeld maar nog geen enkel resultaat hebben ingevoerd
+      const activeUsers = users.filter(u => u.organisation_id && u.role === 'user');
+
+      const uninvited = activeUsers.filter(u => {
+        // Kijk of deze gebruiker iets heeft ingevuld
+        const hasResult = results.some(r => r.user_id === u.id);
+        return !hasResult;
+      });
+
+      if (!uninvited.length) {
+        el.innerHTML = '<p class="empty-dash">Alle gebruikers hebben al minstens één activiteit ingevuld.</p>';
+        return;
+      }
+
+      el.innerHTML = `<div style="max-height:280px; overflow-y:auto;">` + uninvited.map(u => `
+        <div class="uninvited-row">
+          <div style="flex:1;">
+            <div style="font-size:13px; font-weight:500;">${u.name || u.email}</div>
+            <div style="font-size:11px; color:var(--text-muted);">${u.email} · ${u.organisations?.name || '—'}</div>
+          </div>
+          <span class="badge badge-open" style="font-size:11px;">Nog niets ingevuld</span>
+        </div>`).join('') + `</div>`;
+    }
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
