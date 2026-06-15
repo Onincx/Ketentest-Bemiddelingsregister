@@ -63,6 +63,17 @@
     .note-icon-btn.no-note { color: #9ca3af; }
     .note-icon-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
     /* Scenario tabs */
+    :root {
+      --tab-0: #2563a8; --tab-0-light: #e8f0fb;
+      --tab-1: #7c3aed; --tab-1-light: #ede9fe;
+      --tab-2: #0891b2; --tab-2-light: #e0f2fe;
+      --tab-3: #059669; --tab-3-light: #d1fae5;
+      --tab-4: #d97706; --tab-4-light: #fef3c7;
+      --tab-5: #dc2626; --tab-5-light: #fee2e2;
+      --tab-6: #7c3aed; --tab-6-light: #ede9fe;
+      --tab-7: #0891b2; --tab-7-light: #e0f2fe;
+    }
+    /* Scenario tabs */
     .scenario-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; flex-wrap: nowrap; }
     .scenario-tab { padding: 9px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; margin-bottom: -1px; }
     .scenario-tab:hover { color: var(--text); }
@@ -264,6 +275,17 @@
       return m ? m[1] : code.substring(0, 3);
     }
 
+    const TAB_COLORS = [
+      {bg:'#2563a8', light:'#e8f0fb'},
+      {bg:'#7c3aed', light:'#ede9fe'},
+      {bg:'#0891b2', light:'#e0f2fe'},
+      {bg:'#059669', light:'#d1fae5'},
+      {bg:'#d97706', light:'#fef3c7'},
+      {bg:'#dc2626', light:'#fee2e2'},
+      {bg:'#db2777', light:'#fce7f3'},
+      {bg:'#65a30d', light:'#ecfccb'},
+    ];
+
     function renderTabs() {
       const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
       if (allPrefixes.length <= 1) return '';
@@ -271,13 +293,23 @@
         activeTabPrefix = allPrefixes[0];
       }
       return `<div class="scenario-tabs">
-        <button class="scenario-tab ${activeTabPrefix === '__all__' ? 'active' : ''}" onclick="setTab('__all__')">
-          Alle <span class="tab-count">${scenarios.length}</span>
+        <button class="scenario-tab ${activeTabPrefix === '__all__' ? 'active' : ''}"
+          onclick="setTab('__all__')"
+          style="${activeTabPrefix === '__all__'
+            ? 'color:#374151; border-bottom-color:#374151; background:#f3f4f6;'
+            : 'color:#6b7280;'}">
+          Alle <span class="tab-count" style="${activeTabPrefix === '__all__' ? 'background:#e5e7eb;border-color:#e5e7eb;' : ''}">${scenarios.length}</span>
         </button>
-        ${allPrefixes.map(p => {
+        ${allPrefixes.map((p, i) => {
+          const c = TAB_COLORS[i % TAB_COLORS.length];
+          const isActive = activeTabPrefix === p;
           const count = scenarios.filter(s => getScenarioPrefix(s.code) === p).length;
-          return `<button class="scenario-tab ${activeTabPrefix === p ? 'active' : ''}" onclick="setTab('${p}')">
-            ${p} <span class="tab-count">${count}</span>
+          return `<button class="scenario-tab ${isActive ? 'active' : ''}"
+            onclick="setTab('${p}')"
+            style="${isActive
+              ? `color:${c.bg}; border-bottom-color:${c.bg}; background:${c.light};`
+              : `color:${c.bg}; opacity:0.65;`}">
+            ${p} <span class="tab-count" style="${isActive ? `background:${c.light}; border-color:${c.bg}; color:${c.bg};` : ''}">${count}</span>
           </button>`;
         }).join('')}
       </div>`;
