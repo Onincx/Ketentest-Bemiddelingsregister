@@ -39,6 +39,7 @@
       <button class="tab-btn active" onclick="showTab('organisations')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Organisaties</button>
       <button class="tab-btn" onclick="showTab('users')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Gebruikers</button>
       <button class="tab-btn" onclick="showTab('scenarios')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</button>
+      <button class="tab-btn" onclick="showTab('options')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Keuzelijsten</button>
     </div>
 
     <!-- TAB: Organisaties -->
@@ -79,6 +80,48 @@
             <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th></th></tr></thead>
             <tbody id="userTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB: Keuzelijsten -->
+    <div id="tab-options" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Keuzelijsten</h1>
+          <p>Beheer de opties voor Actie, Soort en Type bij activiteiten.</p>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:16px;">
+        <!-- Actie -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+            <strong style="font-size:14px;">Actie</strong>
+            <button class="btn btn-primary btn-sm" onclick="openOptionModal('actie')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Toevoegen
+            </button>
+          </div>
+          <div id="list-actie" style="min-height:60px;"></div>
+        </div>
+        <!-- Soort -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+            <strong style="font-size:14px;">Soort</strong>
+            <button class="btn btn-primary btn-sm" onclick="openOptionModal('soort')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Toevoegen
+            </button>
+          </div>
+          <div id="list-soort" style="min-height:60px;"></div>
+        </div>
+        <!-- Type -->
+        <div class="card" style="padding:0; overflow:hidden;">
+          <div style="padding:14px 18px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+            <strong style="font-size:14px;">Type</strong>
+            <button class="btn btn-primary btn-sm" onclick="openOptionModal('type')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Toevoegen
+            </button>
+          </div>
+          <div id="list-type" style="min-height:60px;"></div>
         </div>
       </div>
     </div>
@@ -199,9 +242,23 @@
       <div class="modal-body">
         <input type="hidden" id="activityId">
         <input type="hidden" id="activityScenarioId">
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px;">
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Actie <span style="color:var(--danger)">*</span></label>
+            <select id="activityActie" onchange="updateActivityDescPreview()"><option value="">Kies actie...</option></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Soort <span style="color:var(--danger)">*</span></label>
+            <select id="activitySoort" onchange="updateActivityDescPreview()"><option value="">Kies soort...</option></select>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label>Type <span style="color:var(--danger)">*</span></label>
+            <select id="activityType" onchange="updateActivityDescPreview()"><option value="">Kies type...</option></select>
+          </div>
+        </div>
         <div class="form-group">
-          <label>Omschrijving activiteit</label>
-          <input type="text" id="activityDesc" placeholder="Wat moet er worden uitgevoerd?">
+          <label style="color:var(--text-muted); font-size:12px;">Omschrijving (automatisch)</label>
+          <div id="activityDescPreview" style="padding:8px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; color:var(--text-muted); min-height:36px;">Kies eerst Actie, Soort en Type...</div>
         </div>
         <div class="form-group">
           <label>Verwacht resultaat</label>
@@ -227,6 +284,32 @@
     </div>
   </div>
 
+  <!-- Modal: Keuzeoptie -->
+  <div class="modal-overlay" id="modalOption" style="display:none;" onclick="closeModalOverlay(event,'modalOption')">
+    <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalOptionTitle">Optie toevoegen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalOption')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="optionId">
+        <input type="hidden" id="optionCategory">
+        <div class="form-group">
+          <label>Label</label>
+          <input type="text" id="optionLabel" placeholder="bijv. Versturen">
+        </div>
+        <div class="form-group">
+          <label>Volgorde</label>
+          <input type="number" id="optionOrder" value="1" min="1">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalOption')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveOption()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Confirm delete -->
   <div class="modal-overlay" id="modalConfirm" style="display:none;" onclick="closeModalOverlay(event,'modalConfirm')">
     <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
@@ -247,7 +330,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js"></script>
   <script>
-    let orgs = [], users = [], scenarios = [], activities = [];
+    let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let activeTab = 'organisations';
 
     (async () => {
@@ -261,8 +344,13 @@
     async function loadAll() {
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
-      await Promise.all([loadUsers(), loadScenarios(), loadActivities()]);
+      await Promise.all([loadUsers(), loadScenarios(), loadActivities(), loadOptions()]);
       renderOrgs(); renderUsers(); renderScenarios();
+    }
+
+    async function loadOptions() {
+      const { data } = await sb.from('activity_options').select('*').order('category').order('sort_order');
+      activityOptions = data || [];
     }
 
     async function loadOrgs() {
@@ -290,13 +378,14 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['organisations','users','scenarios'].forEach(t => {
+      ['organisations','users','scenarios','options'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', ['organisations','users','scenarios'][i] === tab);
+        b.classList.toggle('active', ['organisations','users','scenarios','options'][i] === tab);
       });
       activeTab = tab;
+      if (tab === 'options') renderOptions();
     }
 
     // ---- ORGS ----
@@ -533,6 +622,105 @@
       }).join('');
     }
 
+    function renderOptions() {
+      ['actie','soort','type'].forEach(cat => {
+        const list = document.getElementById('list-' + cat);
+        if (!list) return;
+        const opts = activityOptions.filter(o => o.category === cat).sort((a,b) => a.sort_order - b.sort_order);
+        if (!opts.length) {
+          list.innerHTML = '<p style="padding:16px; font-size:13px; color:var(--text-muted); font-style:italic;">Nog geen opties. Klik op Toevoegen.</p>';
+          return;
+        }
+        list.innerHTML = opts.map(o => `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:10px 18px; border-bottom:1px solid var(--border);">
+            <span style="font-size:13px;">${o.label}</span>
+            <div style="display:flex; gap:4px;">
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="editOption('${o.id}')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteOption('${o.id}','${o.label}')"><span style="color:var(--danger)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+            </div>
+          </div>`).join('');
+      });
+    }
+
+    function openOptionModal(category) {
+      document.getElementById('optionId').value = '';
+      document.getElementById('optionCategory').value = category;
+      document.getElementById('optionLabel').value = '';
+      const opts = activityOptions.filter(o => o.category === category);
+      document.getElementById('optionOrder').value = opts.length + 1;
+      document.getElementById('modalOptionTitle').textContent = `Optie toevoegen — ${category.charAt(0).toUpperCase() + category.slice(1)}`;
+      openModal('modalOption');
+    }
+
+    function editOption(id) {
+      const o = activityOptions.find(x => x.id === id);
+      document.getElementById('optionId').value = o.id;
+      document.getElementById('optionCategory').value = o.category;
+      document.getElementById('optionLabel').value = o.label;
+      document.getElementById('optionOrder').value = o.sort_order;
+      document.getElementById('modalOptionTitle').textContent = `Optie bewerken — ${o.category.charAt(0).toUpperCase() + o.category.slice(1)}`;
+      openModal('modalOption');
+    }
+
+    async function saveOption() {
+      const id = document.getElementById('optionId').value;
+      const category = document.getElementById('optionCategory').value;
+      const label = document.getElementById('optionLabel').value.trim();
+      const sort_order = parseInt(document.getElementById('optionOrder').value) || 1;
+      if (!label) { showAlert('Vul een label in.'); return; }
+      if (id) {
+        await sb.from('activity_options').update({ label, sort_order }).eq('id', id);
+      } else {
+        await sb.from('activity_options').insert({ category, label, sort_order });
+      }
+      closeModal('modalOption');
+      await loadOptions();
+      renderOptions();
+      populateActivityDropdowns();
+      showAlert('Optie opgeslagen.', 'success');
+    }
+
+    function deleteOption(id, label) {
+      document.getElementById('confirmMsg').textContent = `Optie "${label}" verwijderen?`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        await sb.from('activity_options').delete().eq('id', id);
+        closeModal('modalConfirm');
+        await loadOptions();
+        renderOptions();
+        populateActivityDropdowns();
+      };
+      openModal('modalConfirm');
+    }
+
+    function populateActivityDropdowns() {
+      ['actie','soort','type'].forEach(cat => {
+        const sel = document.getElementById('activity' + cat.charAt(0).toUpperCase() + cat.slice(1));
+        if (!sel) return;
+        const opts = activityOptions.filter(o => o.category === cat).sort((a,b) => a.sort_order - b.sort_order);
+        sel.innerHTML = `<option value="">Kies ${cat}...</option>` + opts.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+      });
+    }
+
+    function updateActivityDescPreview() {
+      const actie = document.getElementById('activityActie');
+      const soort = document.getElementById('activitySoort');
+      const type  = document.getElementById('activityType');
+      const preview = document.getElementById('activityDescPreview');
+      if (!preview) return;
+      const a = actie?.options[actie.selectedIndex]?.text || '';
+      const s = soort?.options[soort.selectedIndex]?.text || '';
+      const t = type?.options[type.selectedIndex]?.text || '';
+      if (a && s && t) {
+        preview.textContent = `${a} — ${s} — ${t}`;
+        preview.style.color = 'var(--text)';
+        preview.style.fontWeight = '500';
+      } else {
+        preview.textContent = 'Kies eerst Actie, Soort en Type...';
+        preview.style.color = 'var(--text-muted)';
+        preview.style.fontWeight = '400';
+      }
+    }
+
     function toggleSection(id) {
       const el = document.getElementById(id);
       el.style.display = el.style.display === 'none' ? '' : 'none';
@@ -586,10 +774,14 @@
     function openAddActivity(scenarioId) {
       document.getElementById('activityId').value = '';
       document.getElementById('activityScenarioId').value = scenarioId;
-      document.getElementById('activityDesc').value = '';
       document.getElementById('activityExpected').value = '';
       document.getElementById('activityOrg').value = '';
       document.getElementById('activityAcceptant').value = '';
+      populateActivityDropdowns();
+      document.getElementById('activityActie').value = '';
+      document.getElementById('activitySoort').value = '';
+      document.getElementById('activityType').value = '';
+      updateActivityDescPreview();
       // Bereken het volgende unieke nummer: hoogste bestaande + 1
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       const maxOrder = acts.reduce((max, a) => Math.max(max, a.sort_order || 0), 0);
@@ -602,10 +794,14 @@
       const a = activities.find(x => x.id === id);
       document.getElementById('activityId').value = a.id;
       document.getElementById('activityScenarioId').value = a.scenario_id;
-      document.getElementById('activityDesc').value = a.description;
       document.getElementById('activityExpected').value = a.expected_result;
       document.getElementById('activityOrg').value = a.organisation_id || '';
       document.getElementById('activityAcceptant').value = a.acceptant_org_id || '';
+      populateActivityDropdowns();
+      document.getElementById('activityActie').value = a.option_actie_id || '';
+      document.getElementById('activitySoort').value = a.option_soort_id || '';
+      document.getElementById('activityType').value = a.option_type_id || '';
+      updateActivityDescPreview();
       document.getElementById('activityOrder').value = a.sort_order;
       document.getElementById('modalActivityTitle').textContent = 'Activiteit bewerken';
       openModal('modalActivity');
@@ -614,12 +810,21 @@
     async function saveActivity() {
       const id = document.getElementById('activityId').value;
       const scenarioId = document.getElementById('activityScenarioId').value;
-      const description = document.getElementById('activityDesc').value.trim();
+      const option_actie_id = document.getElementById('activityActie').value || null;
+      const option_soort_id = document.getElementById('activitySoort').value || null;
+      const option_type_id  = document.getElementById('activityType').value || null;
+      if (!option_actie_id || !option_soort_id || !option_type_id) {
+        showAlert('Kies een waarde voor Actie, Soort én Type.'); return;
+      }
+      // Stel omschrijving automatisch samen
+      const actieLabel = activityOptions.find(o => o.id === option_actie_id)?.label || '';
+      const soortLabel = activityOptions.find(o => o.id === option_soort_id)?.label || '';
+      const typeLabel  = activityOptions.find(o => o.id === option_type_id)?.label || '';
+      const description = `${actieLabel} — ${soortLabel} — ${typeLabel}`;
       const expected_result = document.getElementById('activityExpected').value.trim();
       const organisation_id = document.getElementById('activityOrg').value || null;
       const acceptant_org_id = document.getElementById('activityAcceptant').value || null;
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
-      if (!description) { showAlert('Vul de omschrijving in.'); return; }
 
       // Controleer of het nummer al in gebruik is binnen dit scenario
       const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);
@@ -629,10 +834,10 @@
 
       let dbError;
       if (id) {
-        const res = await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order }).eq('id', id);
+        const res = await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order });
+        const res = await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id });
         dbError = res.error;
       }
 
