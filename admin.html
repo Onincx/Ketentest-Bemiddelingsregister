@@ -823,7 +823,6 @@
     function openAddActivity(scenarioId) {
       document.getElementById('activityId').value = '';
       document.getElementById('activityScenarioId').value = scenarioId;
-      document.getElementById('activityExpected').value = '';
       document.getElementById('activityOrg').value = '';
       document.getElementById('activityAcceptant').value = '';
       populateActivityDropdowns();
@@ -847,7 +846,6 @@
       const a = activities.find(x => x.id === id);
       document.getElementById('activityId').value = a.id;
       document.getElementById('activityScenarioId').value = a.scenario_id;
-      document.getElementById('activityExpected').value = a.expected_result;
       document.getElementById('activityOrg').value = a.organisation_id || '';
       document.getElementById('activityAcceptant').value = a.acceptant_org_id || '';
       populateActivityDropdowns();
