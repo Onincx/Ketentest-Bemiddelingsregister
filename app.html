@@ -245,6 +245,9 @@
         const nOk    = acts.filter(a => (results[a.id]?.result || 'open') === 'ok').length;
         const nNok   = acts.filter(a => (results[a.id]?.result || 'open') === 'nok').length;
         const nOpen  = nTotal - nOk - nNok;
+        // Unieke partijen
+        const verantwoordelijken = [...new Map(acts.filter(a => a.organisations).map(a => [a.organisations.id, a.organisations])).values()];
+        const acceptanten = [...new Map(acts.filter(a => a.acceptant_org).map(a => [a.acceptant_org.id, a.acceptant_org])).values()];
 
         return `<div class="section-card" id="sc-${s.id}">
           <div class="section-card-header" onclick="toggleScenario('${s.id}')">
@@ -267,6 +270,19 @@
                   ${nNok > 0 ? `<span style="color:#dc2626;">✗ ${nNok} NOK</span>` : ''}
                   ${nOpen > 0 ? `<span style="color:var(--warning);">○ ${nOpen} open</span>` : ''}
                 </div>
+                ${(verantwoordelijken.length > 0 || acceptanten.length > 0) ? `
+                <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; align-items:center;">
+                  ${verantwoordelijken.length > 0 ? `
+                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                      <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Verantw.:</span>
+                      ${verantwoordelijken.map(o => `<span style="background:var(--brand-light); color:var(--brand); border-radius:99px; padding:1px 8px; font-size:11px; font-weight:500;">${o.code || o.name}</span>`).join('')}
+                    </div>` : ''}
+                  ${acceptanten.length > 0 ? `
+                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
+                      <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Acceptant:</span>
+                      ${acceptanten.map(o => `<span style="background:#fef3c7; color:#92400e; border-radius:99px; padding:1px 8px; font-size:11px; font-weight:500;">${o.code || o.name}</span>`).join('')}
+                    </div>` : ''}
+                </div>` : ''}
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s; margin-left:12px; flex-shrink:0;" id="chev-${s.id}"><polyline points="6 9 12 15 18 9"/></svg>
