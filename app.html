@@ -252,10 +252,16 @@
         return `<div class="section-card" id="sc-${s.id}">
           <div class="section-card-header" onclick="toggleScenario('${s.id}')">
             <div style="flex:1; min-width:0">
-              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
-                <span style="font-size:12px; font-weight:600; color:var(--text-muted)">${s.code}</span>
-                <strong style="font-size:15px">${s.title}</strong>
-                <span class="badge badge-${status}">${statusLabel}</span>
+              <div style="display:flex; align-items:flex-start; gap:10px; flex-wrap:wrap; margin-bottom:8px;">
+                <span style="font-size:12px; font-weight:600; color:var(--text-muted); padding-top:2px;">${s.code}</span>
+                <div style="flex:1; min-width:0;">
+                  <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <strong style="font-size:15px;">${s.title}</strong>
+                    <span class="badge badge-${status}">${statusLabel}</span>
+                    ${verantwoordelijken.map(o => `<span title="Verantwoordelijk: ${o.name}" style="background:var(--brand-light); color:var(--brand); border-radius:99px; padding:1px 9px; font-size:11px; font-weight:600; cursor:default;">${o.code || o.name}</span>`).join('')}
+                    ${acceptanten.map(o => `<span title="Acceptant: ${o.name}" style="background:#fef3c7; color:#92400e; border-radius:99px; padding:1px 9px; font-size:11px; font-weight:600; cursor:default;">${o.code || o.name}</span>`).join('')}
+                  </div>
+                </div>
               </div>
               <div style="display:flex; align-items:center; gap:12px;">
                 <div style="flex:1;">
@@ -270,19 +276,6 @@
                   ${nNok > 0 ? `<span style="color:#dc2626;">✗ ${nNok} NOK</span>` : ''}
                   ${nOpen > 0 ? `<span style="color:var(--warning);">○ ${nOpen} open</span>` : ''}
                 </div>
-                ${(verantwoordelijken.length > 0 || acceptanten.length > 0) ? `
-                <div style="display:flex; gap:12px; margin-top:8px; flex-wrap:wrap; align-items:center;">
-                  ${verantwoordelijken.length > 0 ? `
-                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
-                      <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Verantw.:</span>
-                      ${verantwoordelijken.map(o => `<span style="background:var(--brand-light); color:var(--brand); border-radius:99px; padding:1px 8px; font-size:11px; font-weight:500;">${o.code || o.name}</span>`).join('')}
-                    </div>` : ''}
-                  ${acceptanten.length > 0 ? `
-                    <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
-                      <span style="font-size:11px; color:var(--text-muted); font-weight:500;">Acceptant:</span>
-                      ${acceptanten.map(o => `<span style="background:#fef3c7; color:#92400e; border-radius:99px; padding:1px 8px; font-size:11px; font-weight:500;">${o.code || o.name}</span>`).join('')}
-                    </div>` : ''}
-                </div>` : ''}
               </div>
             </div>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.2s; margin-left:12px; flex-shrink:0;" id="chev-${s.id}"><polyline points="6 9 12 15 18 9"/></svg>
