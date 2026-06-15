@@ -406,6 +406,11 @@
         </div>
         <div style="padding:0 20px 16px; overflow-x:auto;">
           ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:12px 0;">${s.description}</p>` : ''}
+          ${(s.gegeven || s.wanneer) ? `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; padding:16px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);">
+              ${s.gegeven ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Gegeven</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.gegeven + '</p></div>' : ''}
+              ${s.wanneer ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Wanneer</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.wanneer + '</p></div>' : ''}
+            </div>` : ''}
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
         </div>`;
 
