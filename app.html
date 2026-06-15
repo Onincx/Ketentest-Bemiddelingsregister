@@ -60,7 +60,8 @@
     .note-icon-btn.no-note { color: #9ca3af; }
     .note-icon-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
     /* Tegelweergave */
-    .scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .scenario-grid { margin-bottom: 24px; }
+    .scenario-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
     .scenario-tile {
       background: var(--white); border: 1px solid var(--border);
       border-radius: var(--radius-lg); padding: 16px;
@@ -257,8 +258,8 @@
         return;
       }
 
-      // Tegelraster
-      list.innerHTML = '<div class="scenario-grid" id="scenarioGrid"></div><div id="scenarioDetail"></div>';
+      // Tegelraster - gebruik een wrapper div per rij zodat we inline kunnen openen
+      list.innerHTML = '<div id="scenarioGrid"></div>';
       const grid = document.getElementById('scenarioGrid');
 
       grid.innerHTML = filtered.map(s => {
@@ -272,7 +273,7 @@
         const acceptanten = [...new Map(acts.filter(a => a.acceptant_org).map(a => [a.acceptant_org.id, a.acceptant_org])).values()];
         const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[status];
 
-        return `<div class="scenario-tile status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}')">
+        return `<div class="scenario-tile status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}', event)">
           <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
             <span class="tile-code">${s.code}</span>
             <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
@@ -296,6 +297,14 @@
           </div>
         </div>`;
       }).join('');
+
+      // Wrap in scenarioGridInner zodat detail panels grid-column: 1/-1 kunnen gebruiken
+      const inner = document.createElement('div');
+      inner.id = 'scenarioGridInner';
+      inner.className = 'scenario-grid-inner';
+      inner.innerHTML = grid.innerHTML;
+      grid.innerHTML = '';
+      grid.appendChild(inner);
     }
 
     function renderActivities(acts) {
@@ -355,44 +364,65 @@
 
     let openScenarioId = null;
 
-    function toggleScenario(id) {
-      const detail = document.getElementById('scenarioDetail');
-      if (!detail) return;
+    function toggleScenario(id, event) {
+      // Sluit bestaand detail panel
+      const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
+      if (existing) existing.remove();
+      document.querySelectorAll('.scenario-tile').forEach(t => { t.style.outline = ''; t.classList.remove('tile-active'); });
 
-      // Zelfde tegel nogmaals klikken sluit detail
+      // Zelfde tegel: sluiten
       if (openScenarioId === id) {
-        detail.innerHTML = '';
         openScenarioId = null;
-        document.querySelectorAll('.scenario-tile').forEach(t => t.style.outline = '');
         return;
       }
 
       openScenarioId = id;
-      // Highlight actieve tegel
-      document.querySelectorAll('.scenario-tile').forEach(t => t.style.outline = '');
       const tile = document.getElementById('sc-' + id);
       if (tile) tile.style.outline = '2px solid var(--brand-mid)';
 
       const s = scenarios.find(x => x.id === id);
       const acts = activities.filter(a => a.scenario_id === id).sort((a,b) => a.sort_order - b.sort_order);
 
-      detail.innerHTML = `
-        <div style="background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); margin-bottom:16px; overflow:hidden;">
-          <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
-            <div style="display:flex; align-items:center; gap:10px;">
-              <span style="font-size:12px; font-weight:700; color:var(--text-muted);">${s.code}</span>
-              <strong style="font-size:15px;">${s.title}</strong>
-            </div>
-            <button onclick="toggleScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
+      // Maak detail panel
+      const panel = document.createElement('div');
+      panel.id = 'detail-panel-' + id;
+      panel.style.cssText = 'grid-column: 1 / -1; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
+      panel.innerHTML = `
+        <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted);">${s.code}</span>
+            <strong style="font-size:15px;">${s.title}</strong>
           </div>
-          <div style="padding:0 20px 16px;">
-            ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:12px 0;">${s.description}</p>` : ''}
-            ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
-          </div>
+          <button onclick="toggleScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
+        </div>
+        <div style="padding:0 20px 16px; overflow-x:auto;">
+          ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:12px 0;">${s.description}</p>` : ''}
+          ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
         </div>`;
 
-      // Scroll naar detail
-      setTimeout(() => detail.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+      // Voeg in na de rij van de geklikte tegel
+      // Bereken welke tegel de laatste is in dezelfde rij
+      const grid = document.getElementById('scenarioGridInner');
+      if (!grid) { document.getElementById('scenarioGrid').appendChild(panel); return; }
+
+      const tiles = [...grid.querySelectorAll('.scenario-tile')];
+      const tileIndex = tiles.indexOf(tile);
+      const tileRect = tile.getBoundingClientRect();
+
+      // Vind alle tegels op dezelfde rij (zelfde top offset)
+      const tileTop = Math.round(tileRect.top);
+      let lastInRow = tile;
+      for (let i = tileIndex + 1; i < tiles.length; i++) {
+        const r = tiles[i].getBoundingClientRect();
+        if (Math.round(r.top) === tileTop) lastInRow = tiles[i];
+        else break;
+      }
+
+      // Voeg panel in na de laatste tegel in de rij
+      lastInRow.insertAdjacentElement('afterend', panel);
+
+      // Scroll naar tegel
+      setTimeout(() => tile.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
 
     // Notitie modal
