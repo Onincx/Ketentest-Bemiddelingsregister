@@ -62,6 +62,14 @@
     }
     .note-icon-btn.no-note { color: #9ca3af; }
     .note-icon-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
+    /* Scenario tabs */
+    .scenario-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; flex-wrap: nowrap; }
+    .scenario-tab { padding: 9px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; margin-bottom: -1px; }
+    .scenario-tab:hover { color: var(--text); }
+    .scenario-tab.active { color: var(--brand-mid); border-bottom-color: var(--brand-mid); font-weight: 600; }
+    .scenario-tab .tab-count { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; font-size: 11px; padding: 0px 6px; margin-left: 5px; font-weight: 500; }
+    .scenario-tab.active .tab-count { background: var(--brand-light); border-color: var(--brand-light); color: var(--brand-mid); }
+
     /* Tegelweergave */
     .scenario-grid { margin-bottom: 24px; }
     .scenario-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
@@ -249,6 +257,40 @@
       renderAll();
     }
 
+    let activeTabPrefix = null;
+
+    function getScenarioPrefix(code) {
+      const m = code.match(/^([A-Z]+\d+)-/);
+      return m ? m[1] : code.substring(0, 3);
+    }
+
+    function renderTabs() {
+      const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
+      if (allPrefixes.length <= 1) return '';
+      if (!activeTabPrefix || !allPrefixes.includes(activeTabPrefix)) {
+        activeTabPrefix = allPrefixes[0];
+      }
+      return `<div class="scenario-tabs">
+        <button class="scenario-tab ${activeTabPrefix === '__all__' ? 'active' : ''}" onclick="setTab('__all__')">
+          Alle <span class="tab-count">${scenarios.length}</span>
+        </button>
+        ${allPrefixes.map(p => {
+          const count = scenarios.filter(s => getScenarioPrefix(s.code) === p).length;
+          return `<button class="scenario-tab ${activeTabPrefix === p ? 'active' : ''}" onclick="setTab('${p}')">
+            ${p} <span class="tab-count">${count}</span>
+          </button>`;
+        }).join('')}
+      </div>`;
+    }
+
+    function setTab(prefix) {
+      activeTabPrefix = prefix;
+      const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
+      if (existing) existing.remove();
+      openScenarioId = null;
+      renderAll();
+    }
+
     function renderAll() {
       updateStats();
       const myOrgId = currentProfile?.organisation_id;
@@ -261,14 +303,21 @@
         filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
       }
 
+      // Filter op actieve tab
+      const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
+      if (!activeTabPrefix && allPrefixes.length > 0) activeTabPrefix = allPrefixes[0];
+      if (activeTabPrefix && activeTabPrefix !== '__all__') {
+        filtered = filtered.filter(s => getScenarioPrefix(s.code) === activeTabPrefix);
+      }
+
       const list = document.getElementById('scenarioList');
-      if (!filtered.length) {
-        list.innerHTML = '<div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="2" y1="2" x2="22" y2="22"/><path d="M10.97 10.97L7 15v6l4-2 4 2v-6l-1.03-1.03"/><path d="M4.27 4.27L4 4h16l-5 6h-4"/></svg><p>Geen scenario\'s gevonden voor dit filter.</p></div>';
+      if (!scenarios.length) {
+        list.innerHTML = '<div class="empty-state"><p>Nog geen scenario's beschikbaar.</p></div>';
         return;
       }
 
-      // Tegelraster - gebruik een wrapper div per rij zodat we inline kunnen openen
-      list.innerHTML = '<div id="scenarioGrid"></div>';
+      // Tabs + tegelraster
+      list.innerHTML = renderTabs(filtered) + '<div id="scenarioGrid"></div>';
       const grid = document.getElementById('scenarioGrid');
 
       grid.innerHTML = filtered.map(s => {
