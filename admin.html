@@ -141,6 +141,10 @@
           <h1>Testscenario's</h1>
           <p>Beheer scenario's, teststappen en koppel activiteiten aan organisaties.</p>
         </div>
+        <button class="btn btn-outline" onclick="openModal('modalImportScenario')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Plakken & importeren
+        </button>
         <button class="btn btn-primary" onclick="openModal('modalScenario')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Scenario toevoegen
         </button>
@@ -209,6 +213,47 @@
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalUser')">Annuleren</button>
         <button class="btn btn-primary" id="saveUserBtn" onclick="saveUser()">Uitnodiging versturen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Plakken & importeren -->
+  <div class="modal-overlay" id="modalImportScenario" style="display:none;" onclick="closeModalOverlay(event,'modalImportScenario')">
+    <div class="modal" style="max-width:640px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Scenario plakken &amp; importeren</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalImportScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">
+          Plak de scenariotekst hieronder. De tool herkent automatisch het ID, de titel, de uitgangspunten en de handeling.
+        </p>
+        <div class="form-group">
+          <label>Scenariotekst</label>
+          <textarea id="importPasteArea" rows="12" placeholder="SC1-001 Eerste toewijzing Menzis – ZA&#10;Gegeven:&#10;* Uitgangspunt 1&#10;* Uitgangspunt 2&#10;Wanneer: beschrijving van de handeling" oninput="previewImport()"></textarea>
+        </div>
+        <div id="importPreview" style="display:none;">
+          <p style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:10px;">Voorbeeld van het te importeren scenario</p>
+          <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; font-size:13px;">
+            <div style="margin-bottom:8px;"><span style="font-size:11px; font-weight:700; color:var(--text-muted);" id="prev-code"></span> <strong id="prev-title"></strong></div>
+            <div id="prev-gegeven-wrap" style="margin-bottom:8px; display:none;">
+              <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Gegeven</p>
+              <div id="prev-gegeven" style="line-height:1.7;"></div>
+            </div>
+            <div id="prev-wanneer-wrap" style="display:none;">
+              <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:4px;">Wanneer</p>
+              <p id="prev-wanneer" style="line-height:1.7;"></p>
+            </div>
+          </div>
+        </div>
+        <div id="alertImport" class="alert" style="display:none; margin-top:12px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalImportScenario')">Annuleren</button>
+        <button class="btn btn-primary" id="importBtn" disabled onclick="executeImport()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Scenario importeren
+        </button>
       </div>
     </div>
   </div>
@@ -909,6 +954,135 @@
       document.getElementById('scenarioWanneer').value = s.wanneer || '';
       document.getElementById('modalScenarioTitle').textContent = 'Scenario bewerken';
       openModal('modalScenario');
+    }
+
+    function parseScenarioText(text) {
+      const lines = text.split('\n').map(l => l.trim()).filter(l => l);
+      if (!lines.length) return null;
+
+      // Eerste regel = ID + titel (bijv. "SC1-001 Eerste toewijzing...")
+      const firstLine = lines[0];
+      const codeMatch = firstLine.match(/^([A-Z0-9]+-\d+)\s+(.+)$/);
+      let code = '', title = '';
+      if (codeMatch) {
+        code = codeMatch[1];
+        title = codeMatch[2].trim();
+      } else {
+        title = firstLine;
+      }
+
+      // Zoek Gegeven en Wanneer secties
+      let gegeven = '', wanneer = '';
+      let inGegeven = false, inWanneer = false;
+      const gegevenLines = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        const lowerLine = line.toLowerCase();
+
+        if (lowerLine.startsWith('gegeven:') || lowerLine === 'gegeven') {
+          inGegeven = true; inWanneer = false;
+          // Inline tekst na "Gegeven:" op dezelfde regel
+          const inline = line.replace(/^gegeven:/i, '').trim();
+          if (inline) gegevenLines.push(inline);
+          continue;
+        }
+        if (lowerLine.startsWith('wanneer:') || lowerLine === 'wanneer') {
+          inGegeven = false; inWanneer = true;
+          // Inline tekst na "Wanneer:" op dezelfde regel
+          const inline = line.replace(/^wanneer:/i, '').trim();
+          if (inline) wanneer = inline;
+          continue;
+        }
+
+        if (inGegeven) {
+          // Verwijder bullet tekens (* - •)
+          const clean = line.replace(/^[*\-•]\s*/, '').trim();
+          if (clean) gegevenLines.push(clean);
+        } else if (inWanneer) {
+          wanneer += (wanneer ? ' ' : '') + line;
+        }
+      }
+
+      gegeven = gegevenLines.map(l => '• ' + l).join('\n');
+      return { code, title, gegeven, wanneer };
+    }
+
+    function previewImport() {
+      const text = document.getElementById('importPasteArea').value;
+      const parsed = parseScenarioText(text);
+      const preview = document.getElementById('importPreview');
+      const btn = document.getElementById('importBtn');
+
+      if (!parsed || !parsed.title) {
+        preview.style.display = 'none';
+        btn.disabled = true;
+        return;
+      }
+
+      document.getElementById('prev-code').textContent = parsed.code || '';
+      document.getElementById('prev-title').textContent = parsed.title || '';
+
+      const gegevenWrap = document.getElementById('prev-gegeven-wrap');
+      const gegevenEl = document.getElementById('prev-gegeven');
+      if (parsed.gegeven) {
+        gegevenEl.innerHTML = parsed.gegeven.split('\n').map(l => `<p>${l}</p>`).join('');
+        gegevenWrap.style.display = '';
+      } else {
+        gegevenWrap.style.display = 'none';
+      }
+
+      const wanneerWrap = document.getElementById('prev-wanneer-wrap');
+      if (parsed.wanneer) {
+        document.getElementById('prev-wanneer').textContent = parsed.wanneer;
+        wanneerWrap.style.display = '';
+      } else {
+        wanneerWrap.style.display = 'none';
+      }
+
+      preview.style.display = '';
+      btn.disabled = false;
+    }
+
+    async function executeImport() {
+      const text = document.getElementById('importPasteArea').value;
+      const parsed = parseScenarioText(text);
+
+      if (!parsed || !parsed.title) {
+        showAlert('Kon de tekst niet verwerken. Controleer het formaat.', 'error', 'alertImport');
+        return;
+      }
+      if (!parsed.code) {
+        showAlert('Geen scenario-ID gevonden op de eerste regel (bijv. SC1-001).', 'error', 'alertImport');
+        return;
+      }
+
+      const btn = document.getElementById('importBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:0.6">Importeren...</span>';
+
+      const { error } = await sb.from('scenarios').insert({
+        code: parsed.code,
+        title: parsed.title,
+        description: '',
+        gegeven: parsed.gegeven,
+        wanneer: parsed.wanneer
+      });
+
+      if (error) {
+        showAlert('Fout bij importeren: ' + error.message, 'error', 'alertImport');
+        btn.disabled = false;
+        btn.innerHTML = 'Scenario importeren';
+        return;
+      }
+
+      closeModal('modalImportScenario');
+      document.getElementById('importPasteArea').value = '';
+      document.getElementById('importPreview').style.display = 'none';
+      document.getElementById('importBtn').disabled = true;
+      await loadScenarios();
+      renderScenarios();
+      showAlert('Scenario succesvol geïmporteerd.', 'success');
     }
 
     async function saveScenario() {
