@@ -242,36 +242,60 @@
       <div class="modal-body">
         <input type="hidden" id="activityId">
         <input type="hidden" id="activityScenarioId">
-        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:16px;">
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Actie <span style="color:var(--danger)">*</span></label>
-            <select id="activityActie" onchange="updateActivityDescPreview()"><option value="">Kies actie...</option></select>
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Soort <span style="color:var(--danger)">*</span></label>
-            <select id="activitySoort" onchange="updateActivityDescPreview()"><option value="">Kies soort...</option></select>
-          </div>
-          <div class="form-group" style="margin-bottom:0;">
-            <label>Type <span style="color:var(--danger)">*</span></label>
-            <select id="activityType" onchange="updateActivityDescPreview()"><option value="">Kies type...</option></select>
-          </div>
-        </div>
+
+        <!-- 1. Verantwoordelijke organisatie -->
         <div class="form-group">
-          <label style="color:var(--text-muted); font-size:12px;">Omschrijving (automatisch)</label>
-          <div id="activityDescPreview" style="padding:8px 12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; color:var(--text-muted); min-height:36px;">Kies eerst Actie, Soort en Type...</div>
-        </div>
-        <div class="form-group">
-          <label>Verwacht resultaat</label>
-          <input type="text" id="activityExpected" placeholder="Wat is het verwachte resultaat?">
-        </div>
-        <div class="form-group">
-          <label>Verantwoordelijke organisatie</label>
+          <label>Verantwoordelijke organisatie <span style="color:var(--danger)">*</span></label>
           <select id="activityOrg"><option value="">Selecteer organisatie...</option></select>
         </div>
+
+        <!-- 2. Omschrijving: Actie + Soort + Type -->
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:16px;">
+          <p style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Omschrijving</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Actie <span style="color:var(--danger)">*</span></label>
+              <select id="activityActie" onchange="updateActivityDescPreview()"><option value="">Kies...</option></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Soort <span style="color:var(--danger)">*</span></label>
+              <select id="activitySoort" onchange="updateActivityDescPreview()"><option value="">Kies...</option></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Type <span style="color:var(--danger)">*</span></label>
+              <select id="activityType" onchange="updateActivityDescPreview()"><option value="">Kies...</option></select>
+            </div>
+          </div>
+          <div style="font-size:13px; padding:7px 10px; background:var(--white); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted);" id="activityDescPreview">Kies eerst Actie, Soort en Type...</div>
+        </div>
+
+        <!-- 3. Acceptant -->
         <div class="form-group">
           <label>Acceptant <span style="color:var(--text-muted); font-weight:400;">(mag OK/NOK zetten)</span></label>
           <select id="activityAcceptant"><option value="">Selecteer organisatie...</option></select>
         </div>
+
+        <!-- 4. Verwacht resultaat: Actie + Soort + Type -->
+        <div style="background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:14px; margin-bottom:16px;">
+          <p style="font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Verwacht resultaat</p>
+          <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Actie <span style="color:var(--danger)">*</span></label>
+              <select id="activityExpActie" onchange="updateActivityExpectedPreview()"><option value="">Kies...</option></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Soort <span style="color:var(--danger)">*</span></label>
+              <select id="activityExpSoort" onchange="updateActivityExpectedPreview()"><option value="">Kies...</option></select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Type <span style="color:var(--danger)">*</span></label>
+              <select id="activityExpType" onchange="updateActivityExpectedPreview()"><option value="">Kies...</option></select>
+            </div>
+          </div>
+          <div style="font-size:13px; padding:7px 10px; background:var(--white); border:1px solid var(--border); border-radius:var(--radius); color:var(--text-muted);" id="activityExpPreview">Kies eerst Actie, Soort en Type...</div>
+        </div>
+
+        <!-- Volgorde -->
         <div class="form-group">
           <label>Volgorde</label>
           <input type="number" id="activityOrder" value="1" min="1">
@@ -694,11 +718,36 @@
 
     function populateActivityDropdowns() {
       ['actie','soort','type'].forEach(cat => {
-        const sel = document.getElementById('activity' + cat.charAt(0).toUpperCase() + cat.slice(1));
-        if (!sel) return;
+        const cap = cat.charAt(0).toUpperCase() + cat.slice(1);
         const opts = activityOptions.filter(o => o.category === cat).sort((a,b) => a.sort_order - b.sort_order);
-        sel.innerHTML = `<option value="">Kies ${cat}...</option>` + opts.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+        const optHtml = `<option value="">Kies...</option>` + opts.map(o => `<option value="${o.id}">${o.label}</option>`).join('');
+        // Omschrijving dropdowns
+        const sel1 = document.getElementById('activity' + cap);
+        if (sel1) sel1.innerHTML = optHtml;
+        // Verwacht resultaat dropdowns
+        const sel2 = document.getElementById('activityExp' + cap);
+        if (sel2) sel2.innerHTML = optHtml;
       });
+    }
+
+    function updateActivityExpectedPreview() {
+      const actie = document.getElementById('activityExpActie');
+      const soort = document.getElementById('activityExpSoort');
+      const type  = document.getElementById('activityExpType');
+      const preview = document.getElementById('activityExpPreview');
+      if (!preview) return;
+      const a = actie?.options[actie.selectedIndex]?.text || '';
+      const s = soort?.options[soort.selectedIndex]?.text || '';
+      const t = type?.options[type.selectedIndex]?.text || '';
+      if (a && s && t && a !== 'Kies...') {
+        preview.textContent = `${a} — ${s} — ${t}`;
+        preview.style.color = 'var(--text)';
+        preview.style.fontWeight = '500';
+      } else {
+        preview.textContent = 'Kies eerst Actie, Soort en Type...';
+        preview.style.color = 'var(--text-muted)';
+        preview.style.fontWeight = '400';
+      }
     }
 
     function updateActivityDescPreview() {
@@ -710,7 +759,7 @@
       const a = actie?.options[actie.selectedIndex]?.text || '';
       const s = soort?.options[soort.selectedIndex]?.text || '';
       const t = type?.options[type.selectedIndex]?.text || '';
-      if (a && s && t) {
+      if (a && s && t && a !== 'Kies...') {
         preview.textContent = `${a} — ${s} — ${t}`;
         preview.style.color = 'var(--text)';
         preview.style.fontWeight = '500';
@@ -781,7 +830,11 @@
       document.getElementById('activityActie').value = '';
       document.getElementById('activitySoort').value = '';
       document.getElementById('activityType').value = '';
+      document.getElementById('activityExpActie').value = '';
+      document.getElementById('activityExpSoort').value = '';
+      document.getElementById('activityExpType').value = '';
       updateActivityDescPreview();
+      updateActivityExpectedPreview();
       // Bereken het volgende unieke nummer: hoogste bestaande + 1
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       const maxOrder = acts.reduce((max, a) => Math.max(max, a.sort_order || 0), 0);
@@ -801,7 +854,11 @@
       document.getElementById('activityActie').value = a.option_actie_id || '';
       document.getElementById('activitySoort').value = a.option_soort_id || '';
       document.getElementById('activityType').value = a.option_type_id || '';
+      document.getElementById('activityExpActie').value = a.option_exp_actie_id || '';
+      document.getElementById('activityExpSoort').value = a.option_exp_soort_id || '';
+      document.getElementById('activityExpType').value = a.option_exp_type_id || '';
       updateActivityDescPreview();
+      updateActivityExpectedPreview();
       document.getElementById('activityOrder').value = a.sort_order;
       document.getElementById('modalActivityTitle').textContent = 'Activiteit bewerken';
       openModal('modalActivity');
@@ -810,18 +867,29 @@
     async function saveActivity() {
       const id = document.getElementById('activityId').value;
       const scenarioId = document.getElementById('activityScenarioId').value;
+      // Omschrijving dropdowns
       const option_actie_id = document.getElementById('activityActie').value || null;
       const option_soort_id = document.getElementById('activitySoort').value || null;
       const option_type_id  = document.getElementById('activityType').value || null;
+      // Verwacht resultaat dropdowns
+      const option_exp_actie_id = document.getElementById('activityExpActie').value || null;
+      const option_exp_soort_id = document.getElementById('activityExpSoort').value || null;
+      const option_exp_type_id  = document.getElementById('activityExpType').value || null;
       if (!option_actie_id || !option_soort_id || !option_type_id) {
-        showAlert('Kies een waarde voor Actie, Soort én Type.'); return;
+        showAlert('Kies een waarde voor Actie, Soort én Type bij Omschrijving.'); return;
       }
-      // Stel omschrijving automatisch samen
+      if (!option_exp_actie_id || !option_exp_soort_id || !option_exp_type_id) {
+        showAlert('Kies een waarde voor Actie, Soort én Type bij Verwacht resultaat.'); return;
+      }
+      // Stel omschrijving en verwacht resultaat automatisch samen
       const actieLabel = activityOptions.find(o => o.id === option_actie_id)?.label || '';
       const soortLabel = activityOptions.find(o => o.id === option_soort_id)?.label || '';
       const typeLabel  = activityOptions.find(o => o.id === option_type_id)?.label || '';
       const description = `${actieLabel} — ${soortLabel} — ${typeLabel}`;
-      const expected_result = document.getElementById('activityExpected').value.trim();
+      const expActieLabel = activityOptions.find(o => o.id === option_exp_actie_id)?.label || '';
+      const expSoortLabel = activityOptions.find(o => o.id === option_exp_soort_id)?.label || '';
+      const expTypeLabel  = activityOptions.find(o => o.id === option_exp_type_id)?.label || '';
+      const expected_result = `${expActieLabel} — ${expSoortLabel} — ${expTypeLabel}`;
       const organisation_id = document.getElementById('activityOrg').value || null;
       const acceptant_org_id = document.getElementById('activityAcceptant').value || null;
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
@@ -834,10 +902,10 @@
 
       let dbError;
       if (id) {
-        const res = await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id }).eq('id', id);
+        const res = await sb.from('activities').update({ description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id, option_exp_actie_id, option_exp_soort_id, option_exp_type_id }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id });
+        const res = await sb.from('activities').insert({ scenario_id: scenarioId, description, expected_result, organisation_id, acceptant_org_id, sort_order, option_actie_id, option_soort_id, option_type_id, option_exp_actie_id, option_exp_soort_id, option_exp_type_id });
         dbError = res.error;
       }
 
