@@ -394,6 +394,7 @@
   <script src="js/supabase-config.js"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
+    const openSections = new Set(); // bijhoudt welke scenario's open zijn
     let activeTab = 'organisations';
 
     (async () => {
@@ -634,6 +635,14 @@
         return;
       }
 
+      // Herstel open staat na renderen
+      setTimeout(() => {
+        openSections.forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = '';
+        });
+      }, 0);
+
       wrap.innerHTML = scenarios.map(s => {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
         return `<div class="section-card">
@@ -819,7 +828,10 @@
 
     function toggleSection(id) {
       const el = document.getElementById(id);
-      el.style.display = el.style.display === 'none' ? '' : 'none';
+      const isOpen = el.style.display !== 'none';
+      el.style.display = isOpen ? 'none' : '';
+      if (isOpen) openSections.delete(id);
+      else openSections.add(id);
     }
 
     function editScenario(id) {
