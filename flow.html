@@ -17,20 +17,24 @@
     .flow-canvas-wrap { position: fixed; inset: 0; top: 224px; overflow: hidden; background: #f8fafc; cursor: default; }
     .flow-canvas-wrap.connecting { cursor: crosshair; }
     svg#flowCanvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
-    .flow-node { position: absolute; width: 180px; border-radius: 8px; background: #fff; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: grab; user-select: none; transition: border-color 0.15s, box-shadow 0.15s; }
-    .flow-node:hover { border-color: #39870c; box-shadow: 0 4px 16px rgba(57,135,12,0.15); }
-    .flow-node.selected { border-color: #39870c; box-shadow: 0 0 0 3px rgba(57,135,12,0.2); }
+    .flow-node { position: absolute; width: 200px; border-radius: 10px; background: #fff; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: grab; user-select: none; transition: all 0.15s; }
+    .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.12); transform: translateY(-1px); }
+    .flow-node.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.18); z-index: 100; transform: translateY(-2px); }
+    /* Status kleuren */
     .flow-node.status-ok { border-color: #16a34a; }
+    .flow-node.status-ok .node-header { background: linear-gradient(135deg, #dcfce7, #f0fdf4); }
+    .flow-node.status-ok .node-code { color: #15803d; }
     .flow-node.status-nok { border-color: #dc2626; }
-    .flow-node.dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 100; }
-    .node-header { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
-    .node-code { font-size: 10px; font-weight: 700; color: #6b7280; }
-    .node-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .node-status.ok { background: #16a34a; }
-    .node-status.nok { background: #dc2626; }
-    .node-status.open { background: #e5e7eb; }
-    .node-title { padding: 8px 10px; font-size: 12px; font-weight: 600; color: #1a1a1a; line-height: 1.4; }
-    .node-footer { padding: 4px 10px 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+    .flow-node.status-nok .node-header { background: linear-gradient(135deg, #fee2e2, #fff5f5); }
+    .flow-node.status-nok .node-code { color: #dc2626; }
+    .flow-node.status-open { border-color: #d1d5db; }
+    .flow-node.status-open .node-header { background: linear-gradient(135deg, #f3f4f6, #fafafa); }
+    .flow-node.status-open .node-code { color: #6b7280; }
+    .node-header { padding: 10px 12px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; border-radius: 8px 8px 0 0; }
+    .node-code { font-size: 11px; font-weight: 700; }
+    .node-status { font-size: 14px; flex-shrink: 0; }
+    .node-title { padding: 10px 12px 6px; font-size: 12px; font-weight: 600; color: #1a1a1a; line-height: 1.5; }
+    .node-footer { padding: 4px 12px 10px; display: flex; gap: 4px; flex-wrap: wrap; align-items: center; }
     .node-port { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #39870c; border: 2px solid #fff; cursor: crosshair; z-index: 10; opacity: 0; transition: opacity 0.15s; }
     .flow-node:hover .node-port { opacity: 1; }
     .node-port.port-out { bottom: -6px; left: 50%; transform: translateX(-50%); }
@@ -109,12 +113,15 @@
   <div class="flow-canvas-wrap" id="canvasWrap">
     <svg id="flowCanvas">
       <defs>
-        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
+        <marker id="arrowhead" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
+          <polygon points="0 0, 14 5, 0 10" fill="#39870c"/>
         </marker>
-        <marker id="arrowhead-hover" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+        <marker id="arrowhead-hover" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
+          <polygon points="0 0, 14 5, 0 10" fill="#dc2626"/>
         </marker>
+        <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="rgba(0,0,0,0.12)"/>
+        </filter>
       </defs>
       <g id="edgeGroup"></g>
       <g id="tempEdgeGroup"></g>
@@ -128,8 +135,8 @@
     <div id="sidebarList"><p style="font-size:12px; color:#6b7280;">Laden...</p></div>
   </div>
 
-  <!-- Detail panel -->
-  <div class="flow-detail" id="detailPanel">
+  <!-- Detail panel (niet meer gebruikt) -->
+  <div class="flow-detail" id="detailPanel" style="display:none;">
     <div class="flow-detail-header">
       <div>
         <div style="font-size:11px; font-weight:700; color:#39870c;" id="detailCode"></div>
@@ -144,6 +151,7 @@
   <script src="js/supabase-config.js?v=20"></script>
   <script>
     let currentUser = null, currentProfile = null;
+    let orgsMap = {}; // id → name
     let scenarios = [], activities = [], results = [], nodes = {}, edges = [];
     let mode = 'select'; // 'select' | 'connect'
     let dragging = null, dragOffset = {x:0, y:0};
@@ -173,6 +181,9 @@
         sb.from('flow_edges').select('*'),
       ]);
       scenarios = s.data || [];
+      // Bouw orgs map
+      const { data: orgsData } = await sb.from('organisations').select('id,name');
+      (orgsData || []).forEach(o => orgsMap[o.id] = o.name);
       activities = a.data || [];
       results = r.data || [];
 
@@ -269,16 +280,18 @@
         el.dataset.scenarioId = scenarioId;
         el.style.left = pos.x + 'px';
         el.style.top = pos.y + 'px';
+        const statusEmoji = {ok:'✅', nok:'❌', open:'⏳'}[status];
+        const statusText = {ok:'Geslaagd', nok:'Mislukt', open:'Open'}[status];
         el.innerHTML = `
           <div class="node-port port-in" data-port="in" data-scenario="${scenarioId}"></div>
           <div class="node-header">
             <span class="node-code">${s.code}</span>
-            <span class="node-status ${status}"></span>
+            <span class="node-status" title="${statusText}">${statusEmoji}</span>
           </div>
           <div class="node-title">${s.title}</div>
           <div class="node-pct-bar"><div class="node-pct-fill" style="width:${pct}%"></div></div>
           <div class="node-footer">
-            <span class="node-pct">${pct}% klaar</span>
+            <span class="node-pct" style="font-size:10px; color:#6b7280;">${pct}% · ${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
           </div>
           <div class="node-port port-out" data-port="out" data-scenario="${scenarioId}"></div>`;
         setupNodeEvents(el, scenarioId);
@@ -335,9 +348,10 @@
         const d = `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
         path.setAttribute('d', d);
         path.setAttribute('stroke', '#39870c');
-        path.setAttribute('stroke-width', '2');
+        path.setAttribute('stroke-width', '2.5');
         path.setAttribute('fill', 'none');
         path.setAttribute('marker-end', 'url(#arrowhead)');
+        path.setAttribute('stroke-linecap', 'round');
 
         // Hover area voor verwijderen
         const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
@@ -501,49 +515,80 @@
       renderAll();
     }
 
-    // ── Detail panel ──────────────────────────────────────────
+    // ── Inline popup op canvas ────────────────────────────────
     function openDetail(scenarioId) {
+      // Verwijder bestaande popup
+      document.getElementById('nodePopup')?.remove();
+
       const s = scenarios.find(x => x.id === scenarioId);
       if (!s) return;
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       const status = getStatus(scenarioId);
-      const statusLabel = {ok:'Geslaagd ✓', nok:'Mislukt ✗', open:'Open'}[status];
       const statusColor = {ok:'#16a34a', nok:'#dc2626', open:'#6b7280'}[status];
+      const statusBg = {ok:'#dcfce7', nok:'#fee2e2', open:'#f3f4f6'}[status];
+      const statusLabel = {ok:'✅ Geslaagd', nok:'❌ Mislukt', open:'⏳ Open'}[status];
 
-      document.getElementById('detailCode').textContent = s.code;
-      document.getElementById('detailTitle').textContent = s.title;
+      const nodeEl = document.getElementById('node-' + scenarioId);
+      if (!nodeEl) return;
+      const nodeX = parseInt(nodeEl.style.left) + 210;
+      const nodeY = parseInt(nodeEl.style.top);
 
-      // Verbonden scenario's
-      const incoming = edges.filter(e => e.to_id === scenarioId).map(e => scenarios.find(x => x.id === e.from_id)).filter(Boolean);
-      const outgoing = edges.filter(e => e.from_id === scenarioId).map(e => scenarios.find(x => x.id === e.to_id)).filter(Boolean);
+      const popup = document.createElement('div');
+      popup.id = 'nodePopup';
+      popup.style.cssText = `position:absolute; left:${nodeX}px; top:${nodeY}px; width:280px; background:#fff;
+        border-radius:10px; border:2px solid ${statusColor}; box-shadow:0 8px 32px rgba(0,0,0,0.15);
+        z-index:200; overflow:hidden;`;
 
-      document.getElementById('detailBody').innerHTML = `
-        <div style="margin-bottom:16px;">
-          <span style="background:${statusColor}22; color:${statusColor}; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:600;">${statusLabel}</span>
+      popup.innerHTML = `
+        <div style="background:${statusBg}; padding:10px 14px; border-bottom:1px solid rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <div style="font-size:10px; font-weight:700; color:${statusColor};">${s.code}</div>
+            <div style="font-size:13px; font-weight:600; color:#1a1a1a; line-height:1.4;">${s.title}</div>
+          </div>
+          <button onclick="closeDetail()" style="border:none;background:none;cursor:pointer;color:#6b7280;font-size:16px;padding:0 0 0 8px;">✕</button>
         </div>
-        ${s.gegeven ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:4px;">Gegeven</p><p style="font-size:13px; line-height:1.7; white-space:pre-wrap;">${s.gegeven}</p></div>` : ''}
-        ${s.wanneer ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:4px;">Wanneer</p><p style="font-size:13px; line-height:1.7;">${s.wanneer}</p></div>` : ''}
-        ${incoming.length ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Voorafgaande scenario's</p>${incoming.map(s => `<div style="font-size:12px; padding:4px 8px; background:#f5f5f5; border-radius:4px; margin-bottom:4px;">${s.code} — ${s.title}</div>`).join('')}</div>` : ''}
-        ${outgoing.length ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Volgende scenario's</p>${outgoing.map(s => `<div style="font-size:12px; padding:4px 8px; background:#f0fdf4; border-left:2px solid #39870c; border-radius:4px; margin-bottom:4px;">${s.code} — ${s.title}</div>`).join('')}</div>` : ''}
-        <div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Activiteiten (${acts.length})</p>
+        <div style="padding:10px 14px; border-bottom:1px solid #f3f4f6;">
+          <span style="background:${statusBg}; color:${statusColor}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:600;">${statusLabel}</span>
+        </div>
+        <div style="max-height:240px; overflow-y:auto;">
+          <div style="padding:8px 14px; font-size:10px; font-weight:700; color:#6b7280; text-transform:uppercase; letter-spacing:0.05em; border-bottom:1px solid #f3f4f6;">
+            Activiteiten (${acts.length})
+          </div>
           ${acts.map(a => {
             const r = results.find(x => x.activity_id === a.id);
             const res = r?.result || 'open';
-            const dot = {ok:'🟢', nok:'🔴', open:'⚪'}[res];
-            return `<div style="font-size:12px; padding:5px 8px; border-bottom:1px solid #f3f4f6; display:flex; gap:6px;">${dot} ${a.description}</div>`;
+            const dot = {ok:'✅', nok:'❌', open:'⏳'}[res];
+            const acc = a.acceptant_org_id ? (orgsMap[a.acceptant_org_id] || '') : '';
+            return `<div style="padding:8px 14px; border-bottom:1px solid #f9fafb; display:flex; gap:8px; align-items:flex-start;">
+              <span style="flex-shrink:0; font-size:13px;">${dot}</span>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:12px; color:#1a1a1a; line-height:1.4;">${a.description}</div>
+                ${acc ? `<div style="font-size:10px; color:#6b7280; margin-top:2px;">Acceptant: <strong>${acc}</strong></div>` : ''}
+                ${r?.notes ? `<div style="font-size:10px; color:#92400e; margin-top:2px; font-style:italic;">"${r.notes.substring(0,60)}${r.notes.length>60?'...':''}"</div>` : ''}
+              </div>
+            </div>`;
           }).join('')}
         </div>
-        <div style="margin-top:16px; padding-top:12px; border-top:1px solid #e5e7eb;">
-          <button class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#dc2626;" onclick="removeFromCanvas('${scenarioId}'); closeDetail();">
-            Van canvas verwijderen
-          </button>
+        <div style="padding:10px 14px; border-top:1px solid #f3f4f6; display:flex; justify-content:flex-end;">
+          <button class="btn btn-sm" style="color:#dc2626; border:1px solid #fca5a5; background:#fff5f5; font-size:11px;"
+            onclick="removeFromCanvas('${scenarioId}'); closeDetail();">Van canvas verwijderen</button>
         </div>`;
 
-      document.getElementById('detailPanel').classList.add('open');
+      document.getElementById('nodesContainer').appendChild(popup);
+
+      // Klik buiten popup sluit hem
+      setTimeout(() => {
+        document.addEventListener('click', function closeOnOutside(e) {
+          if (!popup.contains(e.target) && !document.getElementById('node-' + scenarioId)?.contains(e.target)) {
+            popup.remove();
+            document.removeEventListener('click', closeOnOutside);
+          }
+        });
+      }, 100);
     }
 
     function closeDetail() {
-      document.getElementById('detailPanel').classList.remove('open');
+      document.getElementById('nodePopup')?.remove();
     }
 
     async function doLogout() {
