@@ -814,7 +814,7 @@
                 <th style="width:36px; padding:8px 10px; border-bottom:1px solid var(--border);"></th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">#</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Activiteit</th>
-                <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Verwacht resultaat</th>
+                
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Verantwoordelijke org.</th>
                 <th style="text-align:left; padding:8px 10px; border-bottom:1px solid var(--border); color:var(--text-muted); font-size:11px;">Acceptant</th>
                 <th></th>
@@ -825,7 +825,7 @@
                 </td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); color:var(--text-muted)">${a.sort_order}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.description}</td>
-                <td style="padding:9px 10px; border-bottom:1px solid var(--border); color:var(--text-muted)">${a.expected_result}</td>
+                
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.organisations?.name ? `<span class="org-badge">${a.organisations.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border)">${a.acceptant_org?.name ? `<span class="org-badge" style="background:#fef3c7;color:#92400e;">${a.acceptant_org.name}</span>` : '—'}</td>
                 <td style="padding:9px 10px; border-bottom:1px solid var(--border); text-align:right; white-space:nowrap;">
@@ -1580,6 +1580,9 @@
 
       closeModal('modalActivityImport');
       document.getElementById('activityImportPaste').value = '';
+      document.getElementById('activityImportPreview').style.display = 'none';
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Importeren & bestaande vervangen';
       await loadActivities();
       renderScenarios();
       showAlert(`${rows.length} activiteit${rows.length !== 1 ? 'en' : ''} geïmporteerd.`, 'success');

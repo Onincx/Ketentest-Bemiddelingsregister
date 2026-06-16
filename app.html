@@ -12,10 +12,10 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    .activity-row { display: grid; grid-template-columns: 32px 110px 1fr 110px 1fr minmax(220px, auto); gap: 0; align-items: center; }
+    .activity-row { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; align-items: center; }
     .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .activity-row:last-child > div { border-bottom: none; }
-    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px 1fr minmax(220px, auto); gap: 0; background: var(--surface); }
+    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; background: var(--surface); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
     .result-toggle { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; min-width: 220px; width: max-content; }
     .rtbtn { border: 1.5px solid; border-radius: var(--radius); padding: 4px 9px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -404,7 +404,7 @@
       const myOrgId = currentProfile?.organisation_id;
       return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
-          <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Verwacht resultaat</div><div>Uitkomst</div>
+          <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
         ${acts.map(a => {
           const r = results[a.id] || {};
@@ -420,7 +420,6 @@
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
             <div style="font-size:13px;">${a.description}</div>
             <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
-            <div style="font-size:13px; color:var(--text-muted);">${a.expected_result || ''}</div>
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px; overflow:visible; min-width:0;">
               <div class="result-toggle">
                 ${canEdit ? `
@@ -588,7 +587,7 @@
           const isAcceptant = act.acceptant_org?.id === myOrgId;
           const canEdit = isAcceptant || currentProfile?.role === 'admin';
           const r = results[activityId] || {};
-          const lastCell = row.children[5];
+          const lastCell = row.children[4];
           if (canEdit) {
             const hasNoteNow = !!(r.notes && r.notes.trim());
             lastCell.innerHTML = `
@@ -647,12 +646,12 @@
     }
 
     function exportCSV() {
-      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verwacht resultaat', 'Verantw. organisatie', 'Acceptant', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
+      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verantw. organisatie', 'Acceptant', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
       scenarios.forEach(s => {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
         acts.forEach(a => {
           const r = results[a.id] || {};
-          rows.push([s.code, s.title, a.sort_order, a.description, a.expected_result || '', a.organisations?.name || '', a.acceptant_org?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
+          rows.push([s.code, s.title, a.sort_order, a.description, a.organisations?.name || '', a.acceptant_org?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
         });
       });
       const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
