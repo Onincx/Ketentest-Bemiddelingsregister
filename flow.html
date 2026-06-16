@@ -125,7 +125,7 @@
     .topnav-logo { color: #fff !important; }
   </style>
 
-  <nav class="topnav" style="background:#39870c !important; top: var(--banner-h, 76px);">
+  <nav class="topnav" style="background:#39870c !important;">
     <div class="topnav-logo">Bemiddelingsregister</div>
     <a href="dashboard.html">Dashboard</a>
     <a href="app.html">Ketentest</a>
@@ -198,10 +198,16 @@
     function topOffset() { return Math.round(bannerH()) + navH() + toolbarH(); }
 
     function applyLayout() {
-      const top = topOffset();
-      document.getElementById('toolbar').style.top = (Math.round(bannerH()) + navH()) + 'px';
-      document.getElementById('canvas').style.top = top + 'px';
-      document.getElementById('sidebar').style.top = top + 'px';
+      const banner = document.querySelector('img[src="ZinBanner.png"]');
+      const bh = banner ? banner.getBoundingClientRect().height : 76;
+      const nav = document.querySelector('.topnav');
+      const nh = nav ? nav.getBoundingClientRect().height : 56;
+      const tbh = 44;
+      const toolbarTop = Math.ceil(bh) + nh;
+      const canvasTop  = toolbarTop + tbh;
+      document.getElementById('toolbar').style.top = toolbarTop + 'px';
+      document.getElementById('canvas').style.top  = canvasTop + 'px';
+      document.getElementById('sidebar').style.top = canvasTop + 'px';
     }
 
     // ── Init ──────────────────────────────────────────────────
@@ -345,12 +351,12 @@
         if (!fromEl) return;
         const fRect = fromEl.getBoundingClientRect();
         const x1 = fRect.left - rect.left + fRect.width/2;
-        const y1 = fRect.top  - rect.top  + fRect.height;
+        const y1 = fRect.top  - rect.top  + fRect.height/2;
         const x2 = e.clientX - rect.left;
         const y2 = e.clientY - rect.top;
-        const cy = (y1+y2)/2;
+        const mx = (x1+x2)/2;
         const temp = document.getElementById('tempEdge');
-        temp.setAttribute('d', `M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`);
+        temp.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
         temp.style.display = '';
       }
     });
@@ -410,16 +416,40 @@
         const fw = fromEl?.offsetWidth  || 190;
         const fh = fromEl?.offsetHeight || 110;
         const tw = toEl?.offsetWidth    || 190;
+        const th = toEl?.offsetHeight   || 110;
 
-        const x1 = fromPos.x + fw/2;
-        const y1 = fromPos.y + fh;
-        const x2 = toPos.x  + tw/2;
-        const y2 = toPos.y;
-        const cy = (y1+y2)/2;
+        // Bepaal richting: horizontaal of verticaal?
+        const dx = (toPos.x + tw/2) - (fromPos.x + fw/2);
+        const dy = (toPos.y + th/2) - (fromPos.y + fh/2);
+        let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          // Meer horizontaal: rechts → links
+          if (dx > 0) {
+            x1 = fromPos.x + fw; y1 = fromPos.y + fh/2;
+            x2 = toPos.x;        y2 = toPos.y  + th/2;
+          } else {
+            x1 = fromPos.x;      y1 = fromPos.y + fh/2;
+            x2 = toPos.x + tw;   y2 = toPos.y  + th/2;
+          }
+          const mx = (x1+x2)/2;
+          cx1 = mx; cy1 = y1; cx2 = mx; cy2 = y2;
+        } else {
+          // Meer verticaal: onder → boven
+          if (dy > 0) {
+            x1 = fromPos.x + fw/2; y1 = fromPos.y + fh;
+            x2 = toPos.x  + tw/2;  y2 = toPos.y;
+          } else {
+            x1 = fromPos.x + fw/2; y1 = fromPos.y;
+            x2 = toPos.x  + tw/2;  y2 = toPos.y + th;
+          }
+          const my = (y1+y2)/2;
+          cx1 = x1; cy1 = my; cx2 = x2; cy2 = my;
+        }
 
         // Pad voor pijl
         const path = document.createElementNS('http://www.w3.org/2000/svg','path');
-        const d = `M${x1},${y1} C${x1},${cy} ${x2},${cy} ${x2},${y2}`;
+        const d = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
         path.setAttribute('d', d);
         path.setAttribute('stroke','#39870c');
         path.setAttribute('stroke-width','2.5');
