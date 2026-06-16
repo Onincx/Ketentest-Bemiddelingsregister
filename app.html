@@ -186,6 +186,13 @@
         <button class="btn btn-outline btn-sm" id="f-ok" onclick="setFilter('ok', this)">Geslaagd</button>
         <button class="btn btn-outline btn-sm" id="f-nok" onclick="setFilter('nok', this)">Mislukt</button>
         <button class="btn btn-outline btn-sm" id="f-mine" onclick="setFilter('mine', this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Mijn organisatie</button>
+        <div id="notifFilterIndicator" style="display:none;">
+          <button class="btn btn-sm" id="notifFilterBtn" onclick="setNotifFilter(null)"
+            style="font-weight:600; display:flex; align-items:center; gap:6px; border:2px solid currentColor;">
+            <span id="notifFilterLabel"></span>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="exportCSV()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exporteren</button>
     </div>
@@ -328,18 +335,50 @@
     function renderNotifLabels(notifs, scenarioId) {
       if (!notifs.length) return '';
       return '<div class="notif-labels-wrap">' +
-        notifs.map(n => `<span class="notif-label notif-${n.type} ${activeNotifFilter === n.label ? 'active-filter' : ''}"
-          onclick="event.stopPropagation(); setNotifFilter('${n.label}')"
-          title="${n.label}">${n.label}</span>`).join('') +
+        notifs.map(n => {
+          const isActive = activeNotifFilter === n.label;
+          return `<span class="notif-label notif-${n.type}"
+            onclick="event.stopPropagation(); setNotifFilter('${n.label}')"
+            title="Klik om te filteren op: ${n.label}"
+            style="${isActive ? 'outline:2px solid currentColor; outline-offset:2px; font-weight:700;' : ''}"
+            >${n.label}</span>`;
+        }).join('') +
         '</div>';
     }
 
     function setNotifFilter(label) {
-      activeNotifFilter = activeNotifFilter === label ? null : label;
+      // null = filter wissen, anders toggle
+      activeNotifFilter = (label === null || activeNotifFilter === label) ? null : label;
       const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
       if (existing) existing.remove();
       openScenarioId = null;
+      updateNotifFilterIndicator();
       renderAll();
+    }
+
+    function updateNotifFilterIndicator() {
+      const indicator = document.getElementById('notifFilterIndicator');
+      const btn = document.getElementById('notifFilterBtn');
+      const lbl = document.getElementById('notifFilterLabel');
+      if (!indicator) return;
+      if (activeNotifFilter) {
+        indicator.style.display = '';
+        lbl.textContent = '🔔 ' + activeNotifFilter;
+        // Kleur passend bij type
+        const notif = NOTIFICATIES.find(n => n.label === activeNotifFilter);
+        const colors = {
+          nieuw: {color:'#065f46', bg:'#d1fae5', border:'#6ee7b7'},
+          gewijzigd: {color:'#92400e', bg:'#fef3c7', border:'#fcd34d'},
+          verwijderd: {color:'#991b1b', bg:'#fee2e2', border:'#fca5a5'},
+          informatief: {color:'#1e40af', bg:'#dbeafe', border:'#93c5fd'},
+        };
+        const c = colors[notif?.type] || {color:'#374151', bg:'#f3f4f6', border:'#d1d5db'};
+        btn.style.color = c.color;
+        btn.style.background = c.bg;
+        btn.style.borderColor = c.border;
+      } else {
+        indicator.style.display = 'none';
+      }
     }
 
     let activeTabPrefix = null;
