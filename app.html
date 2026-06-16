@@ -62,7 +62,27 @@
     }
     .note-icon-btn.no-note { color: #9ca3af; }
     .note-icon-btn:hover { background: #f3f4f6; border-color: #9ca3af; color: #374151; }
+    /* Notificatie labels */
+    .notif-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; cursor:pointer; transition:opacity 0.15s; border:1px solid transparent; }
+    .notif-label:hover { opacity:0.75; }
+    .notif-label.active-filter { outline:2px solid currentColor; outline-offset:1px; }
+    .notif-nieuw     { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+    .notif-gewijzigd { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .notif-verwijderd{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
+    .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+
     /* Scenario tabs */
+    /* Notificatie labels */
+    .notif-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; cursor:pointer; transition:opacity 0.15s; border:1px solid transparent; }
+    .notif-label:hover { opacity:0.75; }
+    .notif-label.active-filter { outline:2px solid currentColor; outline-offset:1px; }
+    .notif-nieuw     { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+    .notif-gewijzigd { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .notif-verwijderd{ background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
+    .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+
     /* Scenario tabs */
     .scenario-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; flex-wrap: nowrap; }
     .scenario-tab { padding: 9px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; margin-bottom: -1px; }
@@ -270,6 +290,58 @@
       renderAll();
     }
 
+    // Notificatie definities: patroon → {label, type}
+    const NOTIFICATIES = [
+      { pattern: /nieuwe[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i,  label: 'Nieuwe BS ZA',    type: 'nieuw' },
+      { pattern: /nieuwe[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,    label: 'Nieuwe BS ZK',    type: 'nieuw' },
+      { pattern: /nieuwe[_\s]overdracht[_\s]zorgkantoor/i,                 label: 'Nieuwe OD ZK',    type: 'nieuw' },
+      { pattern: /nieuwe[_\s]regiehouder[_\s]zorgaanbieder/i,              label: 'Nieuwe RH ZA',    type: 'nieuw' },
+      { pattern: /nieuwe[_\s]regierol[_\s]zorgaanbieder/i,                 label: 'Nieuwe RR ZA',    type: 'nieuw' },
+      { pattern: /gewijzigde[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Gewijz. BS ZA', type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Gewijz. BS ZK', type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]overdracht[_\s]zorgkantoor/i,               label: 'Gewijz. OD ZK', type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]regiehouder[_\s]zorgaanbieder/i,            label: 'Gewijz. RH ZA', type: 'gewijzigd' },
+      { pattern: /informatieve[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Info BS ZA',  type: 'informatief' },
+      { pattern: /informatieve[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Info BS ZK',  type: 'informatief' },
+      { pattern: /verwijderde[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Verw. BS ZA', type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Verw. BS ZK', type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]overdracht[_\s]zorgkantoor/i,               label: 'Verw. OD ZK', type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]regiehouder[_\s]zorgaanbieder/i,            label: 'Verw. RH ZA', type: 'verwijderd' },
+    ];
+
+    let activeNotifFilter = null;
+
+    function getScenarioNotificaties(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      const found = new Map();
+      acts.forEach(a => {
+        const text = (a.description || '') + ' ' + (a.expected_result || '');
+        NOTIFICATIES.forEach(n => {
+          if (n.pattern.test(text) && !found.has(n.label)) {
+            found.set(n.label, n);
+          }
+        });
+      });
+      return [...found.values()];
+    }
+
+    function renderNotifLabels(notifs, scenarioId) {
+      if (!notifs.length) return '';
+      return '<div class="notif-labels-wrap">' +
+        notifs.map(n => `<span class="notif-label notif-${n.type} ${activeNotifFilter === n.label ? 'active-filter' : ''}"
+          onclick="event.stopPropagation(); setNotifFilter('${n.label}')"
+          title="${n.label}">${n.label}</span>`).join('') +
+        '</div>';
+    }
+
+    function setNotifFilter(label) {
+      activeNotifFilter = activeNotifFilter === label ? null : label;
+      const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
+      if (existing) existing.remove();
+      openScenarioId = null;
+      renderAll();
+    }
+
     let activeTabPrefix = null;
 
     function getScenarioPrefix(code) {
@@ -333,6 +405,10 @@
       else if (activeFilter === 'open') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'open');
       else if (activeFilter === 'mine') {
         filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
+      }
+      // Filter op notificatielabel
+      if (activeNotifFilter) {
+        filtered = filtered.filter(s => getScenarioNotificaties(s.id).some(n => n.label === activeNotifFilter));
       }
 
       // Filter op actieve tab
@@ -489,6 +565,7 @@
         </div>
         <div style="padding:0 20px 16px; overflow-x:auto;">
           ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:12px 0;">${s.description}</p>` : ''}
+          ${renderNotifLabels(getScenarioNotificaties(s.id), s.id)}
           ${(s.gegeven || s.wanneer) ? `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; padding:16px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);">
               ${s.gegeven ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Gegeven</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.gegeven + '</p></div>' : ''}
