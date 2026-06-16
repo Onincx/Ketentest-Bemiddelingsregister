@@ -281,6 +281,7 @@
         el.style.left = pos.x + 'px';
         el.style.top = pos.y + 'px';
         const statusEmoji = {ok:'✅', nok:'❌', open:'⏳'}[status];
+        const acts = activities.filter(a => a.scenario_id === scenarioId);
         const statusText = {ok:'Geslaagd', nok:'Mislukt', open:'Open'}[status];
         el.innerHTML = `
           <div class="node-port port-in" data-port="in" data-scenario="${scenarioId}"></div>
