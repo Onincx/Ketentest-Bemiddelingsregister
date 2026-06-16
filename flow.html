@@ -12,9 +12,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     body { overflow: hidden; }
-    .flow-container { position: fixed; inset: 0; top: 120px; }
-    .flow-toolbar { position: fixed; top: 120px; left: 0; right: 0; z-index: 50; background: #fff; border-bottom: 1px solid #e5e7eb; padding: 8px 20px; display: flex; align-items: center; gap: 10px; height: 48px; }
-    .flow-canvas-wrap { position: fixed; inset: 0; top: 168px; overflow: hidden; background: #f8fafc; cursor: default; }
+    .flow-container { position: fixed; inset: 0; top: 176px; }
+    .flow-toolbar { position: fixed; top: 176px; left: 0; right: 0; z-index: 50; background: #fff; border-bottom: 1px solid #e5e7eb; padding: 8px 20px; display: flex; align-items: center; gap: 10px; height: 48px; }
+    .flow-canvas-wrap { position: fixed; inset: 0; top: 224px; overflow: hidden; background: #f8fafc; cursor: default; }
     .flow-canvas-wrap.connecting { cursor: crosshair; }
     svg#flowCanvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
     .flow-node { position: absolute; width: 180px; border-radius: 8px; background: #fff; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: grab; user-select: none; transition: border-color 0.15s, box-shadow 0.15s; }
@@ -39,7 +39,7 @@
     .node-pct-bar { height: 3px; background: #e5e7eb; border-radius: 99px; margin: 0 10px 6px; overflow: hidden; }
     .node-pct-fill { height: 100%; background: #39870c; border-radius: 99px; }
     /* Sidebar */
-    .flow-sidebar { position: fixed; right: 0; top: 168px; bottom: 0; width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; z-index: 40; }
+    .flow-sidebar { position: fixed; right: 0; top: 224px; bottom: 0; width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; z-index: 40; }
     .flow-sidebar h4 { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
     .sidebar-scenario { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
     .sidebar-scenario:hover { border-color: #39870c; background: #f0fdf4; }
@@ -47,7 +47,7 @@
     .sidebar-scenario.on-canvas:hover { border-color: #e5e7eb; background: #fff; }
     .sidebar-code { font-size: 10px; font-weight: 700; color: #6b7280; }
     /* Detail panel */
-    .flow-detail { position: fixed; left: 0; top: 168px; bottom: 0; width: 380px; background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; z-index: 45; transform: translateX(-100%); transition: transform 0.2s; }
+    .flow-detail { position: fixed; left: 0; top: 224px; bottom: 0; width: 380px; background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; z-index: 45; transform: translateX(-100%); transition: transform 0.2s; }
     .flow-detail.open { transform: translateX(0); }
     .flow-detail-header { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; background: #f5fbf0; }
     .flow-detail-body { padding: 16px; }
