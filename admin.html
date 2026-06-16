@@ -19,8 +19,11 @@
     .admin-tab .tab-count { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; font-size: 11px; padding: 0px 6px; margin-left: 5px; }
     .admin-tab.active .tab-count { background: #eaf3e0; border-color: #39870c; color: #39870c; }
     /* Scenario kaart kleuren */
-    .section-card.has-activities { border-left: 3px solid #39870c; background: linear-gradient(to right, #f5fbf0 0%, #fff 40px); }
+    .section-card.has-activities { border-left: 3px solid #39870c; }
+    .section-card.has-activities .section-card-header { background: #eaf3e0; }
+    .section-card.has-activities .section-card-header:hover { background: #d8edca; }
     .section-card.no-activities { border-left: 3px solid #e5e7eb; }
+    .section-card.no-activities .section-card-header { background: #fff; }
     .org-badge { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 10px; font-size: 12px; font-weight: 500; display: inline-block; }
     .activity-indent { padding-left: 32px; }
     .drag-handle { cursor: move; color: var(--text-muted); }
