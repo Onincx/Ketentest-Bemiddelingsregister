@@ -125,7 +125,7 @@
     .topnav-logo { color: #fff !important; }
   </style>
 
-  <nav class="topnav" style="background:#39870c !important;">
+  <nav class="topnav" id="mainNav" style="background:#39870c !important; top:121px;">
     <div class="topnav-logo">Bemiddelingsregister</div>
     <a href="dashboard.html">Dashboard</a>
     <a href="app.html">Ketentest</a>
@@ -199,11 +199,12 @@
 
     function applyLayout() {
       const banner = document.querySelector('img[src="ZinBanner.png"]');
-      const bh = banner ? banner.getBoundingClientRect().height : 76;
-      const nav = document.querySelector('.topnav');
-      const nh = nav ? nav.getBoundingClientRect().height : 56;
+      const bh = banner ? Math.ceil(banner.getBoundingClientRect().height) : 121;
+      const nav = document.getElementById('mainNav');
+      if (nav) nav.style.top = bh + 'px';
+      const nh = 56;
       const tbh = 44;
-      const toolbarTop = Math.ceil(bh) + nh;
+      const toolbarTop = bh + nh;
       const canvasTop  = toolbarTop + tbh;
       document.getElementById('toolbar').style.top = toolbarTop + 'px';
       document.getElementById('canvas').style.top  = canvasTop + 'px';
