@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { overflow: hidden; }
+    .flow-container { position: fixed; inset: 0; top: 120px; }
+    .flow-toolbar { position: fixed; top: 120px; left: 0; right: 0; z-index: 50; background: #fff; border-bottom: 1px solid #e5e7eb; padding: 8px 20px; display: flex; align-items: center; gap: 10px; height: 48px; }
+    .flow-canvas-wrap { position: fixed; inset: 0; top: 168px; overflow: hidden; background: #f8fafc; cursor: default; }
+    .flow-canvas-wrap.connecting { cursor: crosshair; }
+    svg#flowCanvas { width: 100%; height: 100%; position: absolute; top: 0; left: 0; }
+    .flow-node { position: absolute; width: 180px; border-radius: 8px; background: #fff; border: 2px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.08); cursor: grab; user-select: none; transition: border-color 0.15s, box-shadow 0.15s; }
+    .flow-node:hover { border-color: #39870c; box-shadow: 0 4px 16px rgba(57,135,12,0.15); }
+    .flow-node.selected { border-color: #39870c; box-shadow: 0 0 0 3px rgba(57,135,12,0.2); }
+    .flow-node.status-ok { border-color: #16a34a; }
+    .flow-node.status-nok { border-color: #dc2626; }
+    .flow-node.dragging { cursor: grabbing; box-shadow: 0 8px 24px rgba(0,0,0,0.15); z-index: 100; }
+    .node-header { padding: 8px 10px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: center; justify-content: space-between; }
+    .node-code { font-size: 10px; font-weight: 700; color: #6b7280; }
+    .node-status { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .node-status.ok { background: #16a34a; }
+    .node-status.nok { background: #dc2626; }
+    .node-status.open { background: #e5e7eb; }
+    .node-title { padding: 8px 10px; font-size: 12px; font-weight: 600; color: #1a1a1a; line-height: 1.4; }
+    .node-footer { padding: 4px 10px 8px; display: flex; gap: 4px; flex-wrap: wrap; }
+    .node-port { position: absolute; width: 12px; height: 12px; border-radius: 50%; background: #39870c; border: 2px solid #fff; cursor: crosshair; z-index: 10; opacity: 0; transition: opacity 0.15s; }
+    .flow-node:hover .node-port { opacity: 1; }
+    .node-port.port-out { bottom: -6px; left: 50%; transform: translateX(-50%); }
+    .node-port.port-in { top: -6px; left: 50%; transform: translateX(-50%); }
+    .node-pct { font-size: 10px; color: #6b7280; }
+    .node-pct-bar { height: 3px; background: #e5e7eb; border-radius: 99px; margin: 0 10px 6px; overflow: hidden; }
+    .node-pct-fill { height: 100%; background: #39870c; border-radius: 99px; }
+    /* Sidebar */
+    .flow-sidebar { position: fixed; right: 0; top: 168px; bottom: 0; width: 240px; background: #fff; border-left: 1px solid #e5e7eb; overflow-y: auto; padding: 12px; z-index: 40; }
+    .flow-sidebar h4 { font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .sidebar-scenario { padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; cursor: pointer; font-size: 12px; transition: all 0.15s; }
+    .sidebar-scenario:hover { border-color: #39870c; background: #f0fdf4; }
+    .sidebar-scenario.on-canvas { opacity: 0.4; cursor: default; }
+    .sidebar-scenario.on-canvas:hover { border-color: #e5e7eb; background: #fff; }
+    .sidebar-code { font-size: 10px; font-weight: 700; color: #6b7280; }
+    /* Detail panel */
+    .flow-detail { position: fixed; left: 0; top: 168px; bottom: 0; width: 380px; background: #fff; border-right: 1px solid #e5e7eb; overflow-y: auto; z-index: 45; transform: translateX(-100%); transition: transform 0.2s; }
+    .flow-detail.open { transform: translateX(0); }
+    .flow-detail-header { padding: 16px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: center; justify-content: space-between; background: #f5fbf0; }
+    .flow-detail-body { padding: 16px; }
+    /* Mode indicator */
+    .mode-badge { padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+    .mode-select { background: #f3f4f6; color: #374151; }
+    .mode-connect { background: #fef3c7; color: #92400e; }
+    /* Edge delete button */
+    .edge-delete { cursor: pointer; opacity: 0; transition: opacity 0.15s; }
+    .edge-delete:hover { opacity: 1 !important; }
+  </style>
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+  <style>
+    .topnav { background: #39870c !important; }
+    .topnav a { color: rgba(255,255,255,0.85) !important; }
+    .topnav a:hover, .topnav a.active { color: #fff !important; }
+    .topnav a.active { border-bottom-color: #fff !important; }
+    .topnav-logo { color: #fff !important; }
+  </style>
+
+  <nav class="topnav" style="background:#39870c !important;">
+    <div class="topnav-logo">Bemiddelingsregister</div>
+    <a href="dashboard.html">Dashboard</a>
+    <a href="app.html">Ketentest</a>
+    <a href="flow.html" class="active">Flow</a>
+    <div id="adminLink" style="display:none;"><a href="admin.html">Beheer</a></div>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
+    </div>
+  </nav>
+
+  <!-- Toolbar -->
+  <div class="flow-toolbar">
+    <button class="btn btn-sm" id="modeBtn" onclick="toggleMode()"
+      style="background:#f3f4f6; color:#374151; font-weight:600; min-width:160px;">
+      ✋ Verplaatsen
+    </button>
+    <div style="width:1px; height:24px; background:#e5e7eb;"></div>
+    <button class="btn btn-sm btn-outline" onclick="autoLayout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Auto-layout
+    </button>
+    <button class="btn btn-sm btn-outline" onclick="clearCanvas()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+      Canvas leegmaken
+    </button>
+    <div style="margin-left:auto; font-size:12px; color:#6b7280;" id="helpText">
+      Klik op scenario in lijst om toe te voegen · Schakel naar <strong>Verbinden</strong> om pijlen te tekenen
+    </div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="flow-canvas-wrap" id="canvasWrap">
+    <svg id="flowCanvas">
+      <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
+        </marker>
+        <marker id="arrowhead-hover" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+          <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+        </marker>
+      </defs>
+      <g id="edgeGroup"></g>
+      <g id="tempEdgeGroup"></g>
+    </svg>
+    <div id="nodesContainer"></div>
+  </div>
+
+  <!-- Sidebar: scenario lijst -->
+  <div class="flow-sidebar" id="sidebar">
+    <h4>Scenario's</h4>
+    <div id="sidebarList"><p style="font-size:12px; color:#6b7280;">Laden...</p></div>
+  </div>
+
+  <!-- Detail panel -->
+  <div class="flow-detail" id="detailPanel">
+    <div class="flow-detail-header">
+      <div>
+        <div style="font-size:11px; font-weight:700; color:#39870c;" id="detailCode"></div>
+        <div style="font-size:14px; font-weight:600;" id="detailTitle"></div>
+      </div>
+      <button onclick="closeDetail()" style="border:none; background:none; cursor:pointer; font-size:18px; color:#6b7280;">✕</button>
+    </div>
+    <div class="flow-detail-body" id="detailBody"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=20"></script>
+  <script>
+    let currentUser = null, currentProfile = null;
+    let scenarios = [], activities = [], results = [], nodes = {}, edges = [];
+    let mode = 'select'; // 'select' | 'connect'
+    let dragging = null, dragOffset = {x:0, y:0};
+    let connecting = null; // {fromId, startX, startY}
+    let canvasOffset = {x:0, y:0}, canvasScale = 1;
+    let isPanning = false, panStart = {x:0, y:0};
+
+    // ── Init ──────────────────────────────────────────────────
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+      currentProfile = await getUserProfile(currentUser.id);
+      document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
+      if (currentProfile?.role === 'admin') document.getElementById('adminLink').style.display = '';
+
+      await loadData();
+      renderSidebar();
+      renderAll();
+    })();
+
+    async function loadData() {
+      const [s, a, r, fn, fe] = await Promise.all([
+        sb.from('scenarios').select('*').order('code'),
+        sb.from('activities').select('*'),
+        sb.from('activity_results').select('*'),
+        sb.from('flow_nodes').select('*'),
+        sb.from('flow_edges').select('*'),
+      ]);
+      scenarios = s.data || [];
+      activities = a.data || [];
+      results = r.data || [];
+
+      // Bouw nodes object
+      nodes = {};
+      (fn.data || []).forEach(n => { nodes[n.scenario_id] = {x: n.x, y: n.y, dbId: n.id}; });
+      edges = fe.data || [];
+    }
+
+    // ── Status helpers ────────────────────────────────────────
+    function getStatus(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return 'open';
+      const statuses = acts.map(a => results.find(r => r.activity_id === a.id)?.result || 'open');
+      if (statuses.every(s => s === 'ok')) return 'ok';
+      if (statuses.some(s => s === 'nok')) return 'nok';
+      return 'open';
+    }
+
+    function getPct(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return 0;
+      const done = acts.filter(a => {
+        const r = results.find(r => r.activity_id === a.id);
+        return r && r.result !== 'open';
+      }).length;
+      return Math.round((done / acts.length) * 100);
+    }
+
+    // ── Mode ──────────────────────────────────────────────────
+    function toggleMode() {
+      mode = mode === 'select' ? 'connect' : 'select';
+      const btn = document.getElementById('modeBtn');
+      const wrap = document.getElementById('canvasWrap');
+      if (mode === 'connect') {
+        btn.textContent = '🔗 Verbinden (actief)';
+        btn.style.background = '#fef3c7'; btn.style.color = '#92400e';
+        wrap.style.cursor = 'crosshair';
+      } else {
+        btn.textContent = '✋ Verplaatsen';
+        btn.style.background = '#f3f4f6'; btn.style.color = '#374151';
+        wrap.style.cursor = 'default';
+      }
+    }
+
+    // ── Sidebar ───────────────────────────────────────────────
+    function renderSidebar() {
+      const onCanvas = new Set(Object.keys(nodes));
+      const list = document.getElementById('sidebarList');
+      list.innerHTML = scenarios.map(s => {
+        const on = onCanvas.has(s.id);
+        const status = getStatus(s.id);
+        const statusDot = {ok:'🟢', nok:'🔴', open:'⚪'}[status];
+        return `<div class="sidebar-scenario ${on ? 'on-canvas' : ''}"
+          onclick="${on ? '' : `addToCanvas('${s.id}')`}"
+          title="${on ? 'Al op canvas' : 'Klik om toe te voegen'}">
+          <div class="sidebar-code">${statusDot} ${s.code}</div>
+          <div style="font-size:11px; color:#374151; margin-top:2px; line-height:1.3;">${s.title}</div>
+        </div>`;
+      }).join('');
+    }
+
+    // ── Canvas rendering ──────────────────────────────────────
+    function renderAll() {
+      renderEdges();
+      renderNodes();
+      renderSidebar();
+    }
+
+    function renderNodes() {
+      const container = document.getElementById('nodesContainer');
+      // Verwijder nodes die niet meer bestaan
+      container.querySelectorAll('.flow-node').forEach(el => {
+        if (!nodes[el.dataset.scenarioId]) el.remove();
+      });
+
+      Object.entries(nodes).forEach(([scenarioId, pos]) => {
+        const s = scenarios.find(x => x.id === scenarioId);
+        if (!s) return;
+        const status = getStatus(scenarioId);
+        const pct = getPct(scenarioId);
+
+        let el = document.getElementById('node-' + scenarioId);
+        if (!el) {
+          el = document.createElement('div');
+          el.className = 'flow-node';
+          el.id = 'node-' + scenarioId;
+          el.dataset.scenarioId = scenarioId;
+          container.appendChild(el);
+          setupNodeEvents(el, scenarioId);
+        }
+
+        el.className = `flow-node status-${status}`;
+        el.dataset.scenarioId = scenarioId;
+        el.style.left = pos.x + 'px';
+        el.style.top = pos.y + 'px';
+        el.innerHTML = `
+          <div class="node-port port-in" data-port="in" data-scenario="${scenarioId}"></div>
+          <div class="node-header">
+            <span class="node-code">${s.code}</span>
+            <span class="node-status ${status}"></span>
+          </div>
+          <div class="node-title">${s.title}</div>
+          <div class="node-pct-bar"><div class="node-pct-fill" style="width:${pct}%"></div></div>
+          <div class="node-footer">
+            <span class="node-pct">${pct}% klaar</span>
+          </div>
+          <div class="node-port port-out" data-port="out" data-scenario="${scenarioId}"></div>`;
+        setupNodeEvents(el, scenarioId);
+      });
+    }
+
+    function setupNodeEvents(el, scenarioId) {
+      el.onmousedown = (e) => {
+        if (e.target.classList.contains('node-port')) return;
+        if (mode === 'connect') return;
+        e.preventDefault();
+        dragging = scenarioId;
+        const rect = el.getBoundingClientRect();
+        dragOffset = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        el.classList.add('dragging');
+      };
+
+      el.onclick = (e) => {
+        if (e.target.classList.contains('node-port')) return;
+        if (dragging) return;
+        openDetail(scenarioId);
+      };
+
+      // Port events voor verbinden
+      el.querySelectorAll('.node-port').forEach(port => {
+        port.onmousedown = (e) => {
+          e.stopPropagation();
+          if (mode !== 'connect') return;
+          e.preventDefault();
+          const rect = el.getBoundingClientRect();
+          const canvasRect = document.getElementById('canvasWrap').getBoundingClientRect();
+          connecting = {
+            fromId: scenarioId,
+            startX: rect.left - canvasRect.left + rect.width/2,
+            startY: rect.top - canvasRect.top + rect.height/2,
+          };
+        };
+      });
+    }
+
+    function renderEdges() {
+      const svg = document.getElementById('edgeGroup');
+      svg.innerHTML = '';
+      edges.forEach(edge => {
+        const fromNode = nodes[edge.from_id];
+        const toNode = nodes[edge.to_id];
+        if (!fromNode || !toNode) return;
+
+        const x1 = fromNode.x + 90, y1 = fromNode.y + 110;
+        const x2 = toNode.x + 90,  y2 = toNode.y;
+        const cy = (y1 + y2) / 2;
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = `M ${x1} ${y1} C ${x1} ${cy}, ${x2} ${cy}, ${x2} ${y2}`;
+        path.setAttribute('d', d);
+        path.setAttribute('stroke', '#39870c');
+        path.setAttribute('stroke-width', '2');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('marker-end', 'url(#arrowhead)');
+
+        // Hover area voor verwijderen
+        const hitPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        hitPath.setAttribute('d', d);
+        hitPath.setAttribute('stroke', 'transparent');
+        hitPath.setAttribute('stroke-width', '12');
+        hitPath.setAttribute('fill', 'none');
+        hitPath.style.cursor = 'pointer';
+        hitPath.title = 'Klik om verbinding te verwijderen';
+        hitPath.onmouseenter = () => { path.setAttribute('stroke', '#dc2626'); };
+        hitPath.onmouseleave = () => { path.setAttribute('stroke', '#39870c'); };
+        hitPath.onclick = () => deleteEdge(edge.id);
+
+        svg.appendChild(path);
+        svg.appendChild(hitPath);
+      });
+    }
+
+    // ── Canvas mouse events ───────────────────────────────────
+    const canvasWrap = document.getElementById('canvasWrap');
+
+    canvasWrap.onmousemove = (e) => {
+      if (dragging) {
+        const rect = canvasWrap.getBoundingClientRect();
+        const x = e.clientX - rect.left - dragOffset.x;
+        const y = e.clientY - rect.top - dragOffset.y;
+        nodes[dragging].x = Math.max(0, x);
+        nodes[dragging].y = Math.max(0, y);
+        const el = document.getElementById('node-' + dragging);
+        if (el) { el.style.left = nodes[dragging].x + 'px'; el.style.top = nodes[dragging].y + 'px'; }
+        renderEdges();
+      }
+
+      if (connecting) {
+        const rect = canvasWrap.getBoundingClientRect();
+        const x2 = e.clientX - rect.left;
+        const y2 = e.clientY - rect.top;
+        const tempSvg = document.getElementById('tempEdgeGroup');
+        const cy = (connecting.startY + y2) / 2;
+        tempSvg.innerHTML = `<path d="M ${connecting.startX} ${connecting.startY} C ${connecting.startX} ${cy}, ${x2} ${cy}, ${x2} ${y2}"
+          stroke="#39870c" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#arrowhead)"/>`;
+      }
+    };
+
+    canvasWrap.onmouseup = async (e) => {
+      if (dragging) {
+        await saveNodePosition(dragging);
+        document.getElementById('node-' + dragging)?.classList.remove('dragging');
+        dragging = null;
+      }
+
+      if (connecting) {
+        // Controleer of we op een node eindigen
+        const el = document.elementFromPoint(e.clientX, e.clientY);
+        const targetNode = el?.closest('.flow-node');
+        if (targetNode && targetNode.dataset.scenarioId !== connecting.fromId) {
+          await addEdge(connecting.fromId, targetNode.dataset.scenarioId);
+        }
+        connecting = null;
+        document.getElementById('tempEdgeGroup').innerHTML = '';
+      }
+    };
+
+    // ── CRUD ──────────────────────────────────────────────────
+    async function addToCanvas(scenarioId) {
+      // Zoek een lege plek
+      const x = 40 + (Object.keys(nodes).length % 5) * 220;
+      const y = 40 + Math.floor(Object.keys(nodes).length / 5) * 160;
+      const { data, error } = await sb.from('flow_nodes').insert({ scenario_id: scenarioId, x, y }).select().single();
+      if (error) { alert('Fout: ' + error.message); return; }
+      nodes[scenarioId] = { x, y, dbId: data.id };
+      renderNodes();
+      renderSidebar();
+    }
+
+    async function saveNodePosition(scenarioId) {
+      const node = nodes[scenarioId];
+      if (!node?.dbId) return;
+      await sb.from('flow_nodes').update({ x: node.x, y: node.y }).eq('id', node.dbId);
+    }
+
+    async function addEdge(fromId, toId) {
+      // Voorkom duplicaten en omgekeerde duplicaten
+      if (edges.some(e => e.from_id === fromId && e.to_id === toId)) return;
+      const { data, error } = await sb.from('flow_edges').insert({ from_id: fromId, to_id: toId }).select().single();
+      if (error) { alert('Fout: ' + error.message); return; }
+      edges.push(data);
+      renderEdges();
+    }
+
+    async function deleteEdge(edgeId) {
+      if (!confirm('Verbinding verwijderen?')) return;
+      await sb.from('flow_edges').delete().eq('id', edgeId);
+      edges = edges.filter(e => e.id !== edgeId);
+      renderEdges();
+    }
+
+    async function removeFromCanvas(scenarioId) {
+      const node = nodes[scenarioId];
+      if (!node?.dbId) return;
+      // Verwijder ook edges
+      const edgeIds = edges.filter(e => e.from_id === scenarioId || e.to_id === scenarioId).map(e => e.id);
+      for (const id of edgeIds) await sb.from('flow_edges').delete().eq('id', id);
+      edges = edges.filter(e => e.from_id !== scenarioId && e.to_id !== scenarioId);
+      await sb.from('flow_nodes').delete().eq('id', node.dbId);
+      delete nodes[scenarioId];
+      document.getElementById('node-' + scenarioId)?.remove();
+      renderEdges();
+      renderSidebar();
+    }
+
+    async function clearCanvas() {
+      if (!confirm('Wil je alle scenario\'s van het canvas verwijderen?')) return;
+      await sb.from('flow_edges').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await sb.from('flow_nodes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      nodes = {}; edges = [];
+      document.getElementById('nodesContainer').innerHTML = '';
+      renderEdges();
+      renderSidebar();
+    }
+
+    function autoLayout() {
+      // Simpele links-naar-rechts layout op basis van afhankelijkheden
+      const scenarioIds = Object.keys(nodes);
+      const inDegree = {};
+      scenarioIds.forEach(id => inDegree[id] = 0);
+      edges.forEach(e => { if (inDegree[e.to_id] !== undefined) inDegree[e.to_id]++; });
+
+      // Topologische sort
+      const levels = {};
+      const queue = scenarioIds.filter(id => inDegree[id] === 0);
+      queue.forEach(id => levels[id] = 0);
+
+      while (queue.length) {
+        const curr = queue.shift();
+        edges.filter(e => e.from_id === curr).forEach(e => {
+          if (nodes[e.to_id] !== undefined) {
+            levels[e.to_id] = Math.max(levels[e.to_id] || 0, (levels[curr] || 0) + 1);
+            queue.push(e.to_id);
+          }
+        });
+      }
+
+      // Positie per niveau
+      const perLevel = {};
+      Object.entries(levels).forEach(([id, lvl]) => {
+        if (!perLevel[lvl]) perLevel[lvl] = [];
+        perLevel[lvl].push(id);
+      });
+
+      const savePromises = [];
+      Object.entries(perLevel).forEach(([lvl, ids]) => {
+        ids.forEach((id, i) => {
+          nodes[id].x = parseInt(lvl) * 220 + 40;
+          nodes[id].y = i * 160 + 40;
+          savePromises.push(saveNodePosition(id));
+        });
+      });
+
+      Promise.all(savePromises);
+      renderAll();
+    }
+
+    // ── Detail panel ──────────────────────────────────────────
+    function openDetail(scenarioId) {
+      const s = scenarios.find(x => x.id === scenarioId);
+      if (!s) return;
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      const status = getStatus(scenarioId);
+      const statusLabel = {ok:'Geslaagd ✓', nok:'Mislukt ✗', open:'Open'}[status];
+      const statusColor = {ok:'#16a34a', nok:'#dc2626', open:'#6b7280'}[status];
+
+      document.getElementById('detailCode').textContent = s.code;
+      document.getElementById('detailTitle').textContent = s.title;
+
+      // Verbonden scenario's
+      const incoming = edges.filter(e => e.to_id === scenarioId).map(e => scenarios.find(x => x.id === e.from_id)).filter(Boolean);
+      const outgoing = edges.filter(e => e.from_id === scenarioId).map(e => scenarios.find(x => x.id === e.to_id)).filter(Boolean);
+
+      document.getElementById('detailBody').innerHTML = `
+        <div style="margin-bottom:16px;">
+          <span style="background:${statusColor}22; color:${statusColor}; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:600;">${statusLabel}</span>
+        </div>
+        ${s.gegeven ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:4px;">Gegeven</p><p style="font-size:13px; line-height:1.7; white-space:pre-wrap;">${s.gegeven}</p></div>` : ''}
+        ${s.wanneer ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:4px;">Wanneer</p><p style="font-size:13px; line-height:1.7;">${s.wanneer}</p></div>` : ''}
+        ${incoming.length ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Voorafgaande scenario's</p>${incoming.map(s => `<div style="font-size:12px; padding:4px 8px; background:#f5f5f5; border-radius:4px; margin-bottom:4px;">${s.code} — ${s.title}</div>`).join('')}</div>` : ''}
+        ${outgoing.length ? `<div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Volgende scenario's</p>${outgoing.map(s => `<div style="font-size:12px; padding:4px 8px; background:#f0fdf4; border-left:2px solid #39870c; border-radius:4px; margin-bottom:4px;">${s.code} — ${s.title}</div>`).join('')}</div>` : ''}
+        <div style="margin-bottom:12px;"><p style="font-size:11px; font-weight:700; color:#6b7280; text-transform:uppercase; margin-bottom:6px;">Activiteiten (${acts.length})</p>
+          ${acts.map(a => {
+            const r = results.find(x => x.activity_id === a.id);
+            const res = r?.result || 'open';
+            const dot = {ok:'🟢', nok:'🔴', open:'⚪'}[res];
+            return `<div style="font-size:12px; padding:5px 8px; border-bottom:1px solid #f3f4f6; display:flex; gap:6px;">${dot} ${a.description}</div>`;
+          }).join('')}
+        </div>
+        <div style="margin-top:16px; padding-top:12px; border-top:1px solid #e5e7eb;">
+          <button class="btn btn-outline btn-sm" style="color:#dc2626; border-color:#dc2626;" onclick="removeFromCanvas('${scenarioId}'); closeDetail();">
+            Van canvas verwijderen
+          </button>
+        </div>`;
+
+      document.getElementById('detailPanel').classList.add('open');
+    }
+
+    function closeDetail() {
+      document.getElementById('detailPanel').classList.remove('open');
+    }
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+</body>
+</html>
