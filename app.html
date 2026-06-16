@@ -239,17 +239,23 @@
       renderAll();
     })();
 
+    let flowNodes = [], flowEdges = [];
+
     async function loadData() {
       // Load orgs first so we can resolve acceptant_org manually
       const { data: orgData } = await sb.from('organisations').select('*');
       const allOrgs = orgData || [];
 
-      const [s, a, r] = await Promise.all([
+      const [s, a, r, fn, fe] = await Promise.all([
         sb.from('scenarios').select('*').order('code'),
         sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').order('sort_order'),
-        sb.from('activity_results').select('*').eq('user_id', currentUser.id)
+        sb.from('activity_results').select('*').eq('user_id', currentUser.id),
+        sb.from('flow_nodes').select('*'),
+        sb.from('flow_edges').select('*'),
       ]);
       scenarios = s.data || [];
+      flowNodes = fn.data || [];
+      flowEdges = fe.data || [];
       // Resolve acceptant_org manually to avoid Supabase alias issues
       activities = (a.data || []).map(act => ({
         ...act,
@@ -257,6 +263,40 @@
       }));
       results = {};
       (r.data || []).forEach(x => results[x.activity_id] = x);
+    }
+
+    // Geeft het eerste scenario ID in de flow (geen inkomende edges)
+    function getFlowRootId(scenarioId) {
+      const onCanvas = new Set(flowNodes.map(n => n.scenario_id));
+      if (!onCanvas.has(scenarioId)) return null; // niet in een flow
+
+      // Volg edges terug naar het begin
+      let current = scenarioId;
+      const visited = new Set();
+      while (true) {
+        if (visited.has(current)) break; // voorkom loops
+        visited.add(current);
+        const incoming = flowEdges.find(e => e.to_id === current && onCanvas.has(e.from_id));
+        if (!incoming) break; // geen inkomende edge = dit is de root
+        current = incoming.from_id;
+      }
+      return current;
+    }
+
+    function getClientnaam(scenarioId) {
+      const rootId = getFlowRootId(scenarioId);
+      if (!rootId) {
+        // Niet in een flow: eigen ID
+        const s = scenarios.find(x => x.id === scenarioId);
+        return s?.code || '';
+      }
+      // In een flow: ID van het eerste scenario
+      const root = scenarios.find(x => x.id === rootId);
+      return root?.code || '';
+    }
+
+    function isInFlow(scenarioId) {
+      return flowNodes.some(n => n.scenario_id === scenarioId);
     }
 
     function getScenarioStatus(scenarioId) {
@@ -603,7 +643,17 @@
           <button onclick="toggleScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
         </div>
         <div style="padding:0 20px 16px; overflow-x:auto;">
-          ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:12px 0;">${s.description}</p>` : ''}
+          <div style="display:flex; gap:12px; align-items:center; margin:10px 0 4px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Clientnaam</span>
+              <span style="font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:2px 8px; font-family:monospace;">${getClientnaam(s.id)}</span>
+            </div>
+            ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px; cursor:pointer;" onclick="window.location.href='flow.html'" title="Bekijk in Flow">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#39870c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span style="font-size:11px; font-weight:600; color:#39870c;">Onderdeel van flow</span>
+            </div>` : ''}
+          </div>
+          ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:8px 0;">${s.description}</p>` : ''}
           ${renderNotifLabels(getScenarioNotificaties(s.id), s.id)}
           ${(s.gegeven || s.wanneer) ? `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; padding:16px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);">
