@@ -11,6 +11,16 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
+    /* Scenario tabs in admin */
+    .admin-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; }
+    .admin-tab { padding: 9px 18px; font-size: 13px; font-weight: 500; color: var(--text-muted); background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.15s; margin-bottom: -1px; }
+    .admin-tab:hover { color: var(--text); }
+    .admin-tab.active { color: #39870c; border-bottom-color: #39870c; font-weight: 600; }
+    .admin-tab .tab-count { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; font-size: 11px; padding: 0px 6px; margin-left: 5px; }
+    .admin-tab.active .tab-count { background: #eaf3e0; border-color: #39870c; color: #39870c; }
+    /* Scenario kaart kleuren */
+    .section-card.has-activities { border-left: 3px solid #39870c; background: linear-gradient(to right, #f5fbf0 0%, #fff 40px); }
+    .section-card.no-activities { border-left: 3px solid #e5e7eb; }
     .org-badge { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 10px; font-size: 12px; font-weight: 500; display: inline-block; }
     .activity-indent { padding-left: 32px; }
     .drag-handle { cursor: move; color: var(--text-muted); }
@@ -513,6 +523,7 @@
   <script src="js/supabase-config.js?v=20"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
+    let adminActiveTab = null;
     const openSections = new Set(); // bijhoudt welke scenario's open zijn
     let activeTab = 'organisations';
 
@@ -755,6 +766,33 @@
     }
 
     // ---- SCENARIOS ----
+    function getAdminPrefix(code) {
+      const m = code.match(/^([A-Z]+\d+)-/);
+      return m ? m[1] : code.substring(0, 3);
+    }
+
+    function renderAdminTabs() {
+      const allPrefixes = [...new Set(scenarios.map(s => getAdminPrefix(s.code)))].sort();
+      if (allPrefixes.length <= 1) return '';
+      if (!adminActiveTab || !allPrefixes.includes(adminActiveTab)) adminActiveTab = allPrefixes[0];
+      return `<div class="admin-tabs">
+        <button class="admin-tab ${adminActiveTab === '__all__' ? 'active' : ''}" onclick="setAdminTab('__all__')">
+          Alle <span class="tab-count">${scenarios.length}</span>
+        </button>
+        ${allPrefixes.map(p => {
+          const count = scenarios.filter(s => getAdminPrefix(s.code) === p).length;
+          return `<button class="admin-tab ${adminActiveTab === p ? 'active' : ''}" onclick="setAdminTab('${p}')">
+            ${p} <span class="tab-count">${count}</span>
+          </button>`;
+        }).join('')}
+      </div>`;
+    }
+
+    function setAdminTab(prefix) {
+      adminActiveTab = prefix;
+      renderScenarios();
+    }
+
     function renderScenarios() {
       const wrap = document.getElementById('scenarioAdminList');
       const actOrgSel = document.getElementById('activityOrg');
@@ -762,6 +800,13 @@
       const orgOptions = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
       actOrgSel.innerHTML = orgOptions;
       actAccSel.innerHTML = orgOptions;
+
+      // Filter op actieve tab
+      const allPrefixes = [...new Set(scenarios.map(s => getAdminPrefix(s.code)))].sort();
+      if (!adminActiveTab && allPrefixes.length > 0) adminActiveTab = allPrefixes[0];
+      const filtered = (adminActiveTab && adminActiveTab !== '__all__')
+        ? scenarios.filter(s => getAdminPrefix(s.code) === adminActiveTab)
+        : scenarios;
 
       if (!scenarios.length) {
         wrap.innerHTML = '<div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg><p>Nog geen testscenario\'s. Voeg er een toe.</p></div>';
@@ -776,9 +821,10 @@
         });
       }, 0);
 
-      wrap.innerHTML = scenarios.map(s => {
+      wrap.innerHTML = renderAdminTabs() + filtered.map(s => {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
-        return `<div class="section-card">
+        const hasActs = acts.length > 0;
+      return `<div class="section-card ${hasActs ? 'has-activities' : 'no-activities'}">
           <div class="section-card-header" onclick="toggleSection('sc-${s.id}')">
             <div style="display:flex; align-items:center; gap:12px; flex:1">
               <span style="font-size:12px; font-weight:600; color:var(--text-muted); min-width:60px">${s.code}</span>
