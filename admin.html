@@ -167,7 +167,12 @@
           <h1>Notificaties</h1>
           <p>Overzicht van alle notificaties en hun gebruik in de testscenario's.</p>
         </div>
+        <button class="btn btn-primary" id="scanBtn" onclick="scanActivities()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Scan activiteiten
+        </button>
       </div>
+      <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
       <div id="notificationsOverview"></div>
     </div>
 
@@ -582,6 +587,70 @@
     }
 
     // ---- ORGS ----
+    // Bouw regex die zowel spaties als underscores herkent, hoofdletterongevoelig
+    function buildPattern(label) {
+      const escaped = label.replace(/_/g, '[_\\s]+');
+      return new RegExp(escaped, 'gi');
+    }
+
+    // Highlight een tekst door notificaties te markeren
+    function highlightText(text) {
+      if (!text) return text;
+      let result = text;
+      NOTIFICATIES.forEach(n => {
+        const pattern = buildPattern(n.label);
+        const c = NOTIF_COLORS[n.type];
+        result = result.replace(pattern, match =>
+          `<mark style="background:${c.bg}; color:${c.color}; border-radius:3px; padding:0 3px; font-weight:600; border-bottom:2px solid ${c.border};">${match}</mark>`
+        );
+      });
+      return result;
+    }
+
+    async function scanActivities() {
+      const btn = document.getElementById('scanBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span style="opacity:0.6">Scannen...</span>';
+
+      let totalFound = 0;
+      let updatedCount = 0;
+
+      // Scan alle activiteiten en sla gevonden notificaties op als markering
+      // We slaan de resultaten op in een lokale map voor weergave
+      const scanResults = {}; // notificatie label → [scenario codes]
+
+      NOTIFICATIES.forEach(n => { scanResults[n.label] = []; });
+
+      activities.forEach(a => {
+        const text = a.description || '';
+        NOTIFICATIES.forEach(n => {
+          const pattern = buildPattern(n.label);
+          if (pattern.test(text)) {
+            const s = scenarios.find(x => x.id === a.scenario_id);
+            if (s && !scanResults[n.label].includes(s.code)) {
+              scanResults[n.label].push(s.code);
+              totalFound++;
+            }
+          }
+        });
+      });
+
+      // Sla scanresultaten op voor renderNotifications
+      window._scanResults = scanResults;
+
+      // Toon resultaat
+      const resultEl = document.getElementById('scanResult');
+      const usedCount = Object.values(scanResults).filter(v => v.length > 0).length;
+      resultEl.style.display = '';
+      resultEl.className = 'alert alert-success';
+      resultEl.innerHTML = `Scan voltooid: <strong>${usedCount}</strong> van de ${NOTIFICATIES.length} notificaties gevonden in de activiteiten.`;
+
+      btn.disabled = false;
+      btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Scan activiteiten';
+
+      renderNotifications();
+    }
+
     function renderNotifications() {
       const wrap = document.getElementById('notificationsOverview');
       if (!wrap) return;
@@ -635,9 +704,19 @@
                         : `<span style="background:#f3f4f6; color:#9ca3af; border-radius:99px; padding:2px 10px; font-size:12px;">–</span>`}
                     </td>
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
-                      ${inUse
-                        ? matchingScenarios.map(s => `<span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; margin:1px 2px; color:var(--text);">${s.code}</span>`).join('')
-                        : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">Nog niet gebruikt</span>`}
+                      ${inUse ? `
+                        <div style="display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px;">
+                          ${matchingScenarios.map(s => `<span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--text);">${s.code}</span>`).join('')}
+                        </div>
+                        ${window._scanResults ? `<div style="margin-top:4px;">
+                          ${matchingScenarios.slice(0,2).map(s => {
+                            const acts = activities.filter(a => a.scenario_id === s.id);
+                            const matchAct = acts.find(a => buildPattern(n.label).test(a.description||''));
+                            return matchAct ? `<div style="font-size:11px; color:var(--text-muted); margin-top:3px; padding:3px 6px; background:var(--surface); border-radius:4px; border-left:2px solid ${c.border};">${highlightText(matchAct.description)}</div>` : '';
+                          }).join('')}
+                          ${matchingScenarios.length > 2 ? `<div style="font-size:11px; color:var(--text-muted); margin-top:2px;">+${matchingScenarios.length-2} meer...</div>` : ''}
+                        </div>` : ''}
+                      ` : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">Nog niet gebruikt</span>`}
                     </td>
                   </tr>`;
                 }).join('')}
