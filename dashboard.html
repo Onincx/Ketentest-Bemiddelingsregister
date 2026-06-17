@@ -118,7 +118,7 @@
     <div class="dash-grid">
 
       <!-- Voortgang per organisatie -->
-      <div class="dash-card">
+      <div class="dash-card" style="grid-column: 1 / -1;">
         <h3><div class="dot" style="background:var(--brand-mid);"></div>Voortgang per organisatie</h3>
         <div id="orgProgress"><p class="empty-dash">Laden...</p></div>
       </div>
@@ -126,6 +126,12 @@
       <!-- Voortgang per scenario -->
       <div class="dash-card">
         <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per scenario</h3>
+        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;" id="scenarioFilterBtns">
+          <button class="btn btn-sm" id="sf-all" onclick="setScenarioFilter('all',this)" style="background:#8b5cf6;color:#fff;border-color:#8b5cf6;">Alle</button>
+          <button class="btn btn-sm btn-outline" id="sf-nok" onclick="setScenarioFilter('nok',this)">❌ NOK</button>
+          <button class="btn btn-sm btn-outline" id="sf-open" onclick="setScenarioFilter('open',this)">⏳ Open</button>
+          <button class="btn btn-sm btn-outline" id="sf-ok" onclick="setScenarioFilter('ok',this)">✅ Klaar</button>
+        </div>
         <div id="scenarioProgress"><p class="empty-dash">Laden...</p></div>
       </div>
 
@@ -135,11 +141,7 @@
         <div id="nokOverview"><p class="empty-dash">Laden...</p></div>
       </div>
 
-      <!-- Wie heeft nog niets ingevuld -->
-      <div class="dash-card" style="grid-column: 1 / -1;">
-        <h3><div class="dot" style="background:#e67e22;"></div>Nog geen activiteit ingevuld</h3>
-        <div id="uninvitedOverview"><p class="empty-dash">Laden...</p></div>
-      </div>
+
 
     </div>
 
@@ -213,7 +215,7 @@
       renderOrgProgress();
       renderScenarioProgress();
       renderNokOverview();
-      renderUninvited();
+
 
       document.getElementById('lastUpdated').textContent =
         'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
@@ -227,24 +229,42 @@
         const orgActs = activities.filter(a => a.organisation_id === org.id);
         const total = orgActs.length;
         if (total === 0) return null;
-        const ok  = orgActs.filter(a => getResult(a.id) === 'ok').length;
-        const nok = orgActs.filter(a => getResult(a.id) === 'nok').length;
-        const pct = Math.round(((ok + nok) / total) * 100);
-        return { org, total, ok, nok, pct };
+        const ok   = orgActs.filter(a => getResult(a.id) === 'ok').length;
+        const nok  = orgActs.filter(a => getResult(a.id) === 'nok').length;
+        const open = total - ok - nok;
+        const pct  = Math.round(((ok + nok) / total) * 100);
+        return { org, total, ok, nok, open, pct };
       }).filter(Boolean).sort((a,b) => b.pct - a.pct);
 
       if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan organisaties.</p>'; return; }
 
-      el.innerHTML = rows.map(({ org, total, ok, nok, pct }) => `
-        <div class="org-row">
-          <span class="org-row-label" title="${org.name}">${org.name}</span>
-          <div class="org-bar-wrap">
-            ${ok  > 0 ? `<div class="org-bar-ok" style="width:${Math.round(ok/total*100)}%"></div>` : ''}
-            ${nok > 0 ? `<div class="org-bar-nok" style="width:${Math.round(nok/total*100)}%"></div>` : ''}
-          </div>
-          <span class="org-pct">${pct}%</span>
-          <span class="org-counts">${ok+nok}/${total}</span>
-        </div>`).join('');
+      el.innerHTML = `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;">` +
+        rows.map(({ org, total, ok, nok, open, pct }) => {
+          const okPct   = total > 0 ? Math.round(ok/total*100) : 0;
+          const nokPct  = total > 0 ? Math.round(nok/total*100) : 0;
+          const statusColor = nok > 0 ? '#dc2626' : (ok === total ? '#16a34a' : '#e67e22');
+          const statusLabel = nok > 0 ? 'Heeft NOK' : (ok === total ? 'Volledig klaar' : 'Bezig');
+          const statusBg    = nok > 0 ? '#fee2e2' : (ok === total ? '#dcfce7' : '#fef3c7');
+          return `<div style="border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; border-top:3px solid ${statusColor};">
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px;">
+              <div>
+                <div style="font-size:14px; font-weight:700; color:#1a1a1a;">${org.name}</div>
+                <div style="font-size:11px; color:#6b7280; margin-top:2px;">${total} activiteit${total!==1?'en':''}</div>
+              </div>
+              <span style="background:${statusBg}; color:${statusColor}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700; white-space:nowrap;">${statusLabel}</span>
+            </div>
+            <div style="display:flex; height:10px; border-radius:99px; overflow:hidden; background:#f3f4f6; margin-bottom:10px;">
+              ${ok  > 0 ? `<div style="width:${okPct}%;  background:#16a34a; transition:width 0.4s;"></div>` : ''}
+              ${nok > 0 ? `<div style="width:${nokPct}%; background:#dc2626; transition:width 0.4s;"></div>` : ''}
+            </div>
+            <div style="display:flex; gap:12px; font-size:12px; font-weight:500;">
+              <span style="color:#16a34a;">✓ ${ok} OK</span>
+              ${nok > 0 ? `<span style="color:#dc2626;">✗ ${nok} NOK</span>` : ''}
+              ${open > 0 ? `<span style="color:#6b7280;">○ ${open} open</span>` : ''}
+              <span style="margin-left:auto; font-weight:700; color:#1a1a1a;">${pct}%</span>
+            </div>
+          </div>`;
+        }).join('') + '</div>';
     }
 
     function renderScenarioProgress() {
@@ -305,32 +325,7 @@
         </div>`).join('') + `</div>`;
     }
 
-    function renderUninvited() {
-      const el = document.getElementById('uninvitedOverview');
 
-      // Gebruikers die aan een organisatie zijn gekoppeld maar nog geen enkel resultaat hebben ingevoerd
-      const activeUsers = users.filter(u => u.organisation_id && u.role === 'user');
-
-      const uninvited = activeUsers.filter(u => {
-        // Kijk of deze gebruiker iets heeft ingevuld
-        const hasResult = results.some(r => r.user_id === u.id);
-        return !hasResult;
-      });
-
-      if (!uninvited.length) {
-        el.innerHTML = '<p class="empty-dash">Alle gebruikers hebben al minstens één activiteit ingevuld.</p>';
-        return;
-      }
-
-      el.innerHTML = `<div style="max-height:280px; overflow-y:auto;">` + uninvited.map(u => `
-        <div class="uninvited-row">
-          <div style="flex:1;">
-            <div style="font-size:13px; font-weight:500;">${u.name || u.email}</div>
-            <div style="font-size:11px; color:var(--text-muted);">${u.email} · ${u.organisations?.name || '—'}</div>
-          </div>
-          <span class="badge badge-open" style="font-size:11px;">Nog niets ingevuld</span>
-        </div>`).join('') + `</div>`;
-    }
 
     async function doLogout() {
       await sb.auth.signOut();
