@@ -421,6 +421,43 @@
       }
     }
 
+    const NOTIFICATIES_APP = [
+      { pattern: /nieuwe[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi,  type: 'nieuw' },
+      { pattern: /nieuwe[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,    type: 'nieuw' },
+      { pattern: /nieuwe[_\s]+overdracht[_\s]+zorgkantoor/gi,                 type: 'nieuw' },
+      { pattern: /nieuwe[_\s]+regiehouder[_\s]+zorgaanbieder/gi,              type: 'nieuw' },
+      { pattern: /nieuwe[_\s]+regierol[_\s]+zorgaanbieder/gi,                 type: 'nieuw' },
+      { pattern: /gewijzigde[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi, type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,   type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]+overdracht[_\s]+zorgkantoor/gi,               type: 'gewijzigd' },
+      { pattern: /gewijzigde[_\s]+regiehouder[_\s]+zorgaanbieder/gi,            type: 'gewijzigd' },
+      { pattern: /informatieve[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi, type: 'informatief' },
+      { pattern: /informatieve[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,   type: 'informatief' },
+      { pattern: /verwijderde[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi,  type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,    type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]+overdracht[_\s]+zorgkantoor/gi,                type: 'verwijderd' },
+      { pattern: /verwijderde[_\s]+regiehouder[_\s]+zorgaanbieder/gi,             type: 'verwijderd' },
+    ];
+
+    const NOTIF_STYLE = {
+      nieuw:       'background:#d1fae5; color:#065f46; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #6ee7b7;',
+      gewijzigd:   'background:#fef3c7; color:#92400e; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #fcd34d;',
+      informatief: 'background:#dbeafe; color:#1e40af; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #93c5fd;',
+      verwijderd:  'background:#fee2e2; color:#991b1b; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #fca5a5;',
+    };
+
+    function highlightNotificaties(text) {
+      if (!text) return text;
+      let result = text;
+      NOTIFICATIES_APP.forEach(n => {
+        n.pattern.lastIndex = 0;
+        result = result.replace(n.pattern, match =>
+          `<mark style="${NOTIF_STYLE[n.type]}">${match}</mark>`
+        );
+      });
+      return result;
+    }
+
     let activeTabPrefix = null;
 
     function getScenarioPrefix(code) {
@@ -573,7 +610,7 @@
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
-            <div style="font-size:13px;">${a.description}</div>
+            <div style="font-size:13px;">${highlightNotificaties(a.description)}</div>
             <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px; overflow:visible; min-width:0;">
               <div class="result-toggle">
