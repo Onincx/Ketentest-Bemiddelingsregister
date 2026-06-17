@@ -682,12 +682,18 @@
               </thead>
               <tbody>
                 ${notifs.map(n => {
-                  // Zoek scenario's die deze notificatie gebruiken
-                  const pattern = new RegExp(n.label.replace(/_/g, '[_\s]'), 'i');
-                  const matchingScenarios = scenarios.filter(s => {
-                    const acts = activities.filter(a => a.scenario_id === s.id);
-                    return acts.some(a => pattern.test(a.description || ''));
-                  });
+                  // Gebruik scanresultaten als beschikbaar, anders live zoeken
+                  let matchingScenarios;
+                  if (window._scanResults && window._scanResults[n.label] !== undefined) {
+                    const codes = window._scanResults[n.label];
+                    matchingScenarios = scenarios.filter(s => codes.includes(s.code));
+                  } else {
+                    const pat = buildPattern(n.label);
+                    matchingScenarios = scenarios.filter(s => {
+                      const acts = activities.filter(a => a.scenario_id === s.id);
+                      return acts.some(a => { pat.lastIndex=0; return pat.test(a.description||''); });
+                    });
+                  }
                   const count = matchingScenarios.length;
                   const inUse = count > 0;
 
