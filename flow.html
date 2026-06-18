@@ -502,19 +502,14 @@
       if (!n) return;
       const newIsStart = !n.isStart;
 
-      // Als dit de start wordt: zet op x=20, y=20 (links)
-      // En verwijder start status van andere nodes in dezelfde flow
       if (newIsStart) {
-        // Verwijder start van andere nodes
-        for (const [otherId, otherNode] of Object.entries(nodePositions)) {
-          if (otherId !== sid && otherNode.isStart) {
-            otherNode.isStart = false;
-            await sb.from('flow_nodes').update({ is_start: false }).eq('id', otherNode.dbId);
-          }
-        }
-        // Verplaats naar links
-        n.x = 20; n.y = 20;
-        await sb.from('flow_nodes').update({ is_start: true, x: 20, y: 20 }).eq('id', n.dbId);
+        // Verplaats naar links, maar zoek een vrije y-positie
+        const startNodes = Object.entries(nodePositions).filter(([id, p]) => p.isStart && id !== sid);
+        const usedY = startNodes.map(([,p]) => p.y);
+        let y = 20;
+        while (usedY.some(uy => Math.abs(uy - y) < 160)) y += 160;
+        n.x = 20; n.y = y;
+        await sb.from('flow_nodes').update({ is_start: true, x: 20, y }).eq('id', n.dbId);
       } else {
         await sb.from('flow_nodes').update({ is_start: false }).eq('id', n.dbId);
       }
