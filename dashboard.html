@@ -114,6 +114,25 @@
       </div>
     </div>
 
+    <!-- Diagrammen -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;" id="chartsRow">
+      <!-- Taartdiagram -->
+      <div class="dash-card">
+        <h3><div class="dot" style="background:#39870c;"></div>Verdeling activiteiten</h3>
+        <div style="display:flex; align-items:center; gap:24px;">
+          <div style="position:relative; width:160px; height:160px; flex-shrink:0;">
+            <canvas id="pieChart"></canvas>
+          </div>
+          <div id="pieLegend" style="font-size:13px; line-height:2.2;"></div>
+        </div>
+      </div>
+      <!-- Heatmap NOK's -->
+      <div class="dash-card">
+        <h3><div class="dot" style="background:#dc2626;"></div>Scenario's met NOK's</h3>
+        <div id="nokHeatmap" style="max-height:220px; overflow-y:auto;"></div>
+      </div>
+    </div>
+
     <!-- Dashboard secties -->
     <div class="dash-grid">
 
@@ -148,6 +167,7 @@
     <p class="last-updated" id="lastUpdated"></p>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=20"></script>
   <script>
@@ -215,6 +235,7 @@
       renderOrgProgress();
       renderScenarioProgress();
       renderNokOverview();
+      renderCharts();
 
 
       document.getElementById('lastUpdated').textContent =
@@ -326,6 +347,104 @@
     }
 
 
+
+    let pieChartInstance = null;
+
+    function renderCharts() {
+      renderPieChart();
+      renderNokHeatmap();
+    }
+
+    function renderPieChart() {
+      const totalActs = activities.length;
+      const ok   = results.filter(r => r.result === 'ok').length;
+      const nok  = results.filter(r => r.result === 'nok').length;
+      const open = totalActs - ok - nok;
+
+      const ctx = document.getElementById('pieChart');
+      if (!ctx) return;
+
+      if (pieChartInstance) pieChartInstance.destroy();
+
+      pieChartInstance = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['OK', 'NOK', 'Open'],
+          datasets: [{
+            data: [ok, nok, open],
+            backgroundColor: ['#16a34a', '#dc2626', '#e5e7eb'],
+            borderWidth: 2,
+            borderColor: '#fff',
+          }]
+        },
+        options: {
+          cutout: '65%',
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: ctx => ` ${ctx.label}: ${ctx.raw} (${totalActs > 0 ? Math.round(ctx.raw/totalActs*100) : 0}%)`
+              }
+            }
+          }
+        }
+      });
+
+      // Custom legenda
+      const pct = v => totalActs > 0 ? Math.round(v/totalActs*100) : 0;
+      document.getElementById('pieLegend').innerHTML = `
+        <div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#16a34a;margin-right:6px;vertical-align:-1px;"></span><strong style="color:#16a34a;">${ok}</strong> OK <span style="color:#6b7280;">(${pct(ok)}%)</span></div>
+        <div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#dc2626;margin-right:6px;vertical-align:-1px;"></span><strong style="color:#dc2626;">${nok}</strong> NOK <span style="color:#6b7280;">(${pct(nok)}%)</span></div>
+        <div><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#e5e7eb;margin-right:6px;vertical-align:-1px;"></span><strong style="color:#6b7280;">${open}</strong> Open <span style="color:#6b7280;">(${pct(open)}%)</span></div>
+        <div style="margin-top:8px; padding-top:8px; border-top:1px solid #f3f4f6; font-size:12px; color:#6b7280;">${totalActs} activiteiten totaal</div>`;
+    }
+
+    function renderNokHeatmap() {
+      const el = document.getElementById('nokHeatmap');
+      if (!el) return;
+
+      // Bereken NOK's per scenario
+      const rows = scenarios.map(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id);
+        const nokActs = acts.filter(a => results.find(r => r.activity_id === a.id)?.result === 'nok');
+        return { s, total: acts.length, nok: nokActs.length, nokActs };
+      }).filter(r => r.nok > 0).sort((a,b) => b.nok - a.nok);
+
+      if (!rows.length) {
+        el.innerHTML = '<p class="empty-dash">Geen NOK's gevonden. Alles loopt goed! 🎉</p>';
+        return;
+      }
+
+      const maxNok = rows[0].nok;
+
+      el.innerHTML = rows.map(({ s, total, nok, nokActs }) => {
+        const intensity = maxNok > 0 ? nok / maxNok : 0;
+        const r = Math.round(220 + (220-220)*intensity);
+        const g = Math.round(38  + (0)*intensity);
+        const b = Math.round(38  + (0)*intensity);
+        const bg = `rgba(220,38,38,${0.08 + intensity * 0.25})`;
+        const border = `rgba(220,38,38,${0.2 + intensity * 0.5})`;
+
+        return `<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; background:${bg}; border:1px solid ${border}; border-radius:8px; border-left:3px solid #dc2626;">
+          <div style="flex:1; min-width:0;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:11px; font-weight:700; color:#dc2626;">${s.code}</span>
+              <span style="font-size:12px; color:#1a1a1a; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${s.title}</span>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:4px; flex-wrap:wrap;">
+              ${nokActs.map(a => {
+                const r = results.find(x => x.activity_id === a.id);
+                return `<span style="font-size:10px; background:#fee2e2; color:#991b1b; border-radius:4px; padding:1px 6px;" title="${r?.notes||''}">${a.description.substring(0,40)}${a.description.length>40?'...':''}</span>`;
+              }).join('')}
+            </div>
+          </div>
+          <div style="text-align:center; flex-shrink:0;">
+            <div style="font-size:20px; font-weight:800; color:#dc2626; line-height:1;">${nok}</div>
+            <div style="font-size:10px; color:#6b7280;">NOK</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
     async function doLogout() {
       await sb.auth.signOut();
