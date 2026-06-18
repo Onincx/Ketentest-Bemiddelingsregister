@@ -26,9 +26,7 @@
     .flow-canvas {
       position: fixed; left: 240px; right: 0; bottom: 0;
       background: #f0f4f8;
-      background-image: radial-gradient(circle, #cbd5e1 1px, transparent 1px);
-      background-size: 24px 24px;
-      overflow: hidden;
+      overflow: auto;
     }
 
     /* SVG voor pijlen - altijd bovenop nodes */
@@ -52,6 +50,14 @@
     }
     .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 0 0 2px #39870c; z-index: 6; }
     .flow-node.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 0 0 2px #39870c; z-index: 20; }
+
+    /* Start node - groter en prominenter */
+    .flow-node.start-node { width: 260px; box-shadow: 0 4px 16px rgba(57,135,12,0.20), 0 0 0 3px #39870c; }
+    .flow-node.start-node:hover { box-shadow: 0 8px 24px rgba(57,135,12,0.25), 0 0 0 3px #2d6e09; }
+    .flow-node.start-node .node-head { background: linear-gradient(135deg, #eaf3e0, #d1fae5) !important; }
+    .flow-node.start-node .node-code { font-size: 13px !important; }
+    .flow-node.start-node .node-title { font-size: 14px !important; padding: 12px 14px 8px !important; }
+    .start-badge { display:inline-flex; align-items:center; gap:3px; background:#39870c; color:#fff; border-radius:4px; padding:1px 7px; font-size:10px; font-weight:700; letter-spacing:0.03em; }
 
     /* Status kleuren */
     .flow-node.s-ok   { box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #16a34a; }
@@ -152,7 +158,8 @@
 
   <!-- Canvas -->
   <div class="flow-canvas" id="canvas">
-    <svg id="arrowSvg">
+    <div id="canvasInner" style="position:relative; width:3000px; height:2000px; background-image:radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size:24px 24px;">
+    <svg id="arrowSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;">
       <defs>
         <marker id="arr" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
           <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
@@ -167,9 +174,10 @@
       <g id="edges"></g>
       <path id="tempEdge" d="" stroke="#6b7280" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#arr-temp)" style="display:none;"/>
     </svg>
-    <div id="nodes"></div>
+    <div id="nodes" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
   </div>
 
+    </div><!-- /canvasInner -->
   <!-- Sidebar -->
   <div class="flow-sidebar" id="sidebar">
     <h4>Scenario's toevoegen</h4>
@@ -241,7 +249,7 @@
       results    = r.data || [];
       edges      = fe.data || [];
       nodePositions = {};
-      (fn.data || []).forEach(n => nodePositions[n.scenario_id] = {x:n.x, y:n.y, dbId:n.id});
+      (fn.data || []).forEach(n => nodePositions[n.scenario_id] = {x:n.x, y:n.y, dbId:n.id, isStart:n.is_start||false});
       (o.data || []).forEach(o => orgs[o.id] = o.name || o.code);
     }
 
@@ -298,13 +306,17 @@
         const status = getStatus(sid);
         const pct = getPct(sid);
         const acts = activities.filter(a => a.scenario_id === sid);
-        el.className = `flow-node s-${status}`;
+        const isStart = pos.isStart || false;
+        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}`;
         el.dataset.id = sid;
         el.style.left = pos.x + 'px';
         el.style.top  = pos.y + 'px';
         el.innerHTML = `
           <div class="node-head">
-            <span class="node-code">${s.code}</span>
+            <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0;">
+              ${isStart ? '<span class="start-badge">▶ START</span>' : ''}
+              <span class="node-code">${s.code}</span>
+            </div>
             <span class="node-emoji">${{ok:'✅',nok:'❌',open:'⏳'}[status]}</span>
           </div>
           <div class="node-title">${s.title}</div>
@@ -313,6 +325,7 @@
             <span class="node-pct">${pct}% · ${acts.length} act.</span>
             <div class="node-actions">
               <button class="node-btn connect ${connecting===sid?'active':''}" onclick="event.stopPropagation(); startConnect('${sid}')">🔗 Verbinden</button>
+              <button class="node-btn ${isStart?'active':'connect'}" onclick="event.stopPropagation(); toggleStart('${sid}')" title="${isStart?'Start verwijderen':'Markeer als start'}">${isStart?'⭐ Start':'☆ Start'}</button>
               <button class="node-btn remove" onclick="event.stopPropagation(); removeNode('${sid}')">✕</button>
             </div>
           </div>`;
@@ -337,9 +350,10 @@
 
     document.getElementById('canvas').addEventListener('mousemove', (e) => {
       if (dragging) {
-        const rect = document.getElementById('canvas').getBoundingClientRect();
-        const x = Math.max(0, e.clientX - rect.left - dragOff.x);
-        const y = Math.max(0, e.clientY - rect.top  - dragOff.y);
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
+        const x = Math.max(0, e.clientX - rect.left + canvas.scrollLeft - dragOff.x);
+        const y = Math.max(0, e.clientY - rect.top  + canvas.scrollTop  - dragOff.y);
         nodePositions[dragging].x = x;
         nodePositions[dragging].y = y;
         const el = document.getElementById('fn-' + dragging);
@@ -347,14 +361,14 @@
         renderEdges();
       }
       if (connecting) {
-        const rect = document.getElementById('canvas').getBoundingClientRect();
+        const canvas = document.getElementById('canvas');
+        const rect = canvas.getBoundingClientRect();
         const fromEl = document.getElementById('fn-' + connecting);
         if (!fromEl) return;
-        const fRect = fromEl.getBoundingClientRect();
-        const x1 = fRect.left - rect.left + fRect.width/2;
-        const y1 = fRect.top  - rect.top  + fRect.height/2;
-        const x2 = e.clientX - rect.left;
-        const y2 = e.clientY - rect.top;
+        const x1 = nodePositions[connecting].x + (fromEl.offsetWidth||190)/2;
+        const y1 = nodePositions[connecting].y + (fromEl.offsetHeight||110)/2;
+        const x2 = e.clientX - rect.left + canvas.scrollLeft;
+        const y2 = e.clientY - rect.top  + canvas.scrollTop;
         const mx = (x1+x2)/2;
         const temp = document.getElementById('tempEdge');
         temp.setAttribute('d', `M${x1},${y1} C${mx},${y1} ${mx},${y2} ${x2},${y2}`);
@@ -483,6 +497,33 @@
     }
 
     // ── CRUD ──────────────────────────────────────────────────
+    async function toggleStart(sid) {
+      const n = nodePositions[sid];
+      if (!n) return;
+      const newIsStart = !n.isStart;
+
+      // Als dit de start wordt: zet op x=20, y=20 (links)
+      // En verwijder start status van andere nodes in dezelfde flow
+      if (newIsStart) {
+        // Verwijder start van andere nodes
+        for (const [otherId, otherNode] of Object.entries(nodePositions)) {
+          if (otherId !== sid && otherNode.isStart) {
+            otherNode.isStart = false;
+            await sb.from('flow_nodes').update({ is_start: false }).eq('id', otherNode.dbId);
+          }
+        }
+        // Verplaats naar links
+        n.x = 20; n.y = 20;
+        await sb.from('flow_nodes').update({ is_start: true, x: 20, y: 20 }).eq('id', n.dbId);
+      } else {
+        await sb.from('flow_nodes').update({ is_start: false }).eq('id', n.dbId);
+      }
+
+      n.isStart = newIsStart;
+      renderNodes();
+      renderEdges();
+    }
+
     async function addNode(sid) {
       const count = Object.keys(nodePositions).length;
       const x = 20 + (count % 4) * 220;
@@ -511,7 +552,7 @@
     async function savePos(sid) {
       const n = nodePositions[sid];
       if (!n?.dbId) return;
-      await sb.from('flow_nodes').update({x:n.x, y:n.y}).eq('id',n.dbId);
+      await sb.from('flow_nodes').update({x:n.x, y:n.y, is_start:n.isStart||false}).eq('id',n.dbId);
     }
 
     async function clearAll() {
