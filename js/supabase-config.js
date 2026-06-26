@@ -4,8 +4,8 @@
 // Je vindt deze in: Supabase Dashboard → Project Settings → API
 // ============================================================
 
-const SUPABASE_URL = 'https://JOUW_PROJECT_ID.supabase.co';
-const SUPABASE_ANON_KEY = 'JOUW_ANON_PUBLIC_KEY';
+const SUPABASE_URL = 'https://hhrfrawgrsxrmgxzfewd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImhocmZyYXdncnN4cm1neHpmZXdkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExMTU4OTUsImV4cCI6MjA5NjY5MTg5NX0.ANwuNwfQGUO4BjdQ3OXWYfz04m_QvmnhB44wy1g8yfg';
 
 // Initialiseer de Supabase client
 const { createClient } = supabase;
