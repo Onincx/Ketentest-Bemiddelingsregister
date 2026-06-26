@@ -52,6 +52,7 @@
     <a href="dashboard.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</a>
     <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
     <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest</a>
+    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
@@ -63,9 +64,11 @@
   <div class="page-wrap">
     <div id="alert" class="alert" style="display:none;"></div>
 
+
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab-btn active" onclick="showTab('organisations')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Organisaties</button>
+      <button class="tab-btn active" onclick="showTab('ketentests')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Ketentesten</button>
+      <button class="tab-btn" onclick="showTab('organisations')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Organisaties</button>
       <button class="tab-btn" onclick="showTab('users')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Gebruikers</button>
       <button class="tab-btn" onclick="showTab('notifications')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</button>
       <button class="tab-btn" onclick="showTab('scenarios')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</button>
@@ -73,7 +76,29 @@
     </div>
 
     <!-- TAB: Organisaties -->
-    <div id="tab-organisations">
+    <!-- TAB: Ketentesten -->
+    <div id="tab-ketentests">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Ketentesten</h1>
+          <p>Beheer de verschillende ketentesten. Elke ketentest heeft zijn eigen scenario's en activiteiten.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openNewKetentestModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Ketentest toevoegen
+        </button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Naam</th><th>Scenario's</th><th>Aangemaakt</th><th></th></tr></thead>
+            <tbody id="ketentestTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div id="tab-organisations" style="display:none;">
       <div class="page-header">
         <div class="page-header-left">
           <h1>Organisaties</h1>
@@ -192,6 +217,28 @@
         </button>
       </div>
       <div id="scenarioAdminList"></div>
+    </div>
+  </div>
+
+  <!-- Modal: Ketentest -->
+  <div class="modal-overlay" id="modalKetentest" style="display:none;" onclick="closeModalOverlay(event,'modalKetentest')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalKetentestTitle">Ketentest toevoegen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKetentest')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ketentestId">
+        <div class="form-group">
+          <label>Naam van de ketentest</label>
+          <input type="text" id="ketentestNaam" placeholder="bijv. Bemiddelingsregister, iWlz Aanvraag...">
+        </div>
+        <div id="alertKetentest" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKetentest')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKetentest()">Opslaan</button>
+      </div>
     </div>
   </div>
 
@@ -499,9 +546,10 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=20"></script>
+  <script src="js/supabase-config.js?v=21"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
+    let ketentests = [], activeKetentest = null;
 
     const NOTIFICATIES = [
       { id: 'nieuwe_bs_za',    label: 'nieuwe_bemiddelingspecificatie_zorgaanbieder',  type: 'nieuw',      display: 'Nieuwe BS Zorgaanbieder' },
@@ -528,21 +576,45 @@
     };
     let adminActiveTab = null;
     const openSections = new Set(); // bijhoudt welke scenario's open zijn
-    let activeTab = 'organisations';
+    let activeTab = 'ketentests';
 
     (async () => {
       const user = await requireAdmin();
       if (!user) return;
       const profile = await getUserProfile(user.id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
+
+      const result = await ensureActiveKetentest();
+      if (!result) {
+        // Geen ketentests bestaan nog — toon alleen het ketentest-tabblad
+        activeKetentest = null;
+        renderKetentestTable();
+        return;
+      }
+      ketentests = result.all;
+      activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
       await loadAll();
     })();
+
+    async function onKetentestChanged(newId) {
+      const result = await ensureActiveKetentest();
+      ketentests = result.all;
+      activeKetentest = result.active;
+      await loadAll();
+      showTab(activeTab === 'ketentests' ? 'scenarios' : activeTab);
+    }
 
     async function loadAll() {
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
-      await Promise.all([loadUsers(), loadScenarios(), loadActivities(), loadOptions()]);
-      renderOrgs(); renderUsers(); renderScenarios();
+      await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList()]);
+      renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
+    }
+
+    async function loadKetentestsList() {
+      ketentests = await loadAllKetentests();
     }
 
     async function loadOptions() {
@@ -559,11 +631,14 @@
       users = data || [];
     }
     async function loadScenarios() {
-      const { data } = await sb.from('scenarios').select('*').order('code');
+      if (!activeKetentest) { scenarios = []; return; }
+      const { data } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
       scenarios = data || [];
     }
     async function loadActivities() {
-      const { data, error } = await sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').order('sort_order');
+      if (!scenarios.length) { activities = []; return; }
+      const scenarioIds = scenarios.map(s => s.id);
+      const { data, error } = await sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').in('scenario_id', scenarioIds).order('sort_order');
       if (error) { console.error('loadActivities error:', error); activities = []; return; }
       const raw = data || [];
       // Resolve acceptant_org manually using already-loaded orgs list
@@ -575,15 +650,16 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['organisations','users','scenarios','notifications'].forEach(t => {
+      ['ketentests','organisations','users','scenarios','notifications'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', ['organisations','users','scenarios','notifications'][i] === tab);
+        b.classList.toggle('active', ['ketentests','organisations','users','scenarios','notifications'][i] === tab);
       });
       activeTab = tab;
       if (tab === 'options') renderOptions();
       if (tab === 'notifications') renderNotifications();
+      if (tab === 'ketentests') renderKetentestTable();
     }
 
     // ---- ORGS ----
@@ -725,6 +801,137 @@
       });
 
       wrap.innerHTML = html;
+    }
+
+    // ---- KETENTESTEN ----
+    function renderKetentestTable() {
+      const tb = document.getElementById('ketentestTable');
+      if (!tb) return;
+      if (!ketentests.length) {
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen ketentesten. Voeg er een toe.</p></div></td></tr>';
+        return;
+      }
+      tb.innerHTML = ketentests.map(k => {
+        const isActive = activeKetentest && k.id === activeKetentest.id;
+        const date = new Date(k.created_at).toLocaleDateString('nl-NL');
+        return `<tr style="${isActive ? 'background:#eaf3e0;' : ''}">
+          <td>
+            <strong>${k.naam}</strong>
+            ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; margin-left:8px; font-size:11px;">Actief</span>' : ''}
+          </td>
+          <td id="ktScenCount-${k.id}" style="color:var(--text-muted)">…</td>
+          <td style="color:var(--text-muted)">${date}</td>
+          <td style="text-align:right;">
+            ${!isActive ? `<button class="btn btn-outline btn-sm" onclick="selectKetentestFromAdmin('${k.id}')" style="margin-right:6px;">Openen</button>` : ''}
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editKetentest('${k.id}')" title="Naam wijzigen"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteKetentest('${k.id}','${k.naam.replace(/'/g,"\\'")}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      // Tel scenario's per ketentest async
+      ketentests.forEach(async k => {
+        const { count } = await sb.from('scenarios').select('id', { count: 'exact', head: true }).eq('ketentest_id', k.id);
+        const cell = document.getElementById('ktScenCount-' + k.id);
+        if (cell) cell.textContent = `${count || 0} scenario${count === 1 ? '' : "'s"}`;
+      });
+    }
+
+    function openNewKetentestModal() {
+      document.getElementById('ketentestId').value = '';
+      document.getElementById('ketentestNaam').value = '';
+      document.getElementById('modalKetentestTitle').textContent = 'Ketentest toevoegen';
+      document.getElementById('alertKetentest').style.display = 'none';
+      openModal('modalKetentest');
+    }
+
+    function editKetentest(id) {
+      const k = ketentests.find(x => x.id === id);
+      if (!k) return;
+      document.getElementById('ketentestId').value = k.id;
+      document.getElementById('ketentestNaam').value = k.naam;
+      document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
+      document.getElementById('alertKetentest').style.display = 'none';
+      openModal('modalKetentest');
+    }
+
+    async function saveKetentest() {
+      const id = document.getElementById('ketentestId').value;
+      const naam = document.getElementById('ketentestNaam').value.trim();
+      if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKetentest'); return; }
+
+      let dbError;
+      if (id) {
+        const res = await sb.from('ketentests').update({ naam }).eq('id', id);
+        dbError = res.error;
+      } else {
+        const res = await sb.from('ketentests').insert({ naam });
+        dbError = res.error;
+      }
+
+      if (dbError) {
+        showAlert('Fout bij opslaan: ' + dbError.message, 'error', 'alertKetentest');
+        return;
+      }
+
+      closeModal('modalKetentest');
+      await loadKetentestsList();
+
+      // Als dit de eerste ketentest is, activeer hem direct
+      if (!activeKetentest && ketentests.length) {
+        const result = await ensureActiveKetentest();
+        ketentests = result.all;
+        activeKetentest = result.active;
+        await renderKetentestSwitcher(onKetentestChanged);
+        await loadAll();
+      } else {
+        // Update naam in switcher als die actief was
+        if (activeKetentest && activeKetentest.id === id) {
+          activeKetentest = ketentests.find(k => k.id === id) || activeKetentest;
+          await renderKetentestSwitcher(onKetentestChanged);
+        }
+      }
+
+      renderKetentestTable();
+      showAlert('Ketentest opgeslagen.', 'success');
+    }
+
+    async function selectKetentestFromAdmin(id) {
+      await selectKetentest(id);
+    }
+
+    function deleteKetentest(id, naam) {
+      document.getElementById('confirmMsg').textContent = `Weet je zeker dat je de ketentest "${naam}" wilt verwijderen? Alle scenario's, activiteiten, resultaten en flow-diagrammen die hierbij horen worden permanent verwijderd. Organisaties en gebruikers blijven behouden.`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('ketentests').delete().eq('id', id);
+        if (error) {
+          showAlert('Fout bij verwijderen: ' + error.message);
+          closeModal('modalConfirm');
+          return;
+        }
+        closeModal('modalConfirm');
+
+        const wasActive = activeKetentest && activeKetentest.id === id;
+        await loadKetentestsList();
+
+        if (wasActive) {
+          if (ketentests.length) {
+            setActiveKetentestId(ketentests[0].id);
+            const result = await ensureActiveKetentest();
+            activeKetentest = result.active;
+            await renderKetentestSwitcher(onKetentestChanged);
+            await loadAll();
+          } else {
+            activeKetentest = null;
+            document.getElementById('ketentestSwitcher').innerHTML = '';
+            scenarios = []; activities = [];
+            renderScenarios();
+          }
+        }
+        renderKetentestTable();
+        showAlert('Ketentest verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
     }
 
     function renderOrgs() {
@@ -1287,7 +1494,8 @@
           title: parsed.title,
           description: '',
           gegeven: parsed.gegeven,
-          wanneer: parsed.wanneer
+          wanneer: parsed.wanneer,
+          ketentest_id: activeKetentest?.id
         });
         dbError = error;
       }
@@ -1321,7 +1529,7 @@
       if (id) {
         await sb.from('scenarios').update({ code, title, description, gegeven, wanneer }).eq('id', id);
       } else {
-        await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer });
+        await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, ketentest_id: activeKetentest?.id });
       }
       closeModal('modalScenario');
       document.getElementById('scenarioId').value = '';

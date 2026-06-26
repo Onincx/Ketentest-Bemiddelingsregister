@@ -144,8 +144,10 @@
     </div>
     <a href="dashboard.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</a>
     <a href="app.html" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest</a>
+    <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
     <div id="dashLink" style="display:none;"><a href="dashboard.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</a></div>
     <div id="adminLink" style="display:none;"><a href="admin.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Beheer</a></div>
+    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
@@ -157,6 +159,11 @@
 
   <div class="page-wrap">
     <div id="alert" class="alert" style="display:none;"></div>
+
+    <div id="noKetentestState" style="display:none;" class="empty-state" style="padding:60px 20px;">
+      <p style="font-size:14px;">Er is nog geen ketentest aangemaakt. Vraag de beheerder om er een aan te maken via Beheer → Ketentesten.</p>
+    </div>
+
 
     <!-- Stats -->
     <div class="stats-grid" id="statsGrid" style="display:none;">
@@ -209,11 +216,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=20"></script>
+  <script src="js/supabase-config.js?v=21"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {};
     let activeFilter = 'all';
+    let activeKetentest = null;
     const autosaveTimers = {};
 
     (async () => {
@@ -233,27 +241,54 @@
         if (dl) dl.style.display = '';
       }
 
+      const result = await ensureActiveKetentest();
+      if (!result) {
+        document.getElementById('noKetentestState').style.display = '';
+        return;
+      }
+      activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
+
       await loadData();
       document.getElementById('statsGrid').style.display = '';
       document.getElementById('filterBar').style.display = '';
       renderAll();
     })();
 
+    async function onKetentestChanged(newId) {
+      const result = await ensureActiveKetentest();
+      activeKetentest = result.active;
+      activeFilter = 'all';
+      activeTabPrefix = null;
+      openScenarioId = null;
+      await loadData();
+      renderAll();
+    }
+
     let flowNodes = [], flowEdges = [];
 
     async function loadData() {
+      if (!activeKetentest) return;
+
       // Load orgs first so we can resolve acceptant_org manually
       const { data: orgData } = await sb.from('organisations').select('*');
       const allOrgs = orgData || [];
 
-      const [s, a, r, fn, fe] = await Promise.all([
-        sb.from('scenarios').select('*').order('code'),
-        sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').order('sort_order'),
+      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      scenarios = scenarioData || [];
+      const scenarioIds = scenarios.map(s => s.id);
+
+      if (!scenarioIds.length) {
+        activities = []; results = {}; flowNodes = []; flowEdges = [];
+        return;
+      }
+
+      const [a, r, fn, fe] = await Promise.all([
+        sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order'),
         sb.from('activity_results').select('*').eq('user_id', currentUser.id),
-        sb.from('flow_nodes').select('*'),
-        sb.from('flow_edges').select('*'),
+        sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id),
       ]);
-      scenarios = s.data || [];
       flowNodes = fn.data || [];
       flowEdges = fe.data || [];
       // Resolve acceptant_org manually to avoid Supabase alias issues
@@ -262,7 +297,8 @@
         acceptant_org: allOrgs.find(o => o.id === act.acceptant_org_id) || null
       }));
       results = {};
-      (r.data || []).forEach(x => results[x.activity_id] = x);
+      const actIds = new Set(activities.map(a => a.id));
+      (r.data || []).forEach(x => { if (actIds.has(x.activity_id)) results[x.activity_id] = x; });
     }
 
     // Geeft het eerste scenario ID in de flow (geen inkomende edges)

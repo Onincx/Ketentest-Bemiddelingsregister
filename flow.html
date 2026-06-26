@@ -137,6 +137,7 @@
     <a href="app.html">Ketentest</a>
     <a href="flow.html" class="active">Flow</a>
     <div id="adminLink" style="display:none;"><a href="admin.html">Beheer</a></div>
+    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
@@ -188,7 +189,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=20"></script>
+  <script src="js/supabase-config.js?v=21"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -220,6 +221,8 @@
     }
 
     // ── Init ──────────────────────────────────────────────────
+    let activeKetentest = null;
+
     (async () => {
       currentUser = await requireAuth();
       if (!currentUser) return;
@@ -227,29 +230,51 @@
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.role === 'admin') document.getElementById('adminLink').style.display = '';
 
+      const result = await ensureActiveKetentest();
+      if (!result) return;
+      activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
+
       await loadData();
       applyLayout();
       renderSidebar();
       renderAll();
     })();
 
+    async function onKetentestChanged(newId) {
+      const result = await ensureActiveKetentest();
+      activeKetentest = result.active;
+      closePopup();
+      cancelConnect();
+      await loadData();
+      document.getElementById('nodes').innerHTML = '';
+      renderSidebar();
+      renderAll();
+    }
+
     window.addEventListener('resize', applyLayout);
 
     async function loadData() {
-      const [s, a, r, fn, fe, o] = await Promise.all([
-        sb.from('scenarios').select('*').order('code'),
-        sb.from('activities').select('*'),
+      if (!activeKetentest) return;
+
+      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      scenarios = scenarioData || [];
+      const scenarioIds = scenarios.map(s => s.id);
+
+      const [a, r, fn, fe, o] = await Promise.all([
+        scenarioIds.length ? sb.from('activities').select('*').in('scenario_id', scenarioIds) : Promise.resolve({ data: [] }),
         sb.from('activity_results').select('*'),
-        sb.from('flow_nodes').select('*'),
-        sb.from('flow_edges').select('*'),
+        sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('organisations').select('id,name,code'),
       ]);
-      scenarios  = s.data || [];
       activities = a.data || [];
-      results    = r.data || [];
+      const actIds = new Set(activities.map(x => x.id));
+      results    = (r.data || []).filter(x => actIds.has(x.activity_id));
       edges      = fe.data || [];
       nodePositions = {};
       (fn.data || []).forEach(n => nodePositions[n.scenario_id] = {x:n.x, y:n.y, dbId:n.id, isStart:n.is_start||false});
+      orgs = {};
       (o.data || []).forEach(o => orgs[o.id] = o.name || o.code);
     }
 
@@ -406,7 +431,7 @@
       cancelConnect();
       if (fromId === toId) return;
       if (edges.some(e => e.from_id === fromId && e.to_id === toId)) return;
-      const {data, error} = await sb.from('flow_edges').insert({from_id: fromId, to_id: toId}).select().single();
+      const {data, error} = await sb.from('flow_edges').insert({from_id: fromId, to_id: toId, ketentest_id: activeKetentest?.id}).select().single();
       if (error) { alert('Fout: ' + error.message); return; }
       edges.push(data);
       renderEdges();
@@ -523,7 +548,7 @@
       const count = Object.keys(nodePositions).length;
       const x = 20 + (count % 4) * 220;
       const y = 20 + Math.floor(count / 4) * 150;
-      const {data,error} = await sb.from('flow_nodes').insert({scenario_id:sid, x, y}).select().single();
+      const {data,error} = await sb.from('flow_nodes').insert({scenario_id:sid, x, y, ketentest_id: activeKetentest?.id}).select().single();
       if (error) { alert('Fout: '+error.message); return; }
       nodePositions[sid] = {x, y, dbId: data.id};
       renderNodes();
@@ -551,9 +576,9 @@
     }
 
     async function clearAll() {
-      if (!confirm('Alles verwijderen van het canvas?')) return;
-      await sb.from('flow_edges').delete().neq('id','00000000-0000-0000-0000-000000000000');
-      await sb.from('flow_nodes').delete().neq('id','00000000-0000-0000-0000-000000000000');
+      if (!confirm('Alles verwijderen van het canvas voor deze ketentest?')) return;
+      await sb.from('flow_edges').delete().eq('ketentest_id', activeKetentest?.id);
+      await sb.from('flow_nodes').delete().eq('ketentest_id', activeKetentest?.id);
       nodePositions = {}; edges = [];
       document.getElementById('nodes').innerHTML = '';
       renderEdges(); renderSidebar();
