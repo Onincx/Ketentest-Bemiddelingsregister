@@ -286,7 +286,7 @@
 
       const [a, r, fn, fe] = await Promise.all([
         sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order'),
-        sb.from('activity_results').select('*').eq('user_id', currentUser.id),
+        sb.from('activity_results').select('*'),
         sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id),
       ]);
@@ -631,11 +631,14 @@
 
     function renderActivities(acts) {
       const myOrgId = currentProfile?.organisation_id;
+      // Sorteer op volgnummer zodat we per activiteit de voorganger kunnen bepalen
+      const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
+
       return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
           <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
-        ${acts.map(a => {
+        ${sorted.map((a, idx) => {
           const r = results[a.id] || {};
           const isAcceptant = a.acceptant_org?.id === myOrgId;
           const canEdit = isAcceptant || currentProfile?.role === 'admin';
@@ -644,12 +647,24 @@
           const accName = a.acceptant_org?.name || '';
           const accCode = a.acceptant_org?.code || '';
           const hasNote = !!(r.notes && r.notes.trim());
+
+          // Bepaal of de voorgaande activiteit al op OK staat
+          const prevAct = idx > 0 ? sorted[idx - 1] : null;
+          const prevResult = prevAct ? (results[prevAct.id]?.result || 'open') : null;
+          const isBlocked = prevAct !== null && prevResult !== 'ok' && currentProfile?.role !== 'admin';
+
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
             <div style="font-size:13px;">${highlightNotificaties(a.description)}</div>
             <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px; overflow:visible; min-width:0;">
+              ${isBlocked ? `
+                <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="Activiteit #${prevAct.sort_order} moet eerst op OK gezet worden">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Wacht op #${prevAct.sort_order}
+                </div>
+              ` : `
               <div class="result-toggle">
                 ${canEdit ? `
                   <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
@@ -677,6 +692,7 @@
                   ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
                 </div>
               </div>
+              `}
             </div>
           </div>`;
         }).join('')}
@@ -796,8 +812,8 @@
       const s = scenarios.find(x => x.id === scenarioId);
       if (s) {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
-        const bodyEl = document.getElementById(`body-${scenarioId}`);
-        if (bodyEl && bodyEl.style.display !== 'none') {
+        const bodyEl = document.getElementById(`detail-panel-${scenarioId}`);
+        if (bodyEl) {
           const tableWrap = bodyEl.querySelector('div[style*="border:1px"]');
           if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
         }
@@ -810,41 +826,37 @@
       const notes = document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '';
       const existing = results[activityId];
 
+      let dbError;
       if (existing) {
-        await sb.from('activity_results').update({ result, notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
-        results[activityId] = { ...existing, result, notes };
+        const res = await sb.from('activity_results').update({ result, notes, updated_by: currentUser.id, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        dbError = res.error;
+        if (!dbError) results[activityId] = { ...existing, result, notes };
       } else {
-        const { data } = await sb.from('activity_results').insert({ activity_id: activityId, user_id: currentUser.id, result, notes }).select().single();
-        results[activityId] = data;
+        const res = await sb.from('activity_results').insert({ activity_id: activityId, updated_by: currentUser.id, result, notes }).select().single();
+        dbError = res.error;
+        if (!dbError) results[activityId] = res.data;
       }
-      updateStats();
-      // Re-render just the row area
-      const row = document.getElementById(`row-${activityId}`);
-      if (row) {
-        const act = activities.find(a => a.id === activityId);
-        if (act) {
-          const myOrgId = currentProfile?.organisation_id;
-          const isAcceptant = act.acceptant_org?.id === myOrgId;
-          const canEdit = isAcceptant || currentProfile?.role === 'admin';
-          const r = results[activityId] || {};
-          const lastCell = row.children[4];
-          if (canEdit) {
-            const hasNoteNow = !!(r.notes && r.notes.trim());
-            lastCell.innerHTML = `
-              <div class="result-toggle">
-                <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" onclick="setResult('${activityId}','${scenarioId}','ok')" title="Markeer als OK"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</button>
-                <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" onclick="setResult('${activityId}','${scenarioId}','nok')" title="Markeer als NOK"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK</button>
-                <div class="notes-tooltip">
-                  <button class="note-icon-btn ${hasNoteNow ? 'has-note' : 'no-note'}" onclick="openNoteModal('${activityId}','${scenarioId}')" title="${hasNoteNow ? 'Opmerking bekijken/bewerken' : 'Opmerking toevoegen'}">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    ${hasNoteNow ? '<span style="font-size:11px;font-weight:600;">notitie</span>' : ''}
-                  </button>
-                  ${hasNoteNow ? `<div class="tooltip-box">${(r.notes||'').replace(/</g,'&lt;')}</div>` : ''}
-                </div>
-              </div>`;
-          }
+
+      if (dbError) {
+        if (dbError.message && dbError.message.includes('voorgaande activiteit')) {
+          alert('De voorgaande activiteit moet eerst op OK gezet worden voordat deze activiteit beoordeeld kan worden.');
+        } else {
+          alert('Fout bij opslaan: ' + dbError.message);
         }
+        return;
       }
+
+      updateStats();
+
+      // Herrender de volledige activiteitentabel van dit scenario, zodat de
+      // blokkade-status van volgende activiteiten ook meteen wordt bijgewerkt.
+      const bodyEl = document.getElementById(`detail-panel-${scenarioId}`);
+      if (bodyEl) {
+        const acts = activities.filter(a => a.scenario_id === scenarioId).sort((a,b) => a.sort_order - b.sort_order);
+        const tableWrap = bodyEl.querySelector('div[style*="border:1px"]');
+        if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
+      }
+
       // Update scenario tegel
       const sc = document.getElementById('sc-' + scenarioId);
       if (sc) {
@@ -877,11 +889,13 @@
       const result = results[activityId]?.result || 'open';
       const existing = results[activityId];
       if (existing) {
-        await sb.from('activity_results').update({ notes, updated_at: new Date().toISOString() }).eq('id', existing.id);
-        results[activityId] = { ...existing, notes };
+        const { error } = await sb.from('activity_results').update({ notes, updated_by: currentUser.id, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        if (!error) results[activityId] = { ...existing, notes };
+        else alert('Fout bij opslaan van de opmerking: ' + error.message);
       } else {
-        const { data } = await sb.from('activity_results').insert({ activity_id: activityId, user_id: currentUser.id, result, notes }).select().single();
-        results[activityId] = data;
+        const { data, error } = await sb.from('activity_results').insert({ activity_id: activityId, updated_by: currentUser.id, result, notes }).select().single();
+        if (!error) results[activityId] = data;
+        else alert('Fout bij opslaan van de opmerking: ' + error.message);
       }
     }
 
