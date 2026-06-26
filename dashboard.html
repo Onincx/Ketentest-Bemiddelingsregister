@@ -272,7 +272,9 @@
       if (!orgs.length) { el.innerHTML = '<p class="empty-dash">Geen organisaties gevonden.</p>'; return; }
 
       const rows = orgs.map(org => {
-        const orgActs = activities.filter(a => a.organisation_id === org.id);
+        // Voortgang per organisatie is gebaseerd op de rol van acceptant:
+        // dat is de organisatie die het resultaat daadwerkelijk vastlegt.
+        const orgActs = activities.filter(a => a.acceptant_org?.id === org.id);
         const total = orgActs.length;
         if (total === 0) return null;
         const ok   = orgActs.filter(a => getResult(a.id) === 'ok').length;
@@ -282,7 +284,7 @@
         return { org, total, ok, nok, open, pct };
       }).filter(Boolean).sort((a,b) => b.pct - a.pct);
 
-      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan organisaties.</p>'; return; }
+      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan acceptant-organisaties.</p>'; return; }
 
       el.innerHTML = `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;">` +
         rows.map(({ org, total, ok, nok, open, pct }) => {
