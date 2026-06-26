@@ -149,10 +149,10 @@
     <button class="btn btn-sm btn-outline" onclick="autoLayout()">
       ⟳ Auto-layout
     </button>
-    <button class="btn btn-sm btn-outline" onclick="clearAll()">
+    <button class="btn btn-sm btn-outline" id="clearAllBtn" onclick="clearAll()">
       🗑 Canvas leegmaken
     </button>
-    <span style="font-size:12px; color:#6b7280; margin-left:8px;">
+    <span style="font-size:12px; color:#6b7280; margin-left:8px;" id="connectHintText">
       Klik op <strong>Verbinden</strong> op een kaartje om een pijl te tekenen naar een ander kaartje
     </span>
   </div>
@@ -229,6 +229,13 @@
       currentProfile = await getUserProfile(currentUser.id);
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.role === 'admin') document.getElementById('adminLink').style.display = '';
+      window.isFlowAdmin = currentProfile?.role === 'admin';
+      if (!window.isFlowAdmin) {
+        const clearBtn = document.getElementById('clearAllBtn');
+        if (clearBtn) clearBtn.style.display = 'none';
+        const hintText = document.getElementById('connectHintText');
+        if (hintText) hintText.textContent = 'Sleep een kaartje om de positie aan te passen. Klik op een kaartje voor de details.';
+      }
 
       const result = await ensureActiveKetentest();
       if (!result) return;
@@ -348,11 +355,12 @@
           <div class="node-bar"><div class="node-bar-fill" style="width:${pct}%"></div></div>
           <div class="node-foot">
             <span class="node-pct">${pct}% · ${acts.length} act.</span>
+            ${window.isFlowAdmin ? `
             <div class="node-actions">
               <button class="node-btn connect ${connecting===sid?'active':''}" onclick="event.stopPropagation(); startConnect('${sid}')">🔗 Verbinden</button>
               <button class="node-btn ${isStart?'active':'connect'}" onclick="event.stopPropagation(); toggleStart('${sid}')" title="${isStart?'Start verwijderen':'Markeer als start'}">${isStart?'⭐ Start':'☆ Start'}</button>
               <button class="node-btn remove" onclick="event.stopPropagation(); removeNode('${sid}')">✕</button>
-            </div>
+            </div>` : ''}
           </div>`;
         el.onclick = (e) => {
           if (connecting && connecting !== sid) { finishConnect(sid); return; }
@@ -411,6 +419,7 @@
 
     // ── Connect ───────────────────────────────────────────────
     function startConnect(sid) {
+      if (!window.isFlowAdmin) return;
       if (connecting === sid) { cancelConnect(); return; }
       connecting = sid;
       document.getElementById('canvas').style.cursor = 'crosshair';
@@ -427,6 +436,7 @@
     }
 
     async function finishConnect(toId) {
+      if (!window.isFlowAdmin) { cancelConnect(); return; }
       const fromId = connecting;
       cancelConnect();
       if (fromId === toId) return;
@@ -523,6 +533,7 @@
 
     // ── CRUD ──────────────────────────────────────────────────
     async function toggleStart(sid) {
+      if (!window.isFlowAdmin) return;
       const n = nodePositions[sid];
       if (!n) return;
       const newIsStart = !n.isStart;
@@ -556,6 +567,7 @@
     }
 
     async function removeNode(sid) {
+      if (!window.isFlowAdmin) return;
       const n = nodePositions[sid];
       if (!n) return;
       const edgeIds = edges.filter(e=>e.from_id===sid||e.to_id===sid).map(e=>e.id);
@@ -576,6 +588,7 @@
     }
 
     async function clearAll() {
+      if (!window.isFlowAdmin) return;
       if (!confirm('Alles verwijderen van het canvas voor deze ketentest?')) return;
       await sb.from('flow_edges').delete().eq('ketentest_id', activeKetentest?.id);
       await sb.from('flow_nodes').delete().eq('ketentest_id', activeKetentest?.id);
