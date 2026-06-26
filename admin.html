@@ -546,7 +546,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=21"></script>
+  <script src="js/supabase-config.js?v=22"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let ketentests = [], activeKetentest = null;
@@ -601,6 +601,7 @@
       const result = await ensureActiveKetentest();
       ketentests = result.all;
       activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
       await loadAll();
       showTab(activeTab === 'ketentests' ? 'scenarios' : activeTab);
     }
