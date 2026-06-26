@@ -272,32 +272,42 @@
       if (!orgs.length) { el.innerHTML = '<p class="empty-dash">Geen organisaties gevonden.</p>'; return; }
 
       const rows = orgs.map(org => {
-        // Voortgang per organisatie is gebaseerd op de rol van acceptant:
-        // dat is de organisatie die het resultaat daadwerkelijk vastlegt.
-        const orgActs = activities.filter(a => a.acceptant_org?.id === org.id);
+        // Voortgang per organisatie telt elke activiteit waar de organisatie
+        // bij betrokken is, ongeacht of dat als verantwoordelijke of als
+        // acceptant is (een activiteit heeft per organisatie maar één rol,
+        // dus dit overlapt nooit). De status van een activiteit verandert
+        // altijd via de acceptant die OK/NOK zet.
+        const orgActs = activities.filter(a =>
+          a.organisation_id === org.id || a.acceptant_org?.id === org.id
+        );
         const total = orgActs.length;
         if (total === 0) return null;
         const ok   = orgActs.filter(a => getResult(a.id) === 'ok').length;
         const nok  = orgActs.filter(a => getResult(a.id) === 'nok').length;
         const open = total - ok - nok;
         const pct  = Math.round(((ok + nok) / total) * 100);
-        return { org, total, ok, nok, open, pct };
+        const aantalVerantwoordelijk = orgActs.filter(a => a.organisation_id === org.id).length;
+        const aantalAcceptant = orgActs.filter(a => a.acceptant_org?.id === org.id).length;
+        return { org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant };
       }).filter(Boolean).sort((a,b) => b.pct - a.pct);
 
-      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan acceptant-organisaties.</p>'; return; }
+      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan organisaties.</p>'; return; }
 
       el.innerHTML = `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;">` +
-        rows.map(({ org, total, ok, nok, open, pct }) => {
+        rows.map(({ org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant }) => {
           const okPct   = total > 0 ? Math.round(ok/total*100) : 0;
           const nokPct  = total > 0 ? Math.round(nok/total*100) : 0;
           const statusColor = nok > 0 ? '#dc2626' : (ok === total ? '#16a34a' : '#e67e22');
           const statusLabel = nok > 0 ? 'Heeft NOK' : (ok === total ? 'Volledig klaar' : 'Bezig');
           const statusBg    = nok > 0 ? '#fee2e2' : (ok === total ? '#dcfce7' : '#fef3c7');
+          const rolDelen = [];
+          if (aantalVerantwoordelijk > 0) rolDelen.push(`${aantalVerantwoordelijk} als verantwoordelijke`);
+          if (aantalAcceptant > 0) rolDelen.push(`${aantalAcceptant} als acceptant`);
           return `<div style="border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; border-top:3px solid ${statusColor};">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px;">
               <div>
                 <div style="font-size:14px; font-weight:700; color:#1a1a1a;">${org.name}</div>
-                <div style="font-size:11px; color:#6b7280; margin-top:2px;">${total} activiteit${total!==1?'en':''}</div>
+                <div style="font-size:11px; color:#6b7280; margin-top:2px;">${total} activiteit${total!==1?'en':''} (${rolDelen.join(', ')})</div>
               </div>
               <span style="background:${statusBg}; color:${statusColor}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700; white-space:nowrap;">${statusLabel}</span>
             </div>
