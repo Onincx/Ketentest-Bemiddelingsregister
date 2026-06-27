@@ -305,11 +305,15 @@
     // ── Sidebar ───────────────────────────────────────────────
     function renderSidebar() {
       const onCanvas = new Set(Object.keys(nodePositions));
-      document.getElementById('sbList').innerHTML = scenarios.map(s => `
-        <div class="sb-item ${onCanvas.has(s.id)?'on':''}" onclick="${onCanvas.has(s.id)?'':` addNode('${s.id}')`}">
+      const isAdmin = window.isFlowAdmin;
+      document.getElementById('sbList').innerHTML = scenarios.map(s => {
+        const already = onCanvas.has(s.id);
+        const clickable = isAdmin && !already;
+        return `<div class="sb-item ${already || !isAdmin ? 'on' : ''}" onclick="${clickable ? `addNode('${s.id}')` : ''}" style="${clickable ? '' : 'cursor:default;'}">
           <div class="sb-code">${{ok:'✅',nok:'❌',open:'⏳'}[getStatus(s.id)]} ${s.code}</div>
           <div class="sb-title">${s.title}</div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     // ── Nodes ─────────────────────────────────────────────────
@@ -508,17 +512,22 @@
         path.setAttribute('marker-end','url(#arr)');
         path.setAttribute('stroke-linecap','round');
 
-        // Onzichtbare klikzone
+        // Onzichtbare klikzone - alleen interactief voor beheerders
         const hit = document.createElementNS('http://www.w3.org/2000/svg','path');
         hit.setAttribute('d', d);
         hit.setAttribute('stroke','transparent');
         hit.setAttribute('stroke-width','14');
         hit.setAttribute('fill','none');
-        hit.style.cursor = 'pointer';
-        hit.addEventListener('mouseenter', () => { path.setAttribute('stroke','#dc2626'); path.setAttribute('marker-end','url(#arr-red)'); });
-        hit.addEventListener('mouseleave', () => { path.setAttribute('stroke','#39870c'); path.setAttribute('marker-end','url(#arr)'); });
-        hit.addEventListener('click', () => deleteEdge(edge.id));
-        hit.setAttribute('title','Klik om verbinding te verwijderen');
+        if (window.isFlowAdmin) {
+          hit.style.cursor = 'pointer';
+          hit.addEventListener('mouseenter', () => { path.setAttribute('stroke','#dc2626'); path.setAttribute('marker-end','url(#arr-red)'); });
+          hit.addEventListener('mouseleave', () => { path.setAttribute('stroke','#39870c'); path.setAttribute('marker-end','url(#arr)'); });
+          hit.addEventListener('click', () => deleteEdge(edge.id));
+          hit.setAttribute('title','Klik om verbinding te verwijderen');
+        } else {
+          hit.style.cursor = 'default';
+          hit.setAttribute('pointer-events', 'none');
+        }
 
         svg.appendChild(path);
         svg.appendChild(hit);
@@ -526,6 +535,7 @@
     }
 
     async function deleteEdge(id) {
+      if (!window.isFlowAdmin) return;
       if (!confirm('Verbinding verwijderen?')) return;
       await sb.from('flow_edges').delete().eq('id', id);
       edges = edges.filter(e => e.id !== id);
@@ -557,6 +567,7 @@
     }
 
     async function addNode(sid) {
+      if (!window.isFlowAdmin) return;
       const count = Object.keys(nodePositions).length;
       const x = 20 + (count % 4) * 220;
       const y = 20 + Math.floor(count / 4) * 150;
