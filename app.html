@@ -201,7 +201,8 @@
           </button>
         </div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="exportCSV()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exporteren</button>
+      <button class="btn btn-outline btn-sm" onclick="exportCSV()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exporteren (CSV)</button>
+      <button class="btn btn-outline btn-sm" onclick="exportPDF()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> Exporteren (PDF)</button>
     </div>
 
     <!-- Progress overall -->
@@ -779,7 +780,12 @@
     }
 
     // Notitie modal
+    let historyPanelOpen = false;
+    let historyLoadedFor = null;
+
     function openNoteModal(activityId, scenarioId) {
+      historyPanelOpen = false;
+      historyLoadedFor = null;
       const r = results[activityId] || {};
       const existing = r.notes || '';
       const modal = document.createElement('div');
@@ -787,13 +793,23 @@
       modal.id = 'noteModalOverlay';
       modal.style.display = 'flex';
       modal.innerHTML = `
-        <div class="modal" style="max-width:440px;" onclick="event.stopPropagation()">
+        <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
           <div class="modal-header">
             <h3><span style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Opmerking</h3>
             <button class="btn btn-ghost btn-icon" onclick="document.getElementById('noteModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div class="modal-body">
             <textarea class="notes-area" id="noteModalText" placeholder="Voeg een opmerking, bevinding of afwijking toe..." style="min-height:120px;">${existing}</textarea>
+            <div style="margin-top:16px; border-top:1px solid var(--border); padding-top:12px;">
+              <button type="button" onclick="toggleHistoryPanel('${activityId}')" id="historyToggleBtn"
+                style="background:none; border:none; cursor:pointer; color:var(--text-muted); font-size:12px; font-weight:600; display:flex; align-items:center; gap:5px; padding:0;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" id="historyChevron"><polyline points="9 18 15 12 9 6"/></svg>
+                Wijzigingshistorie bekijken
+              </button>
+              <div id="historyPanel" style="display:none; margin-top:10px; max-height:220px; overflow-y:auto;">
+                <p style="font-size:12px; color:var(--text-muted);">Laden...</p>
+              </div>
+            </div>
           </div>
           <div class="modal-footer">
             <button class="btn btn-outline" onclick="document.getElementById('noteModalOverlay').remove()">Annuleren</button>
@@ -802,6 +818,42 @@
         </div>`;
       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
       document.body.appendChild(modal);
+    }
+
+    async function toggleHistoryPanel(activityId) {
+      const panel = document.getElementById('historyPanel');
+      const chevron = document.getElementById('historyChevron');
+      if (!panel) return;
+
+      historyPanelOpen = !historyPanelOpen;
+      panel.style.display = historyPanelOpen ? '' : 'none';
+      chevron.style.transform = historyPanelOpen ? 'rotate(90deg)' : '';
+
+      if (historyPanelOpen && historyLoadedFor !== activityId) {
+        historyLoadedFor = activityId;
+        const { data, error } = await sb
+          .from('activity_result_history')
+          .select('*')
+          .eq('activity_id', activityId)
+          .order('changed_at', { ascending: false });
+
+        if (error || !data || !data.length) {
+          panel.innerHTML = '<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen wijzigingen vastgelegd.</p>';
+          return;
+        }
+
+        const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open', null: '—' };
+        panel.innerHTML = data.map(h => {
+          const tijd = new Date(h.changed_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+          const resultChanged = h.old_result !== h.new_result;
+          const notesChanged = h.old_notes !== h.new_notes;
+          return `<div style="font-size:12px; padding:8px 0; border-bottom:1px solid var(--border);">
+            <div style="color:var(--text-muted); margin-bottom:3px;">${tijd}</div>
+            ${resultChanged ? `<div>Resultaat: <strong>${statusLabel[h.old_result] || '—'}</strong> → <strong>${statusLabel[h.new_result] || '—'}</strong></div>` : ''}
+            ${notesChanged && h.new_notes ? `<div style="color:var(--text-muted); margin-top:2px;">Opmerking gewijzigd: "${h.new_notes.replace(/</g,'&lt;').substring(0,80)}${h.new_notes.length > 80 ? '...' : ''}"</div>` : ''}
+          </div>`;
+        }).join('');
+      }
     }
 
     async function saveNoteFromModal(activityId, scenarioId) {
@@ -916,13 +968,109 @@
       a.click(); URL.revokeObjectURL(url);
     }
 
+    function exportPDF() {
+      const ketentestNaam = activeKetentest?.naam || 'Ketentest';
+      const datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+
+      const sortedScenarios = [...scenarios].sort((a, b) => a.code.localeCompare(b.code));
+
+      const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' };
+      const statusColor = { ok: '#16a34a', nok: '#dc2626', open: '#6b7280' };
+
+      const scenarioBlocks = sortedScenarios.map(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a, b) => a.sort_order - b.sort_order);
+        const status = getScenarioStatus(s.id);
+
+        const rows = acts.map(a => {
+          const r = results[a.id] || {};
+          const res = r.result || 'open';
+          return `<tr>
+            <td>${a.sort_order}</td>
+            <td>${(a.description || '').replace(/</g, '&lt;')}</td>
+            <td>${a.organisations?.name || '—'}</td>
+            <td>${a.acceptant_org?.name || '—'}</td>
+            <td style="color:${statusColor[res]}; font-weight:600;">${statusLabel[res]}</td>
+            <td>${(r.notes || '').replace(/</g, '&lt;')}</td>
+          </tr>`;
+        }).join('');
+
+        return `
+          <div class="pdf-scenario">
+            <h2>${s.code} — ${(s.title || '').replace(/</g, '&lt;')}
+              <span style="color:${statusColor[status]}; font-size:13px; font-weight:600; margin-left:10px;">[${statusLabel[status]}]</span>
+            </h2>
+            ${s.description ? `<p class="pdf-desc">${s.description.replace(/</g, '&lt;')}</p>` : ''}
+            ${s.gegeven ? `<p class="pdf-meta"><strong>Gegeven:</strong> ${s.gegeven.replace(/</g, '&lt;')}</p>` : ''}
+            ${s.wanneer ? `<p class="pdf-meta"><strong>Wanneer:</strong> ${s.wanneer.replace(/</g, '&lt;')}</p>` : ''}
+            ${acts.length ? `
+              <table class="pdf-table">
+                <thead><tr><th>#</th><th>Activiteit</th><th>Verantw. org.</th><th>Acceptant</th><th>Resultaat</th><th>Opmerkingen</th></tr></thead>
+                <tbody>${rows}</tbody>
+              </table>` : '<p class="pdf-empty">Geen activiteiten.</p>'}
+          </div>`;
+      }).join('');
+
+      const totalActs = activities.length;
+      const okCount = Object.values(results).filter(r => r.result === 'ok').length;
+      const nokCount = Object.values(results).filter(r => r.result === 'nok').length;
+      const openCount = totalActs - okCount - nokCount;
+
+      const printWindow = window.open('', '_blank');
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="nl">
+        <head>
+          <meta charset="UTF-8">
+          <title>${ketentestNaam} — Testrapport</title>
+          <style>
+            body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 32px; max-width: 960px; margin: 0 auto; }
+            .pdf-header { border-bottom: 4px solid #39870c; padding-bottom: 16px; margin-bottom: 24px; }
+            .pdf-header h1 { color: #154273; margin: 0 0 4px; font-size: 24px; }
+            .pdf-header p { color: #6b7280; margin: 0; font-size: 13px; }
+            .pdf-summary { display: flex; gap: 24px; margin-bottom: 28px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; }
+            .pdf-summary div { font-size: 13px; }
+            .pdf-summary strong { font-size: 18px; display: block; }
+            .pdf-scenario { margin-bottom: 28px; page-break-inside: avoid; }
+            .pdf-scenario h2 { font-size: 16px; color: #154273; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
+            .pdf-desc { font-size: 13px; color: #374151; margin: 6px 0; }
+            .pdf-meta { font-size: 12px; color: #6b7280; margin: 4px 0; }
+            .pdf-empty { font-size: 12px; color: #9ca3af; font-style: italic; }
+            .pdf-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+            .pdf-table th { background: #eaf3e0; text-align: left; padding: 6px 8px; border: 1px solid #e5e7eb; }
+            .pdf-table td { padding: 6px 8px; border: 1px solid #e5e7eb; vertical-align: top; }
+            @media print {
+              body { padding: 0; }
+              .pdf-scenario { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="pdf-header">
+            <h1>${ketentestNaam}</h1>
+            <p>Testrapport gegenereerd op ${datum}</p>
+          </div>
+          <div class="pdf-summary">
+            <div><strong>${sortedScenarios.length}</strong>Scenario's</div>
+            <div><strong>${totalActs}</strong>Activiteiten</div>
+            <div><strong style="color:#16a34a;">${okCount}</strong>Geslaagd</div>
+            <div><strong style="color:#dc2626;">${nokCount}</strong>Mislukt</div>
+            <div><strong style="color:#6b7280;">${openCount}</strong>Open</div>
+          </div>
+          ${scenarioBlocks}
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => printWindow.print(), 300);
+    }
+
     async function doLogout() {
       await sb.auth.signOut();
       window.location.href = 'index.html';
     }
   </script>
 
-  <!-- ZIN Footer -->
   <footer style="background:#39870c; margin-top:48px; padding:40px 24px;">
     <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr 1fr; gap:32px; align-items:start;">
       <div>

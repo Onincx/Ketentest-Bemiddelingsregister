@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ketentest — Alleen-lezen overzicht</title>
+  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .topnav { background: #39870c !important; }
+    .topnav-logo { color: #fff !important; }
+    .guest-banner { background: #fef3c7; border-bottom: 1px solid #fcd34d; padding: 8px 24px; text-align: center; font-size: 13px; color: #92400e; }
+    .scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
+    .scenario-tile { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+    .scenario-tile.status-ok { border-left: 3px solid #16a34a; }
+    .scenario-tile.status-nok { border-left: 3px solid #dc2626; }
+    .scenario-tile.status-open { border-left: 3px solid #e5e7eb; }
+    .tile-code { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .tile-title { font-size: 13px; font-weight: 600; color: var(--text); margin: 8px 0; line-height: 1.4; }
+    .tile-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; gap: 1px; margin-bottom: 8px; }
+    .tile-bar-ok { background: #16a34a; border-radius: 99px; }
+    .tile-bar-nok { background: #dc2626; border-radius: 99px; }
+    .tile-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 500; }
+    .detail-panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
+    .activity-row-guest { display: grid; grid-template-columns: 32px 110px 1fr 110px 100px; gap: 0; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; align-items: center; }
+    .activity-row-guest:last-child { border-bottom: none; }
+    .activity-header-guest { display: grid; grid-template-columns: 32px 110px 1fr 110px 100px; gap: 0; padding: 8px 12px; background: var(--surface); font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 600; }
+    .result-pill { border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 700; display: inline-block; }
+    .result-ok { background: #dcfce7; color: #15803d; }
+    .result-nok { background: #fee2e2; color: #dc2626; }
+    .result-open { background: #f3f4f6; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+
+  <nav class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-dot"></div>
+      <span id="navKetentestNaam">Ketentest</span>
+    </div>
+  </nav>
+
+  <div class="guest-banner">
+    U bekijkt deze ketentest via een deellink, zonder in te loggen. Dit overzicht is alleen-lezen.
+  </div>
+
+  <div class="page-wrap">
+    <div id="loadingState" class="empty-state" style="padding:60px 20px;">
+      <p>Laden...</p>
+    </div>
+
+    <div id="errorState" style="display:none;" class="empty-state">
+      <p style="font-size:14px; color:var(--text-muted);">Deze link is niet (meer) geldig. Vraag de beheerder om een nieuwe deellink.</p>
+    </div>
+
+    <div id="contentState" style="display:none;">
+      <div class="stats-grid" style="margin-bottom:24px;">
+        <div class="stat-card"><div class="stat-label">Scenario's</div><div class="stat-value" id="statScenarios">0</div></div>
+        <div class="stat-card"><div class="stat-label">Activiteiten</div><div class="stat-value" id="statActivities">0</div></div>
+        <div class="stat-card"><div class="stat-label">Geslaagd</div><div class="stat-value green" id="statOk">0</div></div>
+        <div class="stat-card"><div class="stat-label">Mislukt</div><div class="stat-value red" id="statNok">0</div></div>
+      </div>
+
+      <div id="scenarioGrid" class="scenario-grid"></div>
+      <div id="scenarioDetail"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=22"></script>
+  <script>
+    let guestScenarios = [], guestActivities = [], guestResults = {};
+    let openScenarioId = null;
+
+    function getQueryToken() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token');
+    }
+
+    (async () => {
+      const token = getQueryToken();
+      if (!token) { showError(); return; }
+
+      const { data, error } = await sb.rpc('get_guest_ketentest_data', { p_token: token });
+
+      if (error || !data || data.error) {
+        showError();
+        return;
+      }
+
+      document.getElementById('navKetentestNaam').textContent = data.ketentest?.naam || 'Ketentest';
+      document.title = `${data.ketentest?.naam || 'Ketentest'} — Alleen-lezen overzicht`;
+
+      guestScenarios = data.scenarios || [];
+      guestActivities = data.activities || [];
+      guestResults = {};
+      (data.results || []).forEach(r => { guestResults[r.activity_id] = r; });
+
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('contentState').style.display = '';
+      renderAll();
+    })();
+
+    function showError() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = '';
+    }
+
+    function getResult(activityId) {
+      return guestResults[activityId]?.result || 'open';
+    }
+
+    function getScenarioStatus(scenarioId) {
+      const acts = guestActivities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return 'open';
+      const statuses = acts.map(a => getResult(a.id));
+      if (statuses.every(s => s === 'ok')) return 'ok';
+      if (statuses.some(s => s === 'nok')) return 'nok';
+      return 'open';
+    }
+
+    function renderAll() {
+      const totalActs = guestActivities.length;
+      const ok = Object.values(guestResults).filter(r => r.result === 'ok').length;
+      const nok = Object.values(guestResults).filter(r => r.result === 'nok').length;
+
+      document.getElementById('statScenarios').textContent = guestScenarios.length;
+      document.getElementById('statActivities').textContent = totalActs;
+      document.getElementById('statOk').textContent = ok;
+      document.getElementById('statNok').textContent = nok;
+
+      const grid = document.getElementById('scenarioGrid');
+      grid.innerHTML = guestScenarios.map(s => {
+        const acts = guestActivities.filter(a => a.scenario_id === s.id);
+        const status = getScenarioStatus(s.id);
+        const nTotal = acts.length;
+        const nOk = acts.filter(a => getResult(a.id) === 'ok').length;
+        const nNok = acts.filter(a => getResult(a.id) === 'nok').length;
+        const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[status];
+
+        return `<div class="scenario-tile status-${status}" id="gs-${s.id}" onclick="toggleGuestScenario('${s.id}')" style="cursor:pointer;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <span class="tile-code">${s.code}</span>
+            <span class="badge badge-${status}">${statusLabel}</span>
+          </div>
+          <div class="tile-title">${s.title}</div>
+          <div class="tile-bar">
+            ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}
+            ${nNok > 0 ? `<div class="tile-bar-nok" style="width:${Math.round(nNok/nTotal*100)}%"></div>` : ''}
+          </div>
+          <div class="tile-counts">
+            <span style="color:var(--text-muted);">${nTotal} act.</span>
+            ${nOk  > 0 ? `<span style="color:#16a34a;">✓${nOk}</span>` : ''}
+            ${nNok > 0 ? `<span style="color:#dc2626;">✗${nNok}</span>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    function toggleGuestScenario(id) {
+      const existing = document.getElementById('detail-' + (openScenarioId || ''));
+      if (existing) existing.remove();
+
+      if (openScenarioId === id) { openScenarioId = null; return; }
+      openScenarioId = id;
+
+      const s = guestScenarios.find(x => x.id === id);
+      const acts = guestActivities.filter(a => a.scenario_id === id).sort((a, b) => a.sort_order - b.sort_order);
+
+      const panel = document.createElement('div');
+      panel.id = 'detail-' + id;
+      panel.className = 'detail-panel';
+      panel.innerHTML = `
+        <div style="padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface);">
+          <span style="font-size:12px; font-weight:700; color:var(--text-muted);">${s.code}</span>
+          <strong style="margin-left:10px;">${s.title}</strong>
+        </div>
+        ${s.description ? `<p style="font-size:13px; color:var(--text-muted); padding:12px 20px 0;">${s.description}</p>` : ''}
+        ${acts.length ? `
+          <div class="activity-header-guest">
+            <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Resultaat</div>
+          </div>
+          ${acts.map(a => {
+            const res = getResult(a.id);
+            const resLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[res];
+            return `<div class="activity-row-guest">
+              <div style="color:var(--text-muted);">${a.sort_order}</div>
+              <div>${a.organisation_name ? `<span class="org-pill">${a.organisation_code || a.organisation_name}</span>` : '—'}</div>
+              <div>${a.description}</div>
+              <div>${a.acceptant_name ? `<span class="org-pill" style="background:#fef3c7;color:#92400e;">${a.acceptant_code || a.acceptant_name}</span>` : '—'}</div>
+              <div><span class="result-pill result-${res}">${resLabel}</span></div>
+            </div>`;
+          }).join('')}
+        ` : '<p style="padding:16px 20px; font-size:13px; color:var(--text-muted); font-style:italic;">Geen activiteiten.</p>'}
+      `;
+
+      const tile = document.getElementById('gs-' + id);
+      tile.insertAdjacentElement('afterend', panel);
+    }
+  </script>
+</body>
+</html>
