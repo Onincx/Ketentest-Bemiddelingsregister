@@ -14,8 +14,10 @@
     .topnav { background: #39870c !important; }
     .topnav-logo { color: #fff !important; }
     .guest-banner { background: #fef3c7; border-bottom: 1px solid #fcd34d; padding: 8px 24px; text-align: center; font-size: 13px; color: #92400e; }
-    .scenario-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-bottom: 24px; }
-    .scenario-tile { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+    .scenario-grid { margin-bottom: 24px; }
+    .scenario-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+    .scenario-tile { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; cursor: pointer; transition: box-shadow 0.15s; }
+    .scenario-tile:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); }
     .scenario-tile.status-ok { border-left: 3px solid #16a34a; }
     .scenario-tile.status-nok { border-left: 3px solid #dc2626; }
     .scenario-tile.status-open { border-left: 3px solid #e5e7eb; }
@@ -25,7 +27,7 @@
     .tile-bar-ok { background: #16a34a; border-radius: 99px; }
     .tile-bar-nok { background: #dc2626; border-radius: 99px; }
     .tile-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 500; }
-    .detail-panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 16px; overflow: hidden; }
+    .detail-panel { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); margin-bottom: 4px; overflow: hidden; }
     .activity-row-guest { display: grid; grid-template-columns: 32px 110px 1fr 110px 100px; gap: 0; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13px; align-items: center; }
     .activity-row-guest:last-child { border-bottom: none; }
     .activity-header-guest { display: grid; grid-template-columns: 32px 110px 1fr 110px 100px; gap: 0; padding: 8px 12px; background: var(--surface); font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; }
@@ -71,7 +73,6 @@
       </div>
 
       <div id="scenarioGrid" class="scenario-grid"></div>
-      <div id="scenarioDetail"></div>
     </div>
   </div>
 
@@ -79,6 +80,7 @@
   <script src="js/supabase-config.js?v=22"></script>
   <script>
     let guestScenarios = [], guestActivities = [], guestResults = {};
+    let guestFlowNodes = [], guestFlowEdges = [];
     let openScenarioId = null;
 
     function getQueryToken() {
@@ -102,6 +104,8 @@
 
       guestScenarios = data.scenarios || [];
       guestActivities = data.activities || [];
+      guestFlowNodes = data.flow_nodes || [];
+      guestFlowEdges = data.flow_edges || [];
       guestResults = {};
       (data.results || []).forEach(r => { guestResults[r.activity_id] = r; });
 
@@ -128,6 +132,37 @@
       return 'open';
     }
 
+    // Geeft het eerste scenario ID in de flow (geen inkomende edges)
+    function getFlowRootId(scenarioId) {
+      const onCanvas = new Set(guestFlowNodes.map(n => n.scenario_id));
+      if (!onCanvas.has(scenarioId)) return null; // niet in een flow
+
+      let current = scenarioId;
+      const visited = new Set();
+      while (true) {
+        if (visited.has(current)) break; // voorkom loops
+        visited.add(current);
+        const incoming = guestFlowEdges.find(e => e.to_id === current && onCanvas.has(e.from_id));
+        if (!incoming) break; // geen inkomende edge = dit is de root
+        current = incoming.from_id;
+      }
+      return current;
+    }
+
+    function getClientnaam(scenarioId) {
+      const rootId = getFlowRootId(scenarioId);
+      if (!rootId) {
+        const s = guestScenarios.find(x => x.id === scenarioId);
+        return s?.code || '';
+      }
+      const root = guestScenarios.find(x => x.id === rootId);
+      return root?.code || '';
+    }
+
+    function isInFlow(scenarioId) {
+      return guestFlowNodes.some(n => n.scenario_id === scenarioId);
+    }
+
     function renderAll() {
       const totalActs = guestActivities.length;
       const ok = Object.values(guestResults).filter(r => r.result === 'ok').length;
@@ -139,7 +174,7 @@
       document.getElementById('statNok').textContent = nok;
 
       const grid = document.getElementById('scenarioGrid');
-      grid.innerHTML = guestScenarios.map(s => {
+      const tilesHtml = guestScenarios.map(s => {
         const acts = guestActivities.filter(a => a.scenario_id === s.id);
         const status = getScenarioStatus(s.id);
         const nTotal = acts.length;
@@ -147,7 +182,7 @@
         const nNok = acts.filter(a => getResult(a.id) === 'nok').length;
         const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[status];
 
-        return `<div class="scenario-tile status-${status}" id="gs-${s.id}" onclick="toggleGuestScenario('${s.id}')" style="cursor:pointer;">
+        return `<div class="scenario-tile status-${status}" id="gs-${s.id}" onclick="toggleGuestScenario('${s.id}', event)">
           <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <span class="tile-code">${s.code}</span>
             <span class="badge badge-${status}">${statusLabel}</span>
@@ -164,14 +199,22 @@
           </div>
         </div>`;
       }).join('');
+
+      // Wrap in een binnenste grid zodat detailpanelen grid-column: 1/-1 kunnen gebruiken
+      grid.innerHTML = `<div class="scenario-grid-inner" id="scenarioGridInner">${tilesHtml}</div>`;
     }
 
     function toggleGuestScenario(id) {
+      // Sluit een eventueel al openstaand paneel
       const existing = document.getElementById('detail-' + (openScenarioId || ''));
       if (existing) existing.remove();
+      document.querySelectorAll('.scenario-tile').forEach(t => { t.style.outline = ''; });
 
       if (openScenarioId === id) { openScenarioId = null; return; }
       openScenarioId = id;
+
+      const tile = document.getElementById('gs-' + id);
+      if (tile) tile.style.outline = '2px solid var(--brand-mid)';
 
       const s = guestScenarios.find(x => x.id === id);
       const acts = guestActivities.filter(a => a.scenario_id === id).sort((a, b) => a.sort_order - b.sort_order);
@@ -179,32 +222,72 @@
       const panel = document.createElement('div');
       panel.id = 'detail-' + id;
       panel.className = 'detail-panel';
+      panel.style.cssText = 'grid-column: 1 / -1; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
       panel.innerHTML = `
-        <div style="padding:14px 20px; border-bottom:1px solid var(--border); background:var(--surface);">
-          <span style="font-size:12px; font-weight:700; color:var(--text-muted);">${s.code}</span>
-          <strong style="margin-left:10px;">${s.title}</strong>
-        </div>
-        ${s.description ? `<p style="font-size:13px; color:var(--text-muted); padding:12px 20px 0;">${s.description}</p>` : ''}
-        ${acts.length ? `
-          <div class="activity-header-guest">
-            <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Resultaat</div>
+        <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted);">${s.code}</span>
+            <strong style="font-size:15px;">${s.title}</strong>
           </div>
-          ${acts.map(a => {
-            const res = getResult(a.id);
-            const resLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[res];
-            return `<div class="activity-row-guest">
-              <div style="color:var(--text-muted);">${a.sort_order}</div>
-              <div>${a.organisation_name ? `<span class="org-pill">${a.organisation_code || a.organisation_name}</span>` : '—'}</div>
-              <div>${a.description}</div>
-              <div>${a.acceptant_name ? `<span class="org-pill" style="background:#fef3c7;color:#92400e;">${a.acceptant_code || a.acceptant_name}</span>` : '—'}</div>
-              <div><span class="result-pill result-${res}">${resLabel}</span></div>
-            </div>`;
-          }).join('')}
-        ` : '<p style="padding:16px 20px; font-size:13px; color:var(--text-muted); font-style:italic;">Geen activiteiten.</p>'}
-      `;
+          <button onclick="toggleGuestScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
+        </div>
+        <div style="padding:0 20px 16px; overflow-x:auto;">
+          <div style="display:flex; gap:12px; align-items:center; margin:12px 0 4px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Clientnaam</span>
+              <span style="font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:2px 8px; font-family:monospace;">${getClientnaam(s.id)}</span>
+            </div>
+            ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px;" title="Dit scenario is onderdeel van een flow">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#39870c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+              <span style="font-size:11px; font-weight:600; color:#39870c;">Onderdeel van flow</span>
+            </div>` : ''}
+          </div>
+          ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:8px 0;">${s.description}</p>` : ''}
+          ${(s.gegeven || s.wanneer) ? `
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; padding:16px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);">
+              ${s.gegeven ? `<div><p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Gegeven</p><p style="font-size:13px; line-height:1.7; white-space:pre-wrap;">${s.gegeven}</p></div>` : ''}
+              ${s.wanneer ? `<div><p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;">Wanneer</p><p style="font-size:13px; line-height:1.7; white-space:pre-wrap;">${s.wanneer}</p></div>` : ''}
+            </div>` : ''}
+          ${acts.length ? `
+            <div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:12px;">
+              <div class="activity-header-guest">
+                <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Resultaat</div>
+              </div>
+              ${acts.map(a => {
+                const res = getResult(a.id);
+                const resLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' }[res];
+                return `<div class="activity-row-guest">
+                  <div style="color:var(--text-muted);">${a.sort_order}</div>
+                  <div>${a.organisation_name ? `<span class="org-pill">${a.organisation_code || a.organisation_name}</span>` : '—'}</div>
+                  <div>${a.description}</div>
+                  <div>${a.acceptant_name ? `<span class="org-pill" style="background:#fef3c7;color:#92400e;">${a.acceptant_code || a.acceptant_name}</span>` : '—'}</div>
+                  <div><span class="result-pill result-${res}">${resLabel}</span></div>
+                </div>`;
+              }).join('')}
+            </div>
+          ` : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
+        </div>`;
 
-      const tile = document.getElementById('gs-' + id);
-      tile.insertAdjacentElement('afterend', panel);
+      // Voeg het paneel in direct na de laatste tegel in dezelfde visuele rij,
+      // zodat het de volledige breedte van het scherm gebruikt.
+      const innerGrid = document.getElementById('scenarioGridInner');
+      if (!innerGrid) { document.getElementById('scenarioGrid').appendChild(panel); return; }
+
+      const tiles = [...innerGrid.querySelectorAll('.scenario-tile')];
+      const tileIndex = tiles.indexOf(tile);
+      const tileRect = tile.getBoundingClientRect();
+      const tileTop = Math.round(tileRect.top);
+
+      let lastInRow = tile;
+      for (let i = tileIndex + 1; i < tiles.length; i++) {
+        const r = tiles[i].getBoundingClientRect();
+        if (Math.round(r.top) === tileTop) lastInRow = tiles[i];
+        else break;
+      }
+
+      lastInRow.insertAdjacentElement('afterend', panel);
+
+      setTimeout(() => tile.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
   </script>
 </body>
