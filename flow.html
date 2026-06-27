@@ -146,9 +146,6 @@
 
   <!-- Toolbar -->
   <div class="flow-toolbar" id="toolbar">
-    <button class="btn btn-sm btn-outline" onclick="autoLayout()">
-      ⟳ Auto-layout
-    </button>
     <button class="btn btn-sm btn-outline" id="clearAllBtn" onclick="clearAll()">
       🗑 Canvas leegmaken
     </button>
@@ -607,31 +604,6 @@
       nodePositions = {}; edges = [];
       document.getElementById('nodes').innerHTML = '';
       renderEdges(); renderSidebar();
-    }
-
-    function autoLayout() {
-      const ids = Object.keys(nodePositions);
-      const inDeg = {}; ids.forEach(id => inDeg[id] = 0);
-      edges.forEach(e => { if(inDeg[e.to_id]!==undefined) inDeg[e.to_id]++; });
-      const levels = {}; const queue = ids.filter(id=>inDeg[id]===0);
-      queue.forEach(id=>levels[id]=0);
-      const visited = new Set(queue);
-      while(queue.length) {
-        const curr = queue.shift();
-        edges.filter(e=>e.from_id===curr&&nodePositions[e.to_id]).forEach(e=>{
-          levels[e.to_id] = Math.max(levels[e.to_id]||0,(levels[curr]||0)+1);
-          if(!visited.has(e.to_id)){visited.add(e.to_id);queue.push(e.to_id);}
-        });
-      }
-      ids.forEach(id=>{ if(levels[id]===undefined) levels[id]=0; });
-      const perLvl = {};
-      Object.entries(levels).forEach(([id,lvl])=>{ if(!perLvl[lvl]) perLvl[lvl]=[]; perLvl[lvl].push(id); });
-      const saves = [];
-      Object.entries(perLvl).forEach(([lvl,ids])=>{
-        ids.forEach((id,i)=>{ nodePositions[id].x=parseInt(lvl)*230+20; nodePositions[id].y=i*155+20; saves.push(savePos(id)); });
-      });
-      Promise.all(saves);
-      renderAll();
     }
 
     // ── Popup ─────────────────────────────────────────────────
