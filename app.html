@@ -216,6 +216,7 @@
     </div>
   </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=22"></script>
   <script>
@@ -969,101 +970,202 @@
     }
 
     function exportPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' });
+
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 40;
+      const contentWidth = pageWidth - margin * 2;
+      let y = margin;
+
       const ketentestNaam = activeKetentest?.naam || 'Ketentest';
       const datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
-
       const sortedScenarios = [...scenarios].sort((a, b) => a.code.localeCompare(b.code));
 
+      const kleurGroen = [22, 163, 74];
+      const kleurRood = [220, 38, 38];
+      const kleurGrijs = [107, 114, 128];
+      const kleurBlauw = [21, 66, 115];
+      const kleurAccent = [57, 135, 12];
+
       const statusLabel = { ok: 'Geslaagd', nok: 'Mislukt', open: 'Open' };
-      const statusColor = { ok: '#16a34a', nok: '#dc2626', open: '#6b7280' };
+      const statusKleur = { ok: kleurGroen, nok: kleurRood, open: kleurGrijs };
 
-      const scenarioBlocks = sortedScenarios.map(s => {
-        const acts = activities.filter(a => a.scenario_id === s.id).sort((a, b) => a.sort_order - b.sort_order);
-        const status = getScenarioStatus(s.id);
+      function ensureSpace(nodigeRuimte) {
+        if (y + nodigeRuimte > pageHeight - margin) {
+          doc.addPage();
+          y = margin;
+        }
+      }
 
-        const rows = acts.map(a => {
-          const r = results[a.id] || {};
-          const res = r.result || 'open';
-          return `<tr>
-            <td>${a.sort_order}</td>
-            <td>${(a.description || '').replace(/</g, '&lt;')}</td>
-            <td>${a.organisations?.name || '—'}</td>
-            <td>${a.acceptant_org?.name || '—'}</td>
-            <td style="color:${statusColor[res]}; font-weight:600;">${statusLabel[res]}</td>
-            <td>${(r.notes || '').replace(/</g, '&lt;')}</td>
-          </tr>`;
-        }).join('');
+      function wrapText(text, maxWidth, fontSize) {
+        doc.setFontSize(fontSize);
+        return doc.splitTextToSize(text || '', maxWidth);
+      }
 
-        return `
-          <div class="pdf-scenario">
-            <h2>${s.code} — ${(s.title || '').replace(/</g, '&lt;')}
-              <span style="color:${statusColor[status]}; font-size:13px; font-weight:600; margin-left:10px;">[${statusLabel[status]}]</span>
-            </h2>
-            ${s.description ? `<p class="pdf-desc">${s.description.replace(/</g, '&lt;')}</p>` : ''}
-            ${s.gegeven ? `<p class="pdf-meta"><strong>Gegeven:</strong> ${s.gegeven.replace(/</g, '&lt;')}</p>` : ''}
-            ${s.wanneer ? `<p class="pdf-meta"><strong>Wanneer:</strong> ${s.wanneer.replace(/</g, '&lt;')}</p>` : ''}
-            ${acts.length ? `
-              <table class="pdf-table">
-                <thead><tr><th>#</th><th>Activiteit</th><th>Verantw. org.</th><th>Acceptant</th><th>Resultaat</th><th>Opmerkingen</th></tr></thead>
-                <tbody>${rows}</tbody>
-              </table>` : '<p class="pdf-empty">Geen activiteiten.</p>'}
-          </div>`;
-      }).join('');
+      // ── Titelblok ──────────────────────────────────────────────
+      doc.setFillColor(...kleurAccent);
+      doc.rect(0, 0, pageWidth, 6, 'F');
 
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(18);
+      doc.setTextColor(...kleurBlauw);
+      doc.text(ketentestNaam, margin, y + 20);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(...kleurGrijs);
+      doc.text(`Testrapport gegenereerd op ${datum}`, margin, y + 36);
+      y += 56;
+
+      // ── Samenvatting ────────────────────────────────────────────
       const totalActs = activities.length;
       const okCount = Object.values(results).filter(r => r.result === 'ok').length;
       const nokCount = Object.values(results).filter(r => r.result === 'nok').length;
       const openCount = totalActs - okCount - nokCount;
 
-      const printWindow = window.open('', '_blank');
-      printWindow.document.write(`
-        <!DOCTYPE html>
-        <html lang="nl">
-        <head>
-          <meta charset="UTF-8">
-          <title>${ketentestNaam} — Testrapport</title>
-          <style>
-            body { font-family: Arial, sans-serif; color: #1a1a1a; padding: 32px; max-width: 960px; margin: 0 auto; }
-            .pdf-header { border-bottom: 4px solid #39870c; padding-bottom: 16px; margin-bottom: 24px; }
-            .pdf-header h1 { color: #154273; margin: 0 0 4px; font-size: 24px; }
-            .pdf-header p { color: #6b7280; margin: 0; font-size: 13px; }
-            .pdf-summary { display: flex; gap: 24px; margin-bottom: 28px; padding: 14px 18px; background: #f5f5f5; border-radius: 8px; }
-            .pdf-summary div { font-size: 13px; }
-            .pdf-summary strong { font-size: 18px; display: block; }
-            .pdf-scenario { margin-bottom: 28px; page-break-inside: avoid; }
-            .pdf-scenario h2 { font-size: 16px; color: #154273; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; }
-            .pdf-desc { font-size: 13px; color: #374151; margin: 6px 0; }
-            .pdf-meta { font-size: 12px; color: #6b7280; margin: 4px 0; }
-            .pdf-empty { font-size: 12px; color: #9ca3af; font-style: italic; }
-            .pdf-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
-            .pdf-table th { background: #eaf3e0; text-align: left; padding: 6px 8px; border: 1px solid #e5e7eb; }
-            .pdf-table td { padding: 6px 8px; border: 1px solid #e5e7eb; vertical-align: top; }
-            @media print {
-              body { padding: 0; }
-              .pdf-scenario { page-break-inside: avoid; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="pdf-header">
-            <h1>${ketentestNaam}</h1>
-            <p>Testrapport gegenereerd op ${datum}</p>
-          </div>
-          <div class="pdf-summary">
-            <div><strong>${sortedScenarios.length}</strong>Scenario's</div>
-            <div><strong>${totalActs}</strong>Activiteiten</div>
-            <div><strong style="color:#16a34a;">${okCount}</strong>Geslaagd</div>
-            <div><strong style="color:#dc2626;">${nokCount}</strong>Mislukt</div>
-            <div><strong style="color:#6b7280;">${openCount}</strong>Open</div>
-          </div>
-          ${scenarioBlocks}
-        </body>
-        </html>
-      `);
-      printWindow.document.close();
-      printWindow.focus();
-      setTimeout(() => printWindow.print(), 300);
+      doc.setFillColor(245, 245, 245);
+      doc.roundedRect(margin, y, contentWidth, 36, 4, 4, 'F');
+
+      const summaryItems = [
+        { label: 'Scenario\'s', value: sortedScenarios.length, kleur: [26, 26, 26] },
+        { label: 'Activiteiten', value: totalActs, kleur: [26, 26, 26] },
+        { label: 'Geslaagd', value: okCount, kleur: kleurGroen },
+        { label: 'Mislukt', value: nokCount, kleur: kleurRood },
+        { label: 'Open', value: openCount, kleur: kleurGrijs },
+      ];
+      const itemWidth = contentWidth / summaryItems.length;
+      summaryItems.forEach((item, i) => {
+        const x = margin + i * itemWidth + 12;
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(13);
+        doc.setTextColor(...item.kleur);
+        doc.text(String(item.value), x, y + 16);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(...kleurGrijs);
+        doc.text(item.label, x, y + 28);
+      });
+      y += 56;
+
+      // ── Per scenario ────────────────────────────────────────────
+      sortedScenarios.forEach(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a, b) => a.sort_order - b.sort_order);
+        const status = getScenarioStatus(s.id);
+
+        ensureSpace(40);
+
+        doc.setDrawColor(229, 231, 235);
+        doc.setLineWidth(0.5);
+        doc.line(margin, y, pageWidth - margin, y);
+        y += 14;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(12);
+        doc.setTextColor(...kleurBlauw);
+        const titelTekst = `${s.code} — ${s.title || ''}`;
+        doc.text(titelTekst, margin, y);
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...statusKleur[status]);
+        doc.text(`[${statusLabel[status]}]`, pageWidth - margin, y, { align: 'right' });
+        y += 16;
+
+        if (s.description) {
+          const lines = wrapText(s.description, contentWidth, 9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
+          lines.forEach(line => { ensureSpace(12); doc.text(line, margin, y); y += 12; });
+          y += 4;
+        }
+
+        if (!acts.length) {
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(9);
+          doc.setTextColor(...kleurGrijs);
+          doc.text('Geen activiteiten.', margin, y);
+          y += 18;
+          return;
+        }
+
+        // Tabel header
+        const colWidths = { nr: 24, act: contentWidth * 0.34, org: contentWidth * 0.16, acc: contentWidth * 0.16, res: contentWidth * 0.12, notes: 0 };
+        colWidths.notes = contentWidth - colWidths.nr - colWidths.act - colWidths.org - colWidths.acc - colWidths.res;
+
+        function drawTableHeader() {
+          ensureSpace(20);
+          doc.setFillColor(234, 243, 224);
+          doc.rect(margin, y, contentWidth, 16, 'F');
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(...kleurAccent);
+          let x = margin + 4;
+          doc.text('#', x, y + 11); x += colWidths.nr;
+          doc.text('Activiteit', x, y + 11); x += colWidths.act;
+          doc.text('Verantw.', x, y + 11); x += colWidths.org;
+          doc.text('Acceptant', x, y + 11); x += colWidths.acc;
+          doc.text('Resultaat', x, y + 11); x += colWidths.res;
+          doc.text('Opmerkingen', x, y + 11);
+          y += 16;
+        }
+
+        drawTableHeader();
+
+        acts.forEach(a => {
+          const r = results[a.id] || {};
+          const res = r.result || 'open';
+
+          const actLines = wrapText(a.description, colWidths.act - 6, 8);
+          const notesLines = wrapText(r.notes || '', colWidths.notes - 6, 8);
+          const rowLines = Math.max(actLines.length, notesLines.length, 1);
+          const rowHeight = rowLines * 10 + 6;
+
+          ensureSpace(rowHeight);
+          // Als we net een nieuwe pagina zijn begonnen, herhaal de header
+          if (y === margin) drawTableHeader();
+
+          doc.setDrawColor(229, 231, 235);
+          doc.setLineWidth(0.3);
+          doc.line(margin, y, pageWidth - margin, y);
+
+          let x = margin + 4;
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8);
+          doc.setTextColor(26, 26, 26);
+          doc.text(String(a.sort_order), x, y + 9); x += colWidths.nr;
+
+          doc.text(actLines, x, y + 9); x += colWidths.act;
+
+          doc.setTextColor(...kleurGrijs);
+          doc.text(a.organisations?.name || '—', x, y + 9, { maxWidth: colWidths.org - 6 }); x += colWidths.org;
+          doc.text(a.acceptant_org?.name || '—', x, y + 9, { maxWidth: colWidths.acc - 6 }); x += colWidths.acc;
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...statusKleur[res]);
+          doc.text(statusLabel[res], x, y + 9); x += colWidths.res;
+
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
+          doc.text(notesLines, x, y + 9);
+
+          y += rowHeight;
+        });
+
+        y += 16;
+      });
+
+      // ── Openen in nieuw tabblad als PDF-bestand (geen printdialoog) ──
+      const bestandsnaam = `${ketentestNaam.replace(/[^a-z0-9]+/gi, '_')}_testrapport_${new Date().toISOString().slice(0,10)}.pdf`;
+      const blob = doc.output('blob');
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      // De blob-URL pas later opruimen, zodat het net geopende tabblad de tijd
+      // heeft om het bestand te laden.
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
     }
+
 
     async function doLogout() {
       await sb.auth.signOut();
