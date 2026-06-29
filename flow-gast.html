@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow — Alleen-lezen overzicht</title>
+  <link rel="stylesheet" href="css/style.css?v=22">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { overflow: hidden; margin: 0; }
+
+    .guest-banner {
+      position: fixed; left: 0; right: 0; z-index: 250;
+      background: #fef3c7; border-bottom: 1px solid #fcd34d;
+      padding: 8px 24px; text-align: center; font-size: 13px; color: #92400e;
+    }
+
+    /* Canvas */
+    .flow-canvas {
+      position: fixed; left: 0; right: 0; bottom: 0;
+      background: #f0f4f8;
+      overflow: auto;
+    }
+
+    #arrowSvg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Nodes - alleen-lezen, geen grab-cursor */
+    .flow-node {
+      position: absolute; width: 190px;
+      border-radius: 10px; background: #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #e5e7eb;
+      cursor: pointer; user-select: none;
+      transition: box-shadow 0.15s;
+      z-index: 5;
+    }
+    .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 0 0 2px #39870c; z-index: 6; }
+
+    .flow-node.start-node { width: 260px; box-shadow: 0 4px 16px rgba(57,135,12,0.20), 0 0 0 3px #39870c; }
+    .flow-node.start-node:hover { box-shadow: 0 8px 24px rgba(57,135,12,0.25), 0 0 0 3px #2d6e09; }
+    .flow-node.start-node .node-head { background: linear-gradient(135deg, #eaf3e0, #d1fae5) !important; }
+    .flow-node.start-node .node-code { font-size: 13px !important; }
+    .flow-node.start-node .node-title { font-size: 14px !important; padding: 12px 14px 8px !important; }
+    .start-badge { display:inline-flex; align-items:center; gap:3px; background:#39870c; color:#fff; border-radius:4px; padding:1px 7px; font-size:10px; font-weight:700; letter-spacing:0.03em; }
+
+    .flow-node.s-ok   { box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #16a34a; }
+    .flow-node.s-ok .node-head   { background: linear-gradient(135deg, #dcfce7, #f0fdf4); }
+    .flow-node.s-nok  { box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #dc2626; }
+    .flow-node.s-nok .node-head  { background: linear-gradient(135deg, #fee2e2, #fff5f5); }
+    .flow-node.s-open { box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #d1d5db; }
+    .flow-node.s-open .node-head { background: linear-gradient(135deg, #f8fafc, #fff); }
+
+    .node-head { border-radius: 9px 9px 0 0; padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; }
+    .node-code { font-size: 10px; font-weight: 800; letter-spacing: 0.03em; }
+    .s-ok  .node-code { color: #15803d; }
+    .s-nok .node-code { color: #b91c1c; }
+    .s-open .node-code { color: #6b7280; }
+    .node-emoji { font-size: 14px; }
+    .node-title { padding: 8px 10px 6px; font-size: 12px; font-weight: 600; color: #111; line-height: 1.45; }
+    .node-bar { margin: 0 10px 4px; height: 3px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+    .node-bar-fill { height: 100%; background: #39870c; border-radius: 99px; }
+    .node-foot { padding: 4px 10px 8px; }
+    .node-pct { font-size: 10px; color: #6b7280; }
+
+    /* Popup */
+    .node-popup {
+      position: absolute; width: 270px; background: #fff;
+      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      z-index: 50; overflow: hidden;
+    }
+    .popup-head { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+    .popup-close { border: none; background: none; cursor: pointer; color: #9ca3af; font-size: 16px; padding: 0; line-height: 1; flex-shrink: 0; }
+    .popup-acts { max-height: 220px; overflow-y: auto; }
+    .popup-act { padding: 7px 12px; border-bottom: 1px solid #f9fafb; display: flex; gap: 7px; align-items: flex-start; }
+    .popup-act:last-child { border-bottom: none; }
+
+    .loading-state, .error-state {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      font-size: 14px; color: #6b7280; text-align: center; padding: 24px;
+    }
+  </style>
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff; position:fixed; top:0; left:0; right:0; z-index:300;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+  <style>
+    .topnav { background: #39870c !important; position:fixed !important; left:0 !important; right:0 !important; width:100% !important; z-index:299; }
+  </style>
+
+  <nav class="topnav" id="mainNav" style="background:#39870c !important; top:121px;">
+    <div class="topnav-logo" style="color:#fff;"><span id="navKetentestNaam">Flow</span></div>
+    <a href="#" id="ketentestGuestLink" style="color:rgba(255,255,255,0.85); font-size:14px; font-weight:500; margin-left:24px; display:flex; align-items:center; gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+      Bekijk Scenario's
+    </a>
+  </nav>
+
+  <div class="guest-banner" id="guestBanner">
+    U bekijkt deze flow via een deellink, zonder in te loggen. Dit overzicht is alleen-lezen.
+  </div>
+
+  <div id="loadingState" class="loading-state"><p>Laden...</p></div>
+  <div id="errorState" class="error-state" style="display:none;">
+    <p>Deze link is niet (meer) geldig. Vraag de beheerder om een nieuwe deellink.</p>
+  </div>
+
+  <!-- Canvas -->
+  <div class="flow-canvas" id="canvas" style="display:none;">
+    <div id="canvasInner" style="position:relative; width:3000px; height:2000px; background-image:radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size:24px 24px;">
+      <svg id="arrowSvg">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
+          </marker>
+        </defs>
+        <g id="edges"></g>
+      </svg>
+      <div id="nodes" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=22"></script>
+  <script>
+    let scenarios = [], activities = [], results = [], orgs = {};
+    let nodePositions = {};
+    let edges = [];
+
+    function bannerH() {
+      return (document.querySelector('img[src="ZinBanner.png"]')?.getBoundingClientRect().height || 121);
+    }
+
+    function applyLayout() {
+      const bh = Math.ceil(bannerH());
+      const nav = document.getElementById('mainNav');
+      if (nav) nav.style.top = bh + 'px';
+      const navH = 56;
+      const banner = document.getElementById('guestBanner');
+      const bannerTop = bh + navH;
+      banner.style.top = bannerTop + 'px';
+      const bannerH2 = banner.getBoundingClientRect().height || 34;
+      const canvasTop = bannerTop + bannerH2;
+      document.getElementById('canvas').style.top = canvasTop + 'px';
+    }
+
+    function getQueryToken() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('token');
+    }
+
+    (async () => {
+      const token = getQueryToken();
+      if (!token) { showError(); return; }
+
+      const { data, error } = await sb.rpc('get_guest_ketentest_data', { p_token: token });
+
+      if (error || !data || data.error) {
+        showError();
+        return;
+      }
+
+      document.getElementById('navKetentestNaam').textContent = data.ketentest?.naam || 'Flow';
+      document.title = `${data.ketentest?.naam || 'Flow'} — Alleen-lezen overzicht`;
+      document.getElementById('ketentestGuestLink').href = `gast.html?token=${encodeURIComponent(token)}`;
+
+      scenarios  = data.scenarios || [];
+      activities = data.activities || [];
+      results    = data.results || [];
+
+      nodePositions = {};
+      (data.flow_nodes || []).forEach(n => {
+        nodePositions[n.scenario_id] = { x: n.x, y: n.y, isStart: n.is_start || false };
+      });
+      edges = data.flow_edges || [];
+
+      // Organisatienamen voor de popup (acceptant) zijn al meegeleverd via
+      // activities.acceptant_name, dus een losse orgs-lookup is hier niet nodig.
+
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('canvas').style.display = '';
+      applyLayout();
+      renderAll();
+    })();
+
+    window.addEventListener('resize', applyLayout);
+
+    function showError() {
+      document.getElementById('loadingState').style.display = 'none';
+      document.getElementById('errorState').style.display = '';
+    }
+
+    function getStatus(sid) {
+      const acts = activities.filter(a => a.scenario_id === sid);
+      if (!acts.length) return 'open';
+      const rs = acts.map(a => results.find(r => r.activity_id === a.id)?.result || 'open');
+      if (rs.every(r => r === 'ok')) return 'ok';
+      if (rs.some(r => r === 'nok')) return 'nok';
+      return 'open';
+    }
+
+    function getPct(sid) {
+      const acts = activities.filter(a => a.scenario_id === sid);
+      if (!acts.length) return 0;
+      const done = acts.filter(a => { const r = results.find(x => x.activity_id === a.id); return r && r.result !== 'open'; }).length;
+      return Math.round(done / acts.length * 100);
+    }
+
+    function renderAll() {
+      renderNodes();
+      renderEdges();
+    }
+
+    function renderNodes() {
+      const container = document.getElementById('nodes');
+      Object.entries(nodePositions).forEach(([sid, pos]) => {
+        const s = scenarios.find(x => x.id === sid);
+        if (!s) return;
+
+        let el = document.getElementById('fn-' + sid);
+        if (!el) {
+          el = document.createElement('div');
+          el.id = 'fn-' + sid;
+          el.className = 'flow-node';
+          el.dataset.id = sid;
+          container.appendChild(el);
+          el.onclick = () => showPopup(sid, el);
+        }
+
+        const status = getStatus(sid);
+        const pct = getPct(sid);
+        const acts = activities.filter(a => a.scenario_id === sid);
+        const isStart = pos.isStart || false;
+
+        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}`;
+        el.style.left = pos.x + 'px';
+        el.style.top  = pos.y + 'px';
+        el.innerHTML = `
+          <div class="node-head">
+            <div style="display:flex; align-items:center; gap:6px; flex:1; min-width:0;">
+              ${isStart ? '<span class="start-badge">▶ START</span>' : ''}
+              <span class="node-code">${s.code}</span>
+            </div>
+            <span class="node-emoji">${{ok:'✅',nok:'❌',open:'⏳'}[status]}</span>
+          </div>
+          <div class="node-title">${s.title}</div>
+          <div class="node-bar"><div class="node-bar-fill" style="width:${pct}%"></div></div>
+          <div class="node-foot">
+            <span class="node-pct">${pct}% · ${acts.length} act.</span>
+          </div>`;
+      });
+    }
+
+    function renderEdges() {
+      const svg = document.getElementById('edges');
+      svg.innerHTML = '';
+
+      edges.forEach(edge => {
+        const fromPos = nodePositions[edge.from_id];
+        const toPos   = nodePositions[edge.to_id];
+        if (!fromPos || !toPos) return;
+
+        const fromEl = document.getElementById('fn-' + edge.from_id);
+        const toEl   = document.getElementById('fn-' + edge.to_id);
+        const fw = fromEl?.offsetWidth  || 190;
+        const fh = fromEl?.offsetHeight || 110;
+        const tw = toEl?.offsetWidth    || 190;
+        const th = toEl?.offsetHeight   || 110;
+
+        const dx = (toPos.x + tw/2) - (fromPos.x + fw/2);
+        const dy = (toPos.y + th/2) - (fromPos.y + fh/2);
+        let x1, y1, x2, y2, cx1, cy1, cx2, cy2;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+          if (dx > 0) {
+            x1 = fromPos.x + fw; y1 = fromPos.y + fh/2;
+            x2 = toPos.x;        y2 = toPos.y  + th/2;
+          } else {
+            x1 = fromPos.x;      y1 = fromPos.y + fh/2;
+            x2 = toPos.x + tw;   y2 = toPos.y  + th/2;
+          }
+          const mx = (x1+x2)/2;
+          cx1 = mx; cy1 = y1; cx2 = mx; cy2 = y2;
+        } else {
+          if (dy > 0) {
+            x1 = fromPos.x + fw/2; y1 = fromPos.y + fh;
+            x2 = toPos.x  + tw/2;  y2 = toPos.y;
+          } else {
+            x1 = fromPos.x + fw/2; y1 = fromPos.y;
+            x2 = toPos.x  + tw/2;  y2 = toPos.y + th;
+          }
+          const my = (y1+y2)/2;
+          cx1 = x1; cy1 = my; cx2 = x2; cy2 = my;
+        }
+
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        const d = `M${x1},${y1} C${cx1},${cy1} ${cx2},${cy2} ${x2},${y2}`;
+        path.setAttribute('d', d);
+        path.setAttribute('stroke', '#39870c');
+        path.setAttribute('stroke-width', '2.5');
+        path.setAttribute('fill', 'none');
+        path.setAttribute('marker-end', 'url(#arr)');
+        path.setAttribute('stroke-linecap', 'round');
+        svg.appendChild(path);
+      });
+    }
+
+    function showPopup(sid, nodeEl) {
+      closePopup();
+      const s = scenarios.find(x => x.id === sid); if (!s) return;
+      const acts = activities.filter(a => a.scenario_id === sid);
+      const status = getStatus(sid);
+      const statusColor = { ok: '#16a34a', nok: '#dc2626', open: '#6b7280' }[status];
+      const statusBg    = { ok: '#dcfce7', nok: '#fee2e2', open: '#f3f4f6' }[status];
+      const statusLabel = { ok: '✅ Geslaagd', nok: '❌ Mislukt', open: '⏳ Open' }[status];
+
+      const popup = document.createElement('div');
+      popup.id = 'nodePopup';
+      popup.className = 'node-popup';
+      const nx = nodePositions[sid].x + (nodeEl.offsetWidth || 190) + 10;
+      const ny = nodePositions[sid].y;
+      popup.style.left = nx + 'px'; popup.style.top = ny + 'px';
+
+      popup.innerHTML = `
+        <div class="popup-head" style="background:${statusBg}; border-bottom:1px solid rgba(0,0,0,0.08);">
+          <div>
+            <div style="font-size:10px;font-weight:800;color:${statusColor};">${s.code}</div>
+            <div style="font-size:13px;font-weight:700;color:#111;line-height:1.4;">${s.title}</div>
+            <div style="margin-top:4px;"><span style="background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;">${statusLabel}</span></div>
+          </div>
+          <button class="popup-close" onclick="closePopup()">✕</button>
+        </div>
+        ${acts.length ? `
+        <div style="padding:6px 12px 4px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #f3f4f6;">
+          Activiteiten (${acts.length})
+        </div>
+        <div class="popup-acts">
+          ${acts.map(a => {
+            const r = results.find(x => x.activity_id === a.id);
+            const res = r?.result || 'open';
+            const dot = { ok: '✅', nok: '❌', open: '⏳' }[res];
+            return `<div class="popup-act">
+              <span style="font-size:13px;flex-shrink:0;">${dot}</span>
+              <div style="flex:1;min-width:0;">
+                <div style="font-size:12px;color:#111;line-height:1.4;">${a.description}</div>
+                ${a.acceptant_name ? `<div style="font-size:10px;color:#6b7280;margin-top:1px;">Acceptant: <strong>${a.acceptant_name}</strong></div>` : ''}
+                ${r?.notes ? `<div style="font-size:10px;color:#92400e;margin-top:1px;font-style:italic;">"${r.notes.substring(0,60)}${r.notes.length > 60 ? '...' : ''}"</div>` : ''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : '<div style="padding:12px;font-size:12px;color:#6b7280;font-style:italic;">Geen activiteiten</div>'}`;
+
+      document.getElementById('nodes').appendChild(popup);
+
+      setTimeout(() => {
+        document.addEventListener('click', function close(e) {
+          if (!popup.contains(e.target) && !nodeEl.contains(e.target)) {
+            popup.remove();
+            document.removeEventListener('click', close);
+          }
+        });
+      }, 50);
+    }
+
+    function closePopup() { document.getElementById('nodePopup')?.remove(); }
+  </script>
+</body>
+</html>
