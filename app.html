@@ -281,6 +281,8 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
+      await loadNotificationDefs();
+
       if (!scenarioIds.length) {
         activities = []; results = {}; flowNodes = []; flowEdges = [];
         return;
@@ -376,24 +378,28 @@
       renderAll();
     }
 
-    // Notificatie definities: patroon → {label, type}
-    const NOTIFICATIES = [
-      { pattern: /nieuwe[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i,  label: 'Nieuwe BS ZA',    type: 'nieuw' },
-      { pattern: /nieuwe[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,    label: 'Nieuwe BS ZK',    type: 'nieuw' },
-      { pattern: /nieuwe[_\s]overdracht[_\s]zorgkantoor/i,                 label: 'Nieuwe OD ZK',    type: 'nieuw' },
-      { pattern: /nieuwe[_\s]regiehouder[_\s]zorgaanbieder/i,              label: 'Nieuwe RH ZA',    type: 'nieuw' },
-      { pattern: /nieuwe[_\s]regierol[_\s]zorgaanbieder/i,                 label: 'Nieuwe RR ZA',    type: 'nieuw' },
-      { pattern: /gewijzigde[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Gewijz. BS ZA', type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Gewijz. BS ZK', type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]overdracht[_\s]zorgkantoor/i,               label: 'Gewijz. OD ZK', type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]regiehouder[_\s]zorgaanbieder/i,            label: 'Gewijz. RH ZA', type: 'gewijzigd' },
-      { pattern: /informatieve[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Info BS ZA',  type: 'informatief' },
-      { pattern: /informatieve[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Info BS ZK',  type: 'informatief' },
-      { pattern: /verwijderde[_\s]bemiddelingspecificatie[_\s]zorgaanbieder/i, label: 'Verw. BS ZA', type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]bemiddelingspecificatie[_\s]zorgkantoor/i,   label: 'Verw. BS ZK', type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]overdracht[_\s]zorgkantoor/i,               label: 'Verw. OD ZK', type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]regiehouder[_\s]zorgaanbieder/i,            label: 'Verw. RH ZA', type: 'verwijderd' },
-    ];
+    // Notificaties worden per ketentest beheerd door de beheerder (zie Beheer
+    // → Notificaties) en hier geladen uit de database. Geen hardgecodeerde
+    // lijst meer, zodat elke notificatie die de beheerder toevoegt automatisch
+    // wordt herkend, ook als de naam nog niet eerder voorkwam.
+    let NOTIFICATIES = [];
+
+    // Bouw regex die zowel spaties als underscores herkent, hoofdletterongevoelig.
+    // Identiek aan de implementatie in admin.html, zodat herkenning overal
+    // consistent werkt.
+    function buildPattern(naam) {
+      const escaped = naam
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/[_\s]+/g, '[_\\s]+');
+      return new RegExp(escaped, 'gi');
+    }
+
+    async function loadNotificationDefs() {
+      if (!activeKetentest) { NOTIFICATIES = []; return; }
+      const { data, error } = await sb.from('notification_definitions').select('*').eq('ketentest_id', activeKetentest.id).order('naam');
+      if (error) { console.error('loadNotificationDefs error:', error); NOTIFICATIES = []; return; }
+      NOTIFICATIES = data || [];
+    }
 
     let activeNotifFilter = null;
 
@@ -401,10 +407,11 @@
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       const found = new Map();
       acts.forEach(a => {
-        const text = (a.description || '') + ' ' + (a.expected_result || '');
+        const text = (a.description || '');
         NOTIFICATIES.forEach(n => {
-          if (n.pattern.test(text) && !found.has(n.label)) {
-            found.set(n.label, n);
+          const pattern = buildPattern(n.naam);
+          if (pattern.test(text) && !found.has(n.naam)) {
+            found.set(n.naam, n);
           }
         });
       });
@@ -415,19 +422,19 @@
       if (!notifs.length) return '';
       return '<div class="notif-labels-wrap">' +
         notifs.map(n => {
-          const isActive = activeNotifFilter === n.label;
+          const isActive = activeNotifFilter === n.naam;
           return `<span class="notif-label notif-${n.type}"
-            onclick="event.stopPropagation(); setNotifFilter('${n.label}')"
-            title="Klik om te filteren op: ${n.label}"
+            onclick="event.stopPropagation(); setNotifFilter('${n.naam}')"
+            title="Klik om te filteren op: ${n.naam}"
             style="${isActive ? 'outline:2px solid currentColor; outline-offset:2px; font-weight:700;' : ''}"
-            >${n.label}</span>`;
+            >${n.naam}</span>`;
         }).join('') +
         '</div>';
     }
 
-    function setNotifFilter(label) {
+    function setNotifFilter(naam) {
       // null = filter wissen, anders toggle
-      activeNotifFilter = (label === null || activeNotifFilter === label) ? null : label;
+      activeNotifFilter = (naam === null || activeNotifFilter === naam) ? null : naam;
       const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
       if (existing) existing.remove();
       openScenarioId = null;
@@ -444,7 +451,7 @@
         indicator.style.display = '';
         lbl.textContent = '🔔 ' + activeNotifFilter;
         // Kleur passend bij type
-        const notif = NOTIFICATIES.find(n => n.label === activeNotifFilter);
+        const notif = NOTIFICATIES.find(n => n.naam === activeNotifFilter);
         const colors = {
           nieuw: {color:'#065f46', bg:'#d1fae5', border:'#6ee7b7'},
           gewijzigd: {color:'#92400e', bg:'#fef3c7', border:'#fcd34d'},
@@ -460,24 +467,6 @@
       }
     }
 
-    const NOTIFICATIES_APP = [
-      { pattern: /nieuwe[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi,  type: 'nieuw' },
-      { pattern: /nieuwe[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,    type: 'nieuw' },
-      { pattern: /nieuwe[_\s]+overdracht[_\s]+zorgkantoor/gi,                 type: 'nieuw' },
-      { pattern: /nieuwe[_\s]+regiehouder[_\s]+zorgaanbieder/gi,              type: 'nieuw' },
-      { pattern: /nieuwe[_\s]+regierol[_\s]+zorgaanbieder/gi,                 type: 'nieuw' },
-      { pattern: /gewijzigde[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi, type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,   type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]+overdracht[_\s]+zorgkantoor/gi,               type: 'gewijzigd' },
-      { pattern: /gewijzigde[_\s]+regiehouder[_\s]+zorgaanbieder/gi,            type: 'gewijzigd' },
-      { pattern: /informatieve[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi, type: 'informatief' },
-      { pattern: /informatieve[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,   type: 'informatief' },
-      { pattern: /verwijderde[_\s]+bemiddelingspecificatie[_\s]+zorgaanbieder/gi,  type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]+bemiddelingspecificatie[_\s]+zorgkantoor/gi,    type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]+overdracht[_\s]+zorgkantoor/gi,                type: 'verwijderd' },
-      { pattern: /verwijderde[_\s]+regiehouder[_\s]+zorgaanbieder/gi,             type: 'verwijderd' },
-    ];
-
     const NOTIF_STYLE = {
       nieuw:       'background:#d1fae5; color:#065f46; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #6ee7b7;',
       gewijzigd:   'background:#fef3c7; color:#92400e; border-radius:3px; padding:1px 4px; font-weight:600; border-bottom:2px solid #fcd34d;',
@@ -488,9 +477,9 @@
     function highlightNotificaties(text) {
       if (!text) return text;
       let result = text;
-      NOTIFICATIES_APP.forEach(n => {
-        n.pattern.lastIndex = 0;
-        result = result.replace(n.pattern, match =>
+      NOTIFICATIES.forEach(n => {
+        const pattern = buildPattern(n.naam);
+        result = result.replace(pattern, match =>
           `<mark style="${NOTIF_STYLE[n.type]}">${match}</mark>`
         );
       });
@@ -561,9 +550,9 @@
       else if (activeFilter === 'mine') {
         filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
       }
-      // Filter op notificatielabel
+      // Filter op notificatie
       if (activeNotifFilter) {
-        filtered = filtered.filter(s => getScenarioNotificaties(s.id).some(n => n.label === activeNotifFilter));
+        filtered = filtered.filter(s => getScenarioNotificaties(s.id).some(n => n.naam === activeNotifFilter));
       }
 
       // Filter op actieve tab

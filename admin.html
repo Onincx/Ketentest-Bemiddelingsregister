@@ -190,15 +190,63 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Notificaties</h1>
-          <p>Overzicht van alle notificaties en hun gebruik in de testscenario's.</p>
+          <p>Beheer de notificaties van deze ketentest en bekijk waar ze worden gebruikt in de testscenario's.</p>
         </div>
-        <button class="btn btn-primary" id="scanBtn" onclick="scanActivities()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Scan activiteiten
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-outline" id="scanBtn" onclick="scanActivities()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Scan activiteiten
+          </button>
+          <button class="btn btn-primary" onclick="openNewNotificationModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Notificatie toevoegen
+          </button>
+        </div>
       </div>
       <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
+
+      <div class="card" style="padding:0; margin-bottom:24px;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Naam</th><th>Type</th><th></th></tr></thead>
+            <tbody id="notificationDefTable"><tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
       <div id="notificationsOverview"></div>
+    </div>
+
+    <!-- Modal: Notificatie -->
+    <div class="modal-overlay" id="modalNotification" style="display:none;" onclick="closeModalOverlay(event,'modalNotification')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 id="modalNotificationTitle">Notificatie toevoegen</h3>
+          <button class="btn btn-ghost btn-icon" onclick="closeModal('modalNotification')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="notificationDefId">
+          <div class="form-group">
+            <label>Naam van de notificatie</label>
+            <input type="text" id="notificationDefNaam" placeholder="bijv. Nieuwe Bemiddelingspecificatie Zorgaanbieder">
+            <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">Spaties en underscores worden bij het zoeken door elkaar herkend.</p>
+          </div>
+          <div class="form-group">
+            <label>Type</label>
+            <select id="notificationDefType">
+              <option value="nieuw">Nieuw</option>
+              <option value="gewijzigd">Gewijzigd</option>
+              <option value="informatief">Informatief</option>
+              <option value="verwijderd">Verwijderd</option>
+            </select>
+          </div>
+          <div id="alertNotificationDef" class="alert" style="display:none;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('modalNotification')">Annuleren</button>
+          <button class="btn btn-primary" onclick="saveNotificationDef()">Opslaan</button>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: Testscenario's -->
@@ -584,22 +632,9 @@
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let ketentests = [], activeKetentest = null;
 
-    const NOTIFICATIES = [
-      { id: 'nieuwe_bs_za',    label: 'nieuwe_bemiddelingspecificatie_zorgaanbieder',  type: 'nieuw',      display: 'Nieuwe BS Zorgaanbieder' },
-      { id: 'nieuwe_bs_zk',    label: 'nieuwe_bemiddelingspecificatie_zorgkantoor',    type: 'nieuw',      display: 'Nieuwe BS Zorgkantoor' },
-      { id: 'nieuwe_od_zk',    label: 'nieuwe_overdracht_zorgkantoor',                type: 'nieuw',      display: 'Nieuwe Overdracht Zorgkantoor' },
-      { id: 'nieuwe_rh_za',    label: 'nieuwe_regiehouder_zorgaanbieder',             type: 'nieuw',      display: 'Nieuwe Regiehouder Zorgaanbieder' },
-      { id: 'gewijz_bs_za',    label: 'gewijzigde_bemiddelingspecificatie_zorgaanbieder', type: 'gewijzigd', display: 'Gewijzigde BS Zorgaanbieder' },
-      { id: 'gewijz_bs_zk',    label: 'gewijzigde_bemiddelingspecificatie_zorgkantoor',   type: 'gewijzigd', display: 'Gewijzigde BS Zorgkantoor' },
-      { id: 'gewijz_od_zk',    label: 'gewijzigde_overdracht_zorgkantoor',            type: 'gewijzigd',  display: 'Gewijzigde Overdracht Zorgkantoor' },
-      { id: 'gewijz_rh_za',    label: 'gewijzigde_regiehouder_zorgaanbieder',         type: 'gewijzigd',  display: 'Gewijzigde Regiehouder Zorgaanbieder' },
-      { id: 'info_bs_za',      label: 'informatieve_bemiddelingspecificatie_zorgaanbieder', type: 'informatief', display: 'Informatieve BS Zorgaanbieder' },
-      { id: 'info_bs_zk',      label: 'informatieve_bemiddelingspecificatie_zorgkantoor',   type: 'informatief', display: 'Informatieve BS Zorgkantoor' },
-      { id: 'verw_bs_za',      label: 'verwijderde_bemiddelingspecificatie_zorgaanbieder',  type: 'verwijderd', display: 'Verwijderde BS Zorgaanbieder' },
-      { id: 'verw_bs_zk',      label: 'verwijderde_bemiddelingspecificatie_zorgkantoor',    type: 'verwijderd', display: 'Verwijderde BS Zorgkantoor' },
-      { id: 'verw_od_zk',      label: 'verwijderde_overdracht_zorgkantoor',           type: 'verwijderd', display: 'Verwijderde Overdracht Zorgkantoor' },
-      { id: 'verw_rh_za',      label: 'verwijderde_regiehouder_zorgaanbieder',        type: 'verwijderd', display: 'Verwijderde Regiehouder Zorgaanbieder' },
-    ];
+    // Notificaties worden niet meer hardgecodeerd, maar per ketentest beheerd
+    // door de beheerder en geladen uit de database (zie loadNotificationDefs).
+    let NOTIFICATIES = [];
 
     const NOTIF_COLORS = {
       nieuw:       { bg: '#d1fae5', color: '#065f46', border: '#6ee7b7' },
@@ -643,7 +678,7 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
     }
 
@@ -692,14 +727,19 @@
       });
       activeTab = tab;
       if (tab === 'options') renderOptions();
-      if (tab === 'notifications') renderNotifications();
+      if (tab === 'notifications') { renderNotificationDefTable(); renderNotifications(); }
       if (tab === 'ketentests') renderKetentestTable();
     }
 
     // ---- ORGS ----
     // Bouw regex die zowel spaties als underscores herkent, hoofdletterongevoelig
-    function buildPattern(label) {
-      const escaped = label.replace(/_/g, '[_\\s]+');
+    // Bouw regex die zowel spaties als underscores herkent, hoofdletterongevoelig.
+    // Werkt ongeacht of de beheerder de naam met spaties of underscores invoerde,
+    // en ongeacht welke variant in de activiteitstekst zelf wordt gebruikt.
+    function buildPattern(naam) {
+      const escaped = naam
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/[_\s]+/g, '[_\\s]+');
       return new RegExp(escaped, 'gi');
     }
 
@@ -708,7 +748,7 @@
       if (!text) return text;
       let result = text;
       NOTIFICATIES.forEach(n => {
-        const pattern = buildPattern(n.label);
+        const pattern = buildPattern(n.naam);
         const c = NOTIF_COLORS[n.type];
         result = result.replace(pattern, match =>
           `<mark style="background:${c.bg}; color:${c.color}; border-radius:3px; padding:0 3px; font-weight:600; border-bottom:2px solid ${c.border};">${match}</mark>`
@@ -723,22 +763,20 @@
       btn.innerHTML = '<span style="opacity:0.6">Scannen...</span>';
 
       let totalFound = 0;
-      let updatedCount = 0;
 
       // Scan alle activiteiten en sla gevonden notificaties op als markering
-      // We slaan de resultaten op in een lokale map voor weergave
-      const scanResults = {}; // notificatie label → [scenario codes]
+      const scanResults = {}; // notificatienaam → [scenario codes]
 
-      NOTIFICATIES.forEach(n => { scanResults[n.label] = []; });
+      NOTIFICATIES.forEach(n => { scanResults[n.naam] = []; });
 
       activities.forEach(a => {
         const text = a.description || '';
         NOTIFICATIES.forEach(n => {
-          const pattern = buildPattern(n.label);
+          const pattern = buildPattern(n.naam);
           if (pattern.test(text)) {
             const s = scenarios.find(x => x.id === a.scenario_id);
-            if (s && !scanResults[n.label].includes(s.code)) {
-              scanResults[n.label].push(s.code);
+            if (s && !scanResults[n.naam].includes(s.code)) {
+              scanResults[n.naam].push(s.code);
               totalFound++;
             }
           }
@@ -765,6 +803,11 @@
       const wrap = document.getElementById('notificationsOverview');
       if (!wrap) return;
 
+      if (!NOTIFICATIES.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Nog geen notificaties toegevoegd. Klik op \u2018Notificatie toevoegen\u2019 hierboven.</p></div>';
+        return;
+      }
+
       // Groepeer per type
       const types = ['nieuw', 'gewijzigd', 'informatief', 'verwijderd'];
       const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
@@ -773,19 +816,19 @@
 
       types.forEach(type => {
         const notifs = NOTIFICATIES.filter(n => n.type === type);
+        if (!notifs.length) return;
         const c = NOTIF_COLORS[type];
 
         html += `<div style="margin-bottom:24px;">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
             <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; border-radius:99px; padding:3px 14px; font-size:12px; font-weight:700;">${typeLabels[type]}</span>
-            <span style="font-size:13px; color:var(--text-muted);">${notifs.length} notificaties</span>
+            <span style="font-size:13px; color:var(--text-muted);">${notifs.length} notificatie${notifs.length !== 1 ? 's' : ''}</span>
           </div>
           <div class="card" style="padding:0; overflow:hidden;">
             <table style="width:100%; border-collapse:collapse; font-size:13px;">
               <thead>
                 <tr>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Notificatie</th>
-                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Technische naam</th>
                   <th style="text-align:center; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Gebruik</th>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Scenario's</th>
                 </tr>
@@ -794,11 +837,11 @@
                 ${notifs.map(n => {
                   // Gebruik scanresultaten als beschikbaar, anders live zoeken
                   let matchingScenarios;
-                  if (window._scanResults && window._scanResults[n.label] !== undefined) {
-                    const codes = window._scanResults[n.label];
+                  if (window._scanResults && window._scanResults[n.naam] !== undefined) {
+                    const codes = window._scanResults[n.naam];
                     matchingScenarios = scenarios.filter(s => codes.includes(s.code));
                   } else {
-                    const pat = buildPattern(n.label);
+                    const pat = buildPattern(n.naam);
                     matchingScenarios = scenarios.filter(s => {
                       const acts = activities.filter(a => a.scenario_id === s.id);
                       return acts.some(a => { pat.lastIndex=0; return pat.test(a.description||''); });
@@ -809,10 +852,7 @@
 
                   return `<tr>
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
-                      <strong style="color:${c.color};">${n.display}</strong>
-                    </td>
-                    <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
-                      <code style="font-size:11px; background:var(--surface); padding:2px 6px; border-radius:4px; color:var(--text-muted);">${n.label}</code>
+                      <strong style="color:${c.color};">${n.naam}</strong>
                     </td>
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border); text-align:center;">
                       ${inUse
@@ -835,6 +875,105 @@
       });
 
       wrap.innerHTML = html;
+    }
+
+    // ---- NOTIFICATIES BEHEREN ----
+    async function loadNotificationDefs() {
+      if (!activeKetentest) { NOTIFICATIES = []; return; }
+      const { data, error } = await sb.from('notification_definitions').select('*').eq('ketentest_id', activeKetentest.id).order('naam');
+      if (error) { console.error('loadNotificationDefs error:', error); NOTIFICATIES = []; return; }
+      NOTIFICATIES = data || [];
+    }
+
+    function renderNotificationDefTable() {
+      const tb = document.getElementById('notificationDefTable');
+      if (!tb) return;
+      if (!NOTIFICATIES.length) {
+        tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen notificaties toegevoegd.</p></div></td></tr>';
+        return;
+      }
+      const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
+      tb.innerHTML = [...NOTIFICATIES].sort((a,b) => a.naam.localeCompare(b.naam)).map(n => {
+        const c = NOTIF_COLORS[n.type];
+        return `<tr>
+          <td><strong>${n.naam}</strong></td>
+          <td><span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${typeLabels[n.type]}</span></td>
+          <td style="text-align:right;">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editNotificationDef('${n.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteNotificationDef('${n.id}','${n.naam.replace(/'/g,"\\'")}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function openNewNotificationModal() {
+      document.getElementById('notificationDefId').value = '';
+      document.getElementById('notificationDefNaam').value = '';
+      document.getElementById('notificationDefType').value = 'nieuw';
+      document.getElementById('modalNotificationTitle').textContent = 'Notificatie toevoegen';
+      document.getElementById('alertNotificationDef').style.display = 'none';
+      openModal('modalNotification');
+    }
+
+    function editNotificationDef(id) {
+      const n = NOTIFICATIES.find(x => x.id === id);
+      if (!n) return;
+      document.getElementById('notificationDefId').value = n.id;
+      document.getElementById('notificationDefNaam').value = n.naam;
+      document.getElementById('notificationDefType').value = n.type;
+      document.getElementById('modalNotificationTitle').textContent = 'Notificatie bewerken';
+      document.getElementById('alertNotificationDef').style.display = 'none';
+      openModal('modalNotification');
+    }
+
+    async function saveNotificationDef() {
+      const id = document.getElementById('notificationDefId').value;
+      const naam = document.getElementById('notificationDefNaam').value.trim();
+      const type = document.getElementById('notificationDefType').value;
+      if (!naam) { showAlert('Vul een naam in.', 'error', 'alertNotificationDef'); return; }
+
+      let dbError;
+      if (id) {
+        const res = await sb.from('notification_definitions').update({ naam, type }).eq('id', id);
+        dbError = res.error;
+      } else {
+        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type });
+        dbError = res.error;
+      }
+
+      if (dbError) {
+        const msg = dbError.code === '23505'
+          ? 'Deze notificatienaam bestaat al binnen deze ketentest.'
+          : ('Fout bij opslaan: ' + dbError.message);
+        showAlert(msg, 'error', 'alertNotificationDef');
+        return;
+      }
+
+      closeModal('modalNotification');
+      window._scanResults = null; // scanresultaten zijn niet meer actueel
+      await loadNotificationDefs();
+      renderNotificationDefTable();
+      renderNotifications();
+      showAlert('Notificatie opgeslagen.', 'success');
+    }
+
+    function deleteNotificationDef(id, naam) {
+      document.getElementById('confirmMsg').textContent = `Notificatie "${naam}" verwijderen?`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('notification_definitions').delete().eq('id', id);
+        if (error) {
+          showAlert('Fout bij verwijderen: ' + error.message);
+          closeModal('modalConfirm');
+          return;
+        }
+        closeModal('modalConfirm');
+        window._scanResults = null;
+        await loadNotificationDefs();
+        renderNotificationDefTable();
+        renderNotifications();
+        showAlert('Notificatie verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
     }
 
     // ---- KETENTESTEN ----
