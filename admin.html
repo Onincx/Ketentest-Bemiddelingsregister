@@ -719,11 +719,11 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','scenarios','notifications'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', ['ketentests','organisations','users','scenarios','notifications'][i] === tab);
+        b.classList.toggle('active', ['ketentests','organisations','users','notifications','scenarios'][i] === tab);
       });
       activeTab = tab;
       if (tab === 'options') renderOptions();
