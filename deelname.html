@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Deelname — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .dn-legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--text-muted); margin-bottom:16px; }
+    .dn-legend span { display:inline-flex; align-items:center; gap:5px; }
+
+    .deelname-table-wrap { overflow:auto; border:1px solid var(--border); border-radius:var(--radius-lg); max-height:72vh; background:var(--white); }
+    table.deelname-table { border-collapse:separate; border-spacing:0; width:100%; font-size:12px; }
+    table.deelname-table th, table.deelname-table td { border-bottom:1px solid var(--border); border-right:1px solid var(--border); }
+    table.deelname-table tr:last-child td { border-bottom:none; }
+    table.deelname-table th:last-child, table.deelname-table td:last-child { border-right:none; }
+
+    .dn-scenario-cell { position:sticky; left:0; background:var(--white); z-index:2; padding:10px 14px; min-width:230px; max-width:300px; border-right:2px solid var(--border) !important; }
+    .dn-corner { position:sticky; left:0; top:0; z-index:4; background:var(--surface); border-right:2px solid var(--border) !important; }
+    .dn-org-header { position:sticky; top:0; background:var(--surface); z-index:3; padding:8px 6px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); white-space:nowrap; min-width:58px; cursor:default; }
+    .dn-cell { text-align:center; padding:8px 4px; min-width:58px; font-size:15px; }
+    .dn-cell.dn-clickable { cursor:pointer; }
+    .dn-cell.dn-clickable:hover { background:var(--surface); }
+    .dn-scenario-code { font-size:11px; font-weight:700; color:var(--text-muted); }
+    .dn-scenario-title { font-size:13px; color:var(--text); font-weight:500; margin:2px 0 6px; line-height:1.35; }
+    .dn-status-badge { display:inline-block; border-radius:99px; padding:2px 9px; font-size:10px; font-weight:700; white-space:nowrap; }
+    .dn-filter-btn { transition: all 0.15s; }
+    @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
+  </style>
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+  <style>
+    .topnav { background: #39870c !important; }
+    .topnav-logo { color: #fff !important; }
+    .topnav a { color: rgba(255,255,255,0.85) !important; }
+    .topnav a:hover, .topnav a.active { color: #fff !important; }
+    .topnav a.active { border-bottom-color: #fff !important; }
+  </style>
+
+  <nav class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-dot"></div>
+      Bemiddelingsregister
+    </div>
+    <a href="dashboard.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a href="app.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+      Ketentest
+    </a>
+    <a href="flow.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+      Flow
+    </a>
+    <a href="deelname.html" class="active">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+      Deelname
+    </a>
+    <div id="adminLink" style="display:none;">
+      <a href="admin.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Beheer
+      </a>
+    </div>
+    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Uitloggen
+      </button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Deelname aan testscenario's</h1>
+        <p>Geef per scenario aan of jullie organisatie dit gaat testen — vóórdat de ketentest wordt uitgevoerd.</p>
+      </div>
+      <button class="btn btn-outline" onclick="loadDeelname()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Vernieuwen
+      </button>
+    </div>
+
+    <div id="alertTop" class="alert" style="display:none; margin-bottom:16px;"></div>
+
+    <div id="noKetentestState" style="display:none;" class="empty-state">
+      <p style="font-size:14px;">Er is nog geen ketentest aangemaakt. Vraag de beheerder om er een aan te maken via Beheer → Ketentesten.</p>
+    </div>
+
+    <div id="mainContent" style="display:none;">
+      <!-- Statistieken -->
+      <div class="stats-grid" id="dnStats" style="margin-bottom:20px;">
+        <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="dn-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Wordt uitgevoerd</div><div class="stat-value green" id="dn-ja">—</div></div>
+        <div class="stat-card"><div class="stat-label">Wordt niet uitgevoerd</div><div class="stat-value red" id="dn-nee">—</div></div>
+        <div class="stat-card"><div class="stat-label">Verdeeld / wachten op input</div><div class="stat-value orange" id="dn-overig">—</div></div>
+      </div>
+
+      <!-- Filters -->
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="filterBtns">
+        <button class="btn btn-sm dn-filter-btn" data-f="all" onclick="setFilter('all',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Alle</button>
+        <button class="btn btn-sm btn-outline dn-filter-btn" data-f="ja" onclick="setFilter('ja',this)">✅ Wordt uitgevoerd</button>
+        <button class="btn btn-sm btn-outline dn-filter-btn" data-f="nee" onclick="setFilter('nee',this)">❌ Wordt niet uitgevoerd</button>
+        <button class="btn btn-sm btn-outline dn-filter-btn" data-f="verdeeld" onclick="setFilter('verdeeld',this)">⚠️ Verdeeld</button>
+        <button class="btn btn-sm btn-outline dn-filter-btn" data-f="wachten" onclick="setFilter('wachten',this)">⏳ Wachten op input</button>
+      </div>
+
+      <!-- Legenda -->
+      <div class="dn-legend">
+        <span>✅ Organisatie wil testen</span>
+        <span>❌ Organisatie wil niet testen (met reden)</span>
+        <span>⏳ Nog geen keuze gemaakt</span>
+        <span style="color:#d1d5db;">· Organisatie niet betrokken bij dit scenario</span>
+        <span>Klik op een cel in jullie eigen kolom om een keuze in te vullen of te wijzigen.</span>
+      </div>
+
+      <div id="deelnameTableWrap"><p class="empty-dash">Laden...</p></div>
+      <p class="last-updated" id="lastUpdated"></p>
+    </div>
+  </div>
+
+  <!-- Modal: Deelname keuze -->
+  <div class="modal-overlay" id="modalDeelname" style="display:none;" onclick="closeModalOverlay(event,'modalDeelname')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="deelnameModalTitle">Deelname</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalDeelname')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="dnScenarioId">
+        <input type="hidden" id="dnOrgId">
+        <p id="deelnameModalSub" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"></p>
+
+        <div style="display:flex; gap:10px; margin-bottom:16px;">
+          <button type="button" id="dnBtnJa" onclick="dnChoose(true)"
+            style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #86efac; background:#f0fdf4; color:#16a34a;">
+            ✅ Ja, wij testen dit scenario
+          </button>
+          <button type="button" id="dnBtnNee" onclick="dnChoose(false)"
+            style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #fca5a5; background:#fff5f5; color:#dc2626;">
+            ❌ Nee, wij testen dit niet
+          </button>
+        </div>
+
+        <div class="form-group" id="dnReasonGroup" style="display:none;">
+          <label>Reden waarom niet <span style="color:var(--danger);">*</span> <span style="color:var(--text-muted); font-weight:400;">(verplicht)</span></label>
+          <textarea id="dnReason" placeholder="Leg kort uit waarom jullie organisatie dit scenario niet gaat testen..."></textarea>
+        </div>
+
+        <div id="alertDeelname" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalDeelname')">Annuleren</button>
+        <button class="btn btn-primary" id="dnSaveBtn" onclick="saveDeelname()" disabled>Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=22"></script>
+  <script>
+    let currentUser = null, currentProfile = null, myOrgId = null;
+    let scenarios = [], activities = [], participation = [], orgs = [];
+    let activeKetentest = null;
+    let currentFilter = 'all';
+    let dnChoice = null;
+
+    (async () => {
+      currentUser = await requireAuth();
+      if (!currentUser) return;
+      currentProfile = await getUserProfile(currentUser.id);
+      myOrgId = currentProfile?.organisation_id || null;
+
+      document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
+      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
+      if (currentProfile?.role === 'admin') {
+        document.getElementById('adminLink').style.display = '';
+      }
+
+      const result = await ensureActiveKetentest();
+      if (!result) { document.getElementById('noKetentestState').style.display = ''; return; }
+      activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
+
+      document.getElementById('dnReason').addEventListener('input', updateDnButtons);
+
+      await loadDeelname();
+    })();
+
+    async function onKetentestChanged() {
+      const result = await ensureActiveKetentest();
+      activeKetentest = result.active;
+      await renderKetentestSwitcher(onKetentestChanged);
+      await loadDeelname();
+    }
+
+    async function loadDeelname() {
+      if (!activeKetentest) return;
+      document.getElementById('mainContent').style.display = '';
+      document.getElementById('noKetentestState').style.display = 'none';
+
+      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      scenarios = scenarioData || [];
+      const scenarioIds = scenarios.map(s => s.id);
+
+      const [a, p, o] = await Promise.all([
+        scenarioIds.length
+          ? sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds)
+          : Promise.resolve({ data: [] }),
+        scenarioIds.length
+          ? sb.from('scenario_participation').select('*').in('scenario_id', scenarioIds)
+          : Promise.resolve({ data: [] }),
+        sb.from('organisations').select('*').order('name'),
+      ]);
+
+      activities = a.data || [];
+      participation = p.data || [];
+      orgs = o.data || [];
+
+      renderAll();
+      document.getElementById('lastUpdated').textContent = 'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
+    }
+
+    // Organisaties die betrokken zijn bij een scenario: verantwoordelijk
+    // voor een activiteit, óf acceptant van een activiteit.
+    function betrokkenOrgIds(scenarioId) {
+      const set = new Set();
+      activities.filter(act => act.scenario_id === scenarioId).forEach(act => {
+        if (act.organisation_id) set.add(act.organisation_id);
+        if (act.acceptant_org_id) set.add(act.acceptant_org_id);
+      });
+      return [...set];
+    }
+
+    function allInvolvedOrgs() {
+      const set = new Set();
+      scenarios.forEach(s => betrokkenOrgIds(s.id).forEach(id => set.add(id)));
+      return orgs.filter(o => set.has(o.id));
+    }
+
+    function getParticipation(scenarioId, orgId) {
+      return participation.find(x => x.scenario_id === scenarioId && x.organisation_id === orgId) || null;
+    }
+
+    function scenarioStatus(scenarioId) {
+      const involved = betrokkenOrgIds(scenarioId);
+      if (!involved.length) return { status: 'geen', decided: 0, total: 0 };
+      const decisions = involved.map(oid => getParticipation(scenarioId, oid));
+      const decided = decisions.filter(d => d).length;
+      if (decided < involved.length) return { status: 'wachten', decided, total: involved.length };
+      const allYes = decisions.every(d => d.wants_to_test === true);
+      const allNo = decisions.every(d => d.wants_to_test === false);
+      if (allYes) return { status: 'ja', decided, total: involved.length };
+      if (allNo) return { status: 'nee', decided, total: involved.length };
+      return { status: 'verdeeld', decided, total: involved.length };
+    }
+
+    function cellClickable(orgId) {
+      return orgId === myOrgId || currentProfile?.role === 'admin';
+    }
+
+    function renderAll() {
+      renderStats();
+      renderMatrix();
+    }
+
+    function renderStats() {
+      let ja = 0, nee = 0, overig = 0;
+      scenarios.forEach(s => {
+        const st = scenarioStatus(s.id).status;
+        if (st === 'ja') ja++;
+        else if (st === 'nee') nee++;
+        else overig++; // verdeeld, wachten of geen
+      });
+      document.getElementById('dn-total').textContent = scenarios.length;
+      document.getElementById('dn-ja').textContent = ja;
+      document.getElementById('dn-nee').textContent = nee;
+      document.getElementById('dn-overig').textContent = overig;
+    }
+
+    function statusBadge(status, decided, total) {
+      const map = {
+        ja:       { label: 'Wordt uitgevoerd',                    bg: '#dcfce7', color: '#16a34a' },
+        nee:      { label: 'Wordt niet uitgevoerd',                bg: '#fee2e2', color: '#dc2626' },
+        verdeeld: { label: 'Verdeeld',                             bg: '#fef3c7', color: '#92400e' },
+        wachten:  { label: `Wachten op input (${decided}/${total})`, bg: '#f3f4f6', color: '#6b7280' },
+        geen:     { label: 'Geen organisaties gekoppeld',          bg: '#f3f4f6', color: '#9ca3af' },
+      };
+      const m = map[status];
+      return `<span class="dn-status-badge" style="background:${m.bg}; color:${m.color};">${m.label}</span>`;
+    }
+
+    const BORDER_COLOR = { ja: '#16a34a', nee: '#dc2626', verdeeld: '#e67e22', wachten: '#d1d5db', geen: '#e5e7eb' };
+
+    function esc(str) {
+      return (str || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+    }
+
+    function renderMatrix() {
+      const wrap = document.getElementById('deelnameTableWrap');
+
+      if (!scenarios.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen testscenario\'s voor deze ketentest.</p></div>';
+        return;
+      }
+
+      const involvedOrgs = allInvolvedOrgs();
+      if (!involvedOrgs.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen organisaties gekoppeld aan activiteiten binnen deze scenario\'s.</p></div>';
+        return;
+      }
+
+      const filtered = scenarios.filter(s => currentFilter === 'all' || scenarioStatus(s.id).status === currentFilter);
+
+      if (!filtered.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Geen scenario\'s in deze filter.</p></div>';
+        return;
+      }
+
+      let html = `<div class="deelname-table-wrap"><table class="deelname-table">
+        <thead><tr>
+          <th class="dn-corner dn-scenario-cell">Scenario</th>
+          ${involvedOrgs.map(o => `<th class="dn-org-header" title="${esc(o.name)}">${esc(o.code || o.name)}${o.id === myOrgId ? ' 👤' : ''}</th>`).join('')}
+        </tr></thead><tbody>`;
+
+      filtered.forEach(s => {
+        const involved = betrokkenOrgIds(s.id);
+        const st = scenarioStatus(s.id);
+        const borderColor = BORDER_COLOR[st.status];
+
+        html += `<tr>
+          <td class="dn-scenario-cell" style="border-left:3px solid ${borderColor};">
+            <div class="dn-scenario-code">${esc(s.code)}</div>
+            <div class="dn-scenario-title">${esc(s.title)}</div>
+            ${statusBadge(st.status, st.decided, st.total)}
+          </td>`;
+
+        involvedOrgs.forEach(o => {
+          if (!involved.includes(o.id)) {
+            html += `<td class="dn-cell" style="color:#e5e7eb;">·</td>`;
+            return;
+          }
+          const p = getParticipation(s.id, o.id);
+          const clickable = cellClickable(o.id);
+          const cls = clickable ? 'dn-cell dn-clickable' : 'dn-cell';
+          const onclick = clickable ? ` onclick="openDeelnameModal('${s.id}','${o.id}')"` : '';
+
+          let icon, tip;
+          if (!p) { icon = '⏳'; tip = 'Nog geen keuze gemaakt'; }
+          else if (p.wants_to_test) { icon = '✅'; tip = 'Wil dit scenario testen'; }
+          else { icon = '❌'; tip = 'Wil dit scenario niet testen — reden: ' + (p.reason || '—'); }
+
+          html += `<td class="${cls}"${onclick} title="${esc(o.name)}: ${esc(tip)}">${icon}</td>`;
+        });
+
+        html += `</tr>`;
+      });
+
+      html += `</tbody></table></div>`;
+      wrap.innerHTML = html;
+    }
+
+    function setFilter(f, btn) {
+      currentFilter = f;
+      document.querySelectorAll('.dn-filter-btn').forEach(b => {
+        b.classList.add('btn-outline');
+        b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      renderMatrix();
+    }
+
+    // ---------- Modal: keuze invullen ----------
+
+    function openDeelnameModal(scenarioId, orgId) {
+      if (!cellClickable(orgId)) return;
+      const scenario = scenarios.find(x => x.id === scenarioId);
+      const org = orgs.find(x => x.id === orgId);
+      if (!scenario || !org) return;
+
+      document.getElementById('dnScenarioId').value = scenarioId;
+      document.getElementById('dnOrgId').value = orgId;
+      document.getElementById('deelnameModalTitle').textContent = `${scenario.code} — ${scenario.title}`;
+
+      const namensZelf = orgId === myOrgId;
+      document.getElementById('deelnameModalSub').textContent = namensZelf
+        ? `Gaat ${org.name} dit scenario testen?`
+        : `Je past dit in namens ${org.name} (als beheerder).`;
+
+      const existing = getParticipation(scenarioId, orgId);
+      dnChoice = existing ? existing.wants_to_test : null;
+      document.getElementById('dnReason').value = existing?.reason || '';
+      hideAlert('alertDeelname');
+      updateDnButtons();
+      openModal('modalDeelname');
+    }
+
+    function dnChoose(val) {
+      dnChoice = val;
+      updateDnButtons();
+    }
+
+    function updateDnButtons() {
+      const jaBtn = document.getElementById('dnBtnJa');
+      const neeBtn = document.getElementById('dnBtnNee');
+
+      jaBtn.style.background = dnChoice === true ? '#16a34a' : '#f0fdf4';
+      jaBtn.style.color = dnChoice === true ? '#fff' : '#16a34a';
+      jaBtn.style.borderColor = '#16a34a';
+
+      neeBtn.style.background = dnChoice === false ? '#dc2626' : '#fff5f5';
+      neeBtn.style.color = dnChoice === false ? '#fff' : '#dc2626';
+      neeBtn.style.borderColor = '#dc2626';
+
+      document.getElementById('dnReasonGroup').style.display = dnChoice === false ? '' : 'none';
+
+      const reason = document.getElementById('dnReason').value.trim();
+      const valid = dnChoice === true || (dnChoice === false && reason.length > 0);
+      document.getElementById('dnSaveBtn').disabled = !valid;
+    }
+
+    async function saveDeelname() {
+      const scenarioId = document.getElementById('dnScenarioId').value;
+      const orgId = document.getElementById('dnOrgId').value;
+      const reason = document.getElementById('dnReason').value.trim();
+
+      if (dnChoice === null) return;
+      if (dnChoice === false && !reason) {
+        showAlert('Geef een reden op waarom deze organisatie het scenario niet gaat testen.', 'error', 'alertDeelname');
+        return;
+      }
+
+      const btn = document.getElementById('dnSaveBtn');
+      btn.disabled = true;
+      const origLabel = btn.textContent;
+      btn.textContent = 'Opslaan...';
+
+      const { error } = await sb.from('scenario_participation').upsert({
+        scenario_id: scenarioId,
+        organisation_id: orgId,
+        wants_to_test: dnChoice,
+        reason: dnChoice ? null : reason,
+        decided_by: currentUser.id,
+      }, { onConflict: 'scenario_id,organisation_id' });
+
+      btn.textContent = origLabel;
+
+      if (error) {
+        showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertDeelname');
+        btn.disabled = false;
+        return;
+      }
+
+      closeModal('modalDeelname');
+      await loadDeelname();
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+      const el = document.getElementById('alertDeelname');
+      if (el) el.style.display = 'none';
+    }
+    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+
+  <!-- ZIN Footer -->
+  <footer style="background:#39870c; margin-top:48px; padding:40px 24px;">
+    <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr 1fr; gap:32px; align-items:start;">
+      <div>
+        <p style="font-size:20px; font-style:italic; color:#fff; font-weight:400; line-height:1.5;">Ketentest platform voor het<br>Bemiddelingsregister</p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Service</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Zorginstituut Nederland<br>
+          <a href="https://www.istandaarden.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">iStandaarden</a><br>
+          <a href="https://www.zinl.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">zinl.nl</a>
+        </p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Over deze tool</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Ketentest Bemiddelingsregister<br>
+          Versie 1.0
+        </p>
+      </div>
+    </div>
+    <div style="max-width:1100px; margin:24px auto 0; padding-top:16px; border-top:1px solid rgba(255,255,255,0.2);">
+      <p style="font-size:12px; color:rgba(255,255,255,0.6);">© Zorginstituut Nederland</p>
+    </div>
+  </footer>
+
+</body>
+</html>

@@ -109,20 +109,39 @@ Gebruikers van die organisatie kunnen de activiteit dan bewerken in de app.
 
 ---
 
+## Deelname aan testscenario's (nieuw)
+
+Voordat organisaties een testscenario daadwerkelijk gaan uitvoeren, geven ze eerst aan of ze dat scenario willen testen:
+
+1. Voer eenmalig `deelname-setup.sql` uit in de Supabase **SQL Editor** (zelfde werkwijze als `supabase-setup.sql`). Dit voegt de tabel `scenario_participation` toe met de bijbehorende beveiliging (RLS).
+2. Gebruikers vinden het nieuwe overzicht via **Deelname** in de bovenbalk.
+3. Per scenario ziet iedereen een compacte matrix: één kolom per betrokken organisatie, met een status (✅ wil testen, ❌ wil niet testen, ⏳ nog geen keuze).
+4. Elke gebruiker mag de keuze invullen of wijzigen namens de **eigen** organisatie (beheerders mogen dit namens elke organisatie). Bij "niet testen" is een reden verplicht.
+5. Per scenario wordt automatisch bepaald of het **wordt uitgevoerd** (iedereen wil), **niet wordt uitgevoerd** (niemand wil), **verdeeld** is (sommigen wel, sommigen niet), of nog **wacht op input**.
+
+Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-app zelf (`app.html`).
+
+---
+
 ## Bestandsstructuur
 
 ```
 /
-├── index.html          Inlogpagina
-├── invite.html         Wachtwoord aanmaken (uitnodigingslink)
-├── app.html            Ketentest applicatie (voor gebruikers)
-├── admin.html          Beheerderspanel
+├── index.html            Inlogpagina
+├── invite.html           Wachtwoord aanmaken (uitnodigingslink)
+├── app.html              Ketentest applicatie (voor gebruikers)
+├── admin.html            Beheerderspanel
+├── dashboard.html        Dashboard met voortgang en statistieken
+├── deelname.html         Overzicht: wie gaat welk scenario testen
+├── flow.html / flow-gast.html   Flow-weergave
+├── gast.html              Alleen-lezen overzicht voor externen
 ├── css/
-│   └── style.css       Gedeelde stijlen
+│   └── style.css         Gedeelde stijlen
 ├── js/
 │   └── supabase-config.js  Configuratie (URL + key invullen)
-├── supabase-setup.sql  Database setup script
-└── README.md           Deze handleiding
+├── supabase-setup.sql    Database setup script (basis)
+├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit
+└── README.md             Deze handleiding
 ```
 
 ---
