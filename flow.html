@@ -24,7 +24,8 @@
     .flow-canvas {
       position: fixed; left: 240px; right: 0;
       background: #f0f4f8;
-      overflow: auto;
+      overflow-x: auto;
+      overflow-y: hidden; /* kaartjes hebben een vaste hoogte; verticaal scrollen is nooit nodig en mag nooit verschijnen */
       border-bottom: 1px solid #e5e7eb;
     }
 
