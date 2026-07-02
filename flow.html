@@ -35,6 +35,7 @@
       width: 100%; height: 100%;
       pointer-events: none;
       z-index: 10;
+      overflow: visible; /* pijlen mogen nooit geclipt worden, ook niet buiten de canvasgrenzen */
     }
     #arrowSvg path { pointer-events: stroke; }
     #arrowSvg path.clickable { pointer-events: stroke; cursor: pointer; }
@@ -388,11 +389,15 @@
       if (dragging) {
         const canvas = document.getElementById('canvas');
         const rect = canvas.getBoundingClientRect();
-        const x = Math.max(0, e.clientX - rect.left + canvas.scrollLeft - dragOff.x);
-        const y = Math.max(0, e.clientY - rect.top  + canvas.scrollTop  - dragOff.y);
+        const el = document.getElementById('fn-' + dragging);
+        const nodeW = el?.offsetWidth  || 190;
+        const nodeH = el?.offsetHeight || 110;
+        const maxX = 3000 - nodeW; // canvasInner is vast 3000x2000
+        const maxY = 2000 - nodeH;
+        const x = Math.min(maxX, Math.max(0, e.clientX - rect.left + canvas.scrollLeft - dragOff.x));
+        const y = Math.min(maxY, Math.max(0, e.clientY - rect.top  + canvas.scrollTop  - dragOff.y));
         nodePositions[dragging].x = x;
         nodePositions[dragging].y = y;
-        const el = document.getElementById('fn-' + dragging);
         if (el) { el.style.left = x+'px'; el.style.top = y+'px'; }
         renderEdges();
       }
@@ -548,13 +553,17 @@
       const newIsStart = !n.isStart;
 
       if (newIsStart) {
-        // Verplaats naar links, maar zoek een vrije y-positie
+        // Verplaats naar links, maar zoek een vrije y-positie; wijk uit naar
+        // een volgende kolom zodra de onderkant van het canvas bereikt is.
         const startNodes = Object.entries(nodePositions).filter(([id, p]) => p.isStart && id !== sid);
-        const usedY = startNodes.map(([,p]) => p.y);
-        let y = 20;
-        while (usedY.some(uy => Math.abs(uy - y) < 160)) y += 160;
-        n.x = 20; n.y = y;
-        await sb.from('flow_nodes').update({ is_start: true, x: 20, y }).eq('id', n.dbId);
+        const used = startNodes.map(([,p]) => ({x: p.x, y: p.y}));
+        let x = 20, y = 20;
+        while (used.some(p => Math.abs(p.x - x) < 200 && Math.abs(p.y - y) < 160)) {
+          y += 160;
+          if (y > 2000 - 140) { y = 20; x += 280; }
+        }
+        n.x = x; n.y = y;
+        await sb.from('flow_nodes').update({ is_start: true, x, y }).eq('id', n.dbId);
       } else {
         await sb.from('flow_nodes').update({ is_start: false }).eq('id', n.dbId);
       }
