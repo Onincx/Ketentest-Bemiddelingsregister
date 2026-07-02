@@ -11,9 +11,6 @@
   <style>
     body { overflow: hidden; margin: 0; }
 
-    /* Header */
-    .flow-topbar { position: fixed; z-index: 200; left: 0; right: 0; }
-
     /* Toolbar */
     .flow-toolbar {
       position: fixed; left: 0; right: 0; z-index: 150;
@@ -23,12 +20,45 @@
     }
     .flow-toolbar .active-flow-label { font-size: 13px; font-weight: 700; color: #1a1a1a; }
 
-    /* Canvas */
+    /* Canvas: bewust compact, ca. 2 kaartjes hoog */
     .flow-canvas {
-      position: fixed; left: 240px; right: 0; bottom: 0;
+      position: fixed; left: 240px; right: 0;
       background: #f0f4f8;
       overflow: auto;
+      border-bottom: 1px solid #e5e7eb;
     }
+
+    /* Detailpaneel: de ruimte die het compacte canvas overlaat */
+    .flow-details {
+      position: fixed; left: 240px; right: 0; bottom: 0;
+      background: #fff;
+      overflow-y: auto;
+    }
+    .details-inner { max-width: 920px; margin: 0 auto; padding: 32px 36px 80px; }
+    .details-placeholder { text-align: center; color: #9ca3af; font-size: 13px; padding: 70px 20px; font-style: italic; }
+    .details-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid #f3f4f6; }
+    .details-code { font-size: 12px; font-weight: 800; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .details-title { font-size: 21px; font-weight: 700; color: #111; margin: 0 0 8px; line-height: 1.3; }
+    .details-desc { font-size: 13px; color: #6b7280; line-height: 1.55; max-width: 600px; margin: 0; }
+    .details-status-badge { flex-shrink: 0; padding: 7px 16px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+    .details-gw { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; background: #f9fafb; border: 1px solid #f3f4f6; border-radius: 10px; padding: 16px 18px; margin-bottom: 20px; }
+    .details-gw-label { font-size: 10px; font-weight: 700; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+    .details-gw p { font-size: 13px; color: #374151; margin: 4px 0 0; line-height: 1.55; white-space: pre-wrap; }
+    .details-summary { display: flex; align-items: center; gap: 20px; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 18px; flex-wrap: wrap; }
+    .details-summary-item { display: flex; align-items: center; gap: 6px; }
+    .details-summary .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+    .details-activities-label { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
+    .details-activities { display: flex; flex-direction: column; gap: 10px; }
+    .activity-card { border: 1px solid #e5e7eb; border-radius: 10px; padding: 15px 17px; background: #fff; transition: box-shadow 0.15s; }
+    .activity-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.07); }
+    .activity-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 9px; flex-wrap: wrap; }
+    .activity-orgs { display: flex; gap: 6px; flex-wrap: wrap; }
+    .org-chip { background: #f3f4f6; color: #374151; border-radius: 99px; padding: 2px 10px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .org-chip-accept { background: #fef3c7; color: #92400e; }
+    .activity-card-desc { font-size: 13px; color: #1a1a1a; line-height: 1.55; }
+    .activity-card-expected { font-size: 12px; color: #6b7280; margin-top: 8px; line-height: 1.55; }
+    .activity-card-expected strong { color: #374151; }
+    .activity-card-notes { font-size: 12px; color: #92400e; background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 7px 10px; margin-top: 9px; font-style: italic; line-height: 1.5; }
 
     /* SVG voor pijlen - altijd bovenop nodes */
     #arrowSvg {
@@ -52,10 +82,12 @@
     }
     .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 0 0 2px #39870c; z-index: 6; }
     .flow-node.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 0 0 2px #39870c; z-index: 20; }
+    .flow-node.selected { box-shadow: 0 6px 20px rgba(37,99,168,0.25), 0 0 0 3px #2563a8 !important; z-index: 7; }
 
     /* Start node - groter en prominenter */
     .flow-node.start-node { width: 260px; box-shadow: 0 4px 16px rgba(57,135,12,0.20), 0 0 0 3px #39870c; }
     .flow-node.start-node:hover { box-shadow: 0 8px 24px rgba(57,135,12,0.25), 0 0 0 3px #2d6e09; }
+    .flow-node.start-node.selected { box-shadow: 0 6px 20px rgba(37,99,168,0.25), 0 0 0 3px #2563a8 !important; }
     .flow-node.start-node .node-head { background: linear-gradient(135deg, #eaf3e0, #d1fae5) !important; }
     .flow-node.start-node .node-code { font-size: 13px !important; }
     .flow-node.start-node .node-title { font-size: 14px !important; padding: 12px 14px 8px !important; }
@@ -119,18 +151,6 @@
     .flow-empty-canvas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
     .flow-empty-canvas p { font-size: 13px; color: #6b7280; max-width: 280px; }
 
-    /* Popup */
-    .node-popup {
-      position: absolute; width: 270px; background: #fff;
-      border-radius: 10px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
-      z-index: 50; overflow: hidden;
-    }
-    .popup-head { padding: 10px 12px; border-bottom: 1px solid #f3f4f6; display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-    .popup-close { border: none; background: none; cursor: pointer; color: #9ca3af; font-size: 16px; padding: 0; line-height: 1; flex-shrink: 0; }
-    .popup-acts { max-height: 220px; overflow-y: auto; }
-    .popup-act { padding: 7px 12px; border-bottom: 1px solid #f9fafb; display: flex; gap: 7px; align-items: flex-start; }
-    .popup-act:last-child { border-bottom: none; }
-
     /* Connect mode */
     .flow-canvas.connecting { cursor: crosshair; }
     .connect-hint { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; border-radius: 99px; padding: 6px 16px; font-size: 12px; font-weight: 600; z-index: 300; display: none; }
@@ -174,31 +194,38 @@
     </span>
   </div>
 
-  <!-- Canvas -->
+  <!-- Canvas (compact, ca. 2 kaartjes hoog) -->
   <div class="flow-canvas" id="canvas">
-    <div id="canvasInner" style="position:relative; width:3000px; height:2000px; background-image:radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size:24px 24px;">
-    <svg id="arrowSvg" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;">
-      <defs>
-        <marker id="arr" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
-        </marker>
-        <marker id="arr-red" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
-        </marker>
-        <marker id="arr-temp" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
-          <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
-        </marker>
-      </defs>
-      <g id="edges"></g>
-      <path id="tempEdge" d="" stroke="#6b7280" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#arr-temp)" style="display:none;"/>
-    </svg>
-    <div id="nodes" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
-    <div id="emptyCanvasState" class="flow-empty-canvas" style="display:none;">
-      <p>Nog geen flows voor deze ketentest. Maak links een flow aan om te beginnen.</p>
+    <div id="canvasInner" style="position:relative; width:3000px; background-image:radial-gradient(circle, #cbd5e1 1px, transparent 1px); background-size:24px 24px;">
+      <svg id="arrowSvg">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#39870c"/>
+          </marker>
+          <marker id="arr-red" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#dc2626"/>
+          </marker>
+          <marker id="arr-temp" markerWidth="10" markerHeight="7" refX="8" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="#6b7280"/>
+          </marker>
+        </defs>
+        <g id="edges"></g>
+        <path id="tempEdge" d="" stroke="#6b7280" stroke-width="2" fill="none" stroke-dasharray="6,3" marker-end="url(#arr-temp)" style="display:none;"/>
+      </svg>
+      <div id="nodes" style="position:absolute;top:0;left:0;width:100%;height:100%;"></div>
+      <div id="emptyCanvasState" class="flow-empty-canvas" style="display:none;">
+        <p>Nog geen flows voor deze ketentest. Maak links een flow aan om te beginnen.</p>
+      </div>
     </div>
   </div>
 
-    </div><!-- /canvasInner -->
+  <!-- Detailpaneel onder het canvas -->
+  <div class="flow-details" id="detailsPanel">
+    <div class="details-inner" id="detailsContent">
+      <div class="details-placeholder">Selecteer een kaartje in de flow hierboven om de details te zien.</div>
+    </div>
+  </div>
+
   <!-- Sidebar -->
   <div class="flow-sidebar" id="sidebar">
     <h4>Flows (canvassen)</h4>
@@ -224,17 +251,14 @@
     let edges = [];         // [{id,from_id,to_id}]              (alleen van de actieve flow)
     let dragging = null, dragOff = {x:0,y:0};
     let connecting = null;  // scenarioId we're connecting FROM
+    let selectedNodeId = null; // scenarioId waarvan de details getoond worden
+
+    // Canvas is bewust compact: ruimte voor twee gestapelde kaartjes.
+    const CANVAS_H = 400;
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     // ── Layout berekening ──────────────────────────────────────
-    function bannerH() {
-      return (document.querySelector('img[src="ZinBanner.png"]')?.getBoundingClientRect().height || 76);
-    }
-    function navH() { return 56; }
-    function toolbarH() { return 44; }
-    function topOffset() { return Math.round(bannerH()) + navH() + toolbarH(); }
-
     function applyLayout() {
       const banner = document.querySelector('img[src="ZinBanner.png"]');
       const bh = banner ? Math.ceil(banner.getBoundingClientRect().height) : 121;
@@ -245,8 +269,14 @@
       const toolbarTop = bh + nh;
       const canvasTop  = toolbarTop + tbh;
       document.getElementById('toolbar').style.top = toolbarTop + 'px';
-      document.getElementById('canvas').style.top  = canvasTop + 'px';
+
+      const canvas = document.getElementById('canvas');
+      canvas.style.top = canvasTop + 'px';
+      canvas.style.height = CANVAS_H + 'px';
+      document.getElementById('canvasInner').style.height = CANVAS_H + 'px';
+
       document.getElementById('sidebar').style.top = canvasTop + 'px';
+      document.getElementById('detailsPanel').style.top = (canvasTop + CANVAS_H) + 'px';
     }
 
     // ── Init ──────────────────────────────────────────────────
@@ -282,14 +312,15 @@
     async function onKetentestChanged(newId) {
       const result = await ensureActiveKetentest();
       activeKetentest = result.active;
-      closePopup();
       cancelConnect();
+      selectedNodeId = null;
       await renderKetentestSwitcher(onKetentestChanged);
       await loadKetentestData();
       await loadFlowContent();
       document.getElementById('nodes').innerHTML = '';
       renderFlowList();
       renderSidebar();
+      renderDetails();
       renderAll();
     }
 
@@ -447,13 +478,14 @@
 
     async function selectFlow(id) {
       if (activeFlowId === id) return;
-      closePopup();
       cancelConnect();
+      selectedNodeId = null;
       activeFlowId = id;
       saveActiveFlowId();
       await loadFlowContent();
       renderFlowList();
       renderSidebar();
+      renderDetails();
       renderAll();
     }
 
@@ -497,11 +529,13 @@
       if (activeFlowId === id) {
         activeFlowId = flows[0]?.id || null;
         saveActiveFlowId();
+        selectedNodeId = null;
         await loadFlowContent();
       }
       document.getElementById('nodes').innerHTML = '';
       renderFlowList();
       renderSidebar();
+      renderDetails();
       renderAll();
     }
 
@@ -546,7 +580,7 @@
         const pct = getPct(sid);
         const acts = activities.filter(a => a.scenario_id === sid);
         const isStart = pos.isStart || false;
-        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}`;
+        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}${sid === selectedNodeId ? ' selected' : ''}`;
         el.dataset.id = sid;
         el.style.left = pos.x + 'px';
         el.style.top  = pos.y + 'px';
@@ -571,7 +605,7 @@
           </div>`;
         el.onclick = (e) => {
           if (connecting && connecting !== sid) { finishConnect(sid); return; }
-          if (!connecting) showPopup(sid, el);
+          if (!connecting) selectNode(sid);
         };
       });
     }
@@ -595,8 +629,8 @@
         const el = document.getElementById('fn-' + dragging);
         const nodeW = el?.offsetWidth  || 190;
         const nodeH = el?.offsetHeight || 110;
-        const maxX = 3000 - nodeW; // canvasInner is vast 3000x2000
-        const maxY = 2000 - nodeH;
+        const maxX = 3000 - nodeW; // canvasInner is 3000px breed
+        const maxY = Math.max(0, CANVAS_H - nodeH);
         const x = Math.min(maxX, Math.max(0, e.clientX - rect.left + canvas.scrollLeft - dragOff.x));
         const y = Math.min(maxY, Math.max(0, e.clientY - rect.top  + canvas.scrollTop  - dragOff.y));
         nodePositions[dragging].x = x;
@@ -772,9 +806,12 @@
     async function addNode(sid) {
       if (!window.isFlowAdmin) return;
       if (!activeFlowId) { alert('Maak of selecteer eerst een flow in de linkerkolom.'); return; }
+      // Twee rijen (het canvas is bewust maar ca. 2 kaartjes hoog).
       const count = Object.keys(nodePositions).length;
-      const x = 20 + (count % 4) * 220;
-      const y = 20 + Math.floor(count / 4) * 150;
+      const row = count % 2;
+      const col = Math.floor(count / 2);
+      const x = 20 + col * 220;
+      const y = row === 0 ? 20 : Math.round(CANVAS_H / 2) + 10;
       const {data,error} = await sb.from('flow_nodes').insert({scenario_id:sid, x, y, flow_id: activeFlowId, ketentest_id: activeKetentest?.id}).select().single();
       if (error) { alert('Fout: '+error.message); return; }
       nodePositions[sid] = {x, y, dbId: data.id};
@@ -794,7 +831,7 @@
       delete nodePositions[sid];
       allUsedScenarioIds.delete(sid);
       document.getElementById('fn-'+sid)?.remove();
-      closePopup();
+      if (selectedNodeId === sid) { selectedNodeId = null; renderDetails(); }
       renderEdges();
       renderSidebar();
     }
@@ -813,70 +850,90 @@
       await sb.from('flow_nodes').delete().eq('flow_id', activeFlowId);
       Object.keys(nodePositions).forEach(sid => allUsedScenarioIds.delete(sid));
       nodePositions = {}; edges = [];
+      selectedNodeId = null;
       document.getElementById('nodes').innerHTML = '';
-      renderEdges(); renderSidebar();
+      renderEdges(); renderSidebar(); renderDetails();
     }
 
-    // ── Popup ─────────────────────────────────────────────────
-    function showPopup(sid, nodeEl) {
-      closePopup();
-      const s = scenarios.find(x=>x.id===sid); if(!s) return;
-      const acts = activities.filter(a=>a.scenario_id===sid);
-      const status = getStatus(sid);
-      const statusColor = {ok:'#16a34a',nok:'#dc2626',open:'#6b7280'}[status];
-      const statusBg    = {ok:'#dcfce7',nok:'#fee2e2',open:'#f3f4f6'}[status];
-      const statusLabel = {ok:'✅ Geslaagd',nok:'❌ Mislukt',open:'⏳ Open'}[status];
+    // ── Details (onder het canvas, i.p.v. los popup-kaartje) ──
+    function selectNode(sid) {
+      selectedNodeId = selectedNodeId === sid ? null : sid;
+      renderNodes();
+      renderDetails();
+    }
 
-      const popup = document.createElement('div');
-      popup.id = 'nodePopup';
-      popup.className = 'node-popup';
-      const nx = nodePositions[sid].x + (nodeEl.offsetWidth||190) + 10;
-      const ny = nodePositions[sid].y;
-      popup.style.left = nx+'px'; popup.style.top = ny+'px';
+    function renderDetails() {
+      const panel = document.getElementById('detailsContent');
 
-      popup.innerHTML = `
-        <div class="popup-head" style="background:${statusBg}; border-bottom:1px solid rgba(0,0,0,0.08);">
+      if (!selectedNodeId) {
+        panel.innerHTML = '<div class="details-placeholder">Selecteer een kaartje in de flow hierboven om de details te zien.</div>';
+        return;
+      }
+      const s = scenarios.find(x => x.id === selectedNodeId);
+      if (!s) {
+        selectedNodeId = null;
+        panel.innerHTML = '<div class="details-placeholder">Selecteer een kaartje in de flow hierboven om de details te zien.</div>';
+        return;
+      }
+
+      const acts = activities.filter(a => a.scenario_id === selectedNodeId).sort((a,b) => (a.sort_order||0) - (b.sort_order||0));
+      const status = getStatus(selectedNodeId);
+      const statusColor = {ok:'#16a34a', nok:'#dc2626', open:'#6b7280'}[status];
+      const statusBg    = {ok:'#dcfce7', nok:'#fee2e2', open:'#f3f4f6'}[status];
+      const statusLabel = {ok:'✅ Geslaagd', nok:'❌ Mislukt', open:'⏳ Open'}[status];
+
+      const okCount   = acts.filter(a => results.find(r => r.activity_id === a.id)?.result === 'ok').length;
+      const nokCount  = acts.filter(a => results.find(r => r.activity_id === a.id)?.result === 'nok').length;
+      const openCount = acts.length - okCount - nokCount;
+
+      panel.innerHTML = `
+        <div class="details-header">
           <div>
-            <div style="font-size:10px;font-weight:800;color:${statusColor};">${s.code}</div>
-            <div style="font-size:13px;font-weight:700;color:#111;line-height:1.4;">${s.title}</div>
-            <div style="margin-top:4px;"><span style="background:${statusBg};color:${statusColor};border:1px solid ${statusColor}33;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;">${statusLabel}</span></div>
+            <div class="details-code" style="color:${statusColor};">${esc(s.code)}</div>
+            <h2 class="details-title">${esc(s.title)}</h2>
+            ${s.description ? `<p class="details-desc">${esc(s.description)}</p>` : ''}
           </div>
-          <button class="popup-close" onclick="closePopup()">✕</button>
+          <div class="details-status-badge" style="background:${statusBg}; color:${statusColor};">${statusLabel}</div>
         </div>
-        ${acts.length ? `
-        <div style="padding:6px 12px 4px;font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid #f3f4f6;">
-          Activiteiten (${acts.length})
+
+        ${(s.gegeven || s.wanneer) ? `
+        <div class="details-gw">
+          ${s.gegeven ? `<div><span class="details-gw-label">Gegeven</span><p>${esc(s.gegeven)}</p></div>` : '<div></div>'}
+          ${s.wanneer ? `<div><span class="details-gw-label">Wanneer</span><p>${esc(s.wanneer)}</p></div>` : '<div></div>'}
+        </div>` : ''}
+
+        <div class="details-summary">
+          <span class="details-summary-item"><span class="dot" style="background:#16a34a;"></span>${okCount} OK</span>
+          <span class="details-summary-item"><span class="dot" style="background:#dc2626;"></span>${nokCount} NOK</span>
+          <span class="details-summary-item"><span class="dot" style="background:#d1d5db;"></span>${openCount} Open</span>
+          <span style="margin-left:auto; color:#6b7280;">${acts.length} activiteit${acts.length === 1 ? '' : 'en'}</span>
         </div>
-        <div class="popup-acts">
-          ${acts.map(a => {
-            const r = results.find(x=>x.activity_id===a.id);
-            const res = r?.result||'open';
-            const dot = {ok:'✅',nok:'❌',open:'⏳'}[res];
-            const acc = a.acceptant_org_id ? orgs[a.acceptant_org_id] : null;
-            return `<div class="popup-act">
-              <span style="font-size:13px;flex-shrink:0;">${dot}</span>
-              <div style="flex:1;min-width:0;">
-                <div style="font-size:12px;color:#111;line-height:1.4;">${a.description}</div>
-                ${acc?`<div style="font-size:10px;color:#6b7280;margin-top:1px;">Acceptant: <strong>${acc}</strong></div>`:''}
-                ${r?.notes?`<div style="font-size:10px;color:#92400e;margin-top:1px;font-style:italic;">"${r.notes.substring(0,60)}${r.notes.length>60?'...':''}"</div>`:''}
+
+        <div class="details-activities-label">Activiteiten</div>
+        <div class="details-activities">
+          ${acts.length ? acts.map(a => {
+            const r = results.find(x => x.activity_id === a.id);
+            const res = r?.result || 'open';
+            const badgeClass = {ok:'badge-ok', nok:'badge-nok', open:'badge-open'}[res];
+            const badgeLabel = {ok:'✅ OK', nok:'❌ NOK', open:'⏳ Open'}[res];
+            const verantw = a.organisation_id ? (orgs[a.organisation_id] || '—') : '—';
+            return `
+            <div class="activity-card">
+              <div class="activity-card-top">
+                <span class="badge ${badgeClass}">${badgeLabel}</span>
+                <div class="activity-orgs">
+                  <span class="org-chip" title="Verantwoordelijke organisatie">👤 ${esc(verantw)}</span>
+                  ${a.acceptant_org_id ? `<span class="org-chip org-chip-accept" title="Acceptant">✅ ${esc(orgs[a.acceptant_org_id] || '—')}</span>` : ''}
+                </div>
               </div>
+              <div class="activity-card-desc">${esc(a.description)}</div>
+              ${a.expected_result ? `<div class="activity-card-expected"><strong>Verwacht resultaat:</strong> ${esc(a.expected_result)}</div>` : ''}
+              ${r?.notes ? `<div class="activity-card-notes">💬 ${esc(r.notes)}</div>` : ''}
             </div>`;
-          }).join('')}
-        </div>` : '<div style="padding:12px;font-size:12px;color:#6b7280;font-style:italic;">Geen activiteiten</div>'}`;
-
-      document.getElementById('nodes').appendChild(popup);
-
-      setTimeout(()=>{
-        document.addEventListener('click', function close(e){
-          if(!popup.contains(e.target)&&!nodeEl.contains(e.target)){
-            popup.remove();
-            document.removeEventListener('click',close);
-          }
-        });
-      },50);
+          }).join('') : '<div class="details-placeholder">Dit scenario heeft nog geen activiteiten.</div>'}
+        </div>
+      `;
     }
-
-    function closePopup() { document.getElementById('nodePopup')?.remove(); }
 
     async function doLogout() {
       await sb.auth.signOut();
