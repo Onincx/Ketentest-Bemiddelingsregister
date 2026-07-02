@@ -60,26 +60,30 @@
     #arrowSvg path { pointer-events: stroke; }
     #arrowSvg path.clickable { pointer-events: stroke; cursor: pointer; }
 
-    /* Nodes */
+    /* Nodes: alle kaartjes hebben dezelfde vaste hoogte. Een kaartje mag
+       breder zijn (zie start-node) als er meer tekst op moet passen, maar
+       nooit hoger — te lange titels worden afgekapt met "...". */
     .flow-node {
-      position: absolute; width: 190px;
+      position: absolute; width: 190px; height: 112px;
       border-radius: 10px; background: #fff;
       box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #e5e7eb;
       cursor: grab; user-select: none;
       transition: box-shadow 0.15s;
       z-index: 5;
+      overflow: hidden;
+      display: flex; flex-direction: column;
     }
     .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 0 0 2px #39870c; z-index: 6; }
     .flow-node.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 0 0 2px #39870c; z-index: 20; }
     .flow-node.selected { box-shadow: 0 6px 20px rgba(37,99,168,0.25), 0 0 0 3px #2563a8 !important; z-index: 7; }
 
-    /* Start node - groter en prominenter */
+    /* Start node - alleen breder en iets prominenter, zelfde hoogte */
     .flow-node.start-node { width: 260px; box-shadow: 0 4px 16px rgba(57,135,12,0.20), 0 0 0 3px #39870c; }
     .flow-node.start-node:hover { box-shadow: 0 8px 24px rgba(57,135,12,0.25), 0 0 0 3px #2d6e09; }
     .flow-node.start-node.selected { box-shadow: 0 6px 20px rgba(37,99,168,0.25), 0 0 0 3px #2563a8 !important; }
     .flow-node.start-node .node-head { background: linear-gradient(135deg, #eaf3e0, #d1fae5) !important; }
     .flow-node.start-node .node-code { font-size: 13px !important; }
-    .flow-node.start-node .node-title { font-size: 14px !important; padding: 12px 14px 8px !important; }
+    .flow-node.start-node .node-title { font-size: 13px !important; }
     .start-badge { display:inline-flex; align-items:center; gap:3px; background:#39870c; color:#fff; border-radius:4px; padding:1px 7px; font-size:10px; font-weight:700; letter-spacing:0.03em; }
 
     /* Status kleuren */
@@ -90,38 +94,42 @@
     .flow-node.s-open { box-shadow: 0 2px 8px rgba(0,0,0,0.10), 0 0 0 2px #d1d5db; }
     .flow-node.s-open .node-head { background: linear-gradient(135deg, #f8fafc, #fff); }
 
-    .node-head { border-radius: 9px 9px 0 0; padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; }
+    .node-head { flex-shrink: 0; border-radius: 9px 9px 0 0; padding: 7px 10px; border-bottom: 1px solid rgba(0,0,0,0.06); display: flex; align-items: center; justify-content: space-between; }
     .node-code { font-size: 10px; font-weight: 800; letter-spacing: 0.03em; }
     .s-ok  .node-code { color: #15803d; }
     .s-nok .node-code { color: #b91c1c; }
     .s-open .node-code { color: #6b7280; }
-    .node-emoji { font-size: 14px; }
-    .node-title { padding: 8px 10px 6px; font-size: 12px; font-weight: 600; color: #111; line-height: 1.45; }
-    .node-bar { margin: 0 10px 4px; height: 3px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
+    .node-emoji { font-size: 14px; flex-shrink: 0; }
+    .node-title {
+      flex: 1; min-height: 0; padding: 6px 10px; font-size: 12px; font-weight: 600; color: #111; line-height: 1.4;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; line-clamp: 2; overflow: hidden;
+    }
+    .node-bar { flex-shrink: 0; margin: 0 10px 4px; height: 3px; background: #e5e7eb; border-radius: 99px; overflow: hidden; }
     .node-bar-fill { height: 100%; background: #39870c; border-radius: 99px; }
-    .node-foot { padding: 4px 10px 8px; display: flex; align-items: center; justify-content: space-between; }
-    .node-pct { font-size: 10px; color: #6b7280; }
-    .node-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.15s; }
-    .flow-node:hover .node-actions { opacity: 1; }
+    .node-foot { flex-shrink: 0; padding: 4px 10px 7px; display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+    .node-pct { font-size: 10px; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .node-actions { display: none; gap: 3px; flex-shrink: 0; }
+    .flow-node:hover .node-actions { display: flex; }
     .node-btn { border: 1px solid #e5e7eb; background: #fff; border-radius: 5px; padding: 2px 6px; font-size: 10px; cursor: pointer; color: #374151; white-space: nowrap; }
     .node-btn:hover { background: #f3f4f6; }
     .node-btn.connect { border-color: #39870c; color: #39870c; }
     .node-btn.connect.active { background: #39870c; color: #fff; }
     .node-btn.remove { border-color: #fca5a5; color: #dc2626; }
 
-    /* Sidebar: twee losse, begrensde vakken zodat de flows-lijst nooit
-       "verdwijnt" achter een lange scenario-lijst. */
+    /* Sidebar: twee losse, begrensde vakken op basis van CSS Grid, zodat
+       beide altijd een eerlijk (en ruim genoeg) aandeel van de hoogte
+       krijgen — een percentage-hoogte binnen een flexbox bleek in de
+       praktijk veel te weinig ruimte te geven aan de flows-lijst. */
     .flow-sidebar {
       position: fixed; left: 0; bottom: 0;
       width: 240px; background: #fff;
       border-right: 1px solid #e5e7eb;
       z-index: 100;
-      display: flex; flex-direction: column;
-      overflow: hidden;
+      display: grid; grid-template-rows: minmax(160px, 1fr) minmax(180px, 1.5fr);
     }
     .flow-sidebar h4 { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .sidebar-section-flows { flex: 0 1 auto; max-height: 42%; overflow-y: auto; padding: 10px 10px 8px; border-bottom: 2px solid #e5e7eb; }
-    .sidebar-section-scenarios { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px; }
+    .sidebar-section-flows { min-height: 0; overflow-y: auto; padding: 10px 10px 8px; border-bottom: 2px solid #e5e7eb; }
+    .sidebar-section-scenarios { min-height: 0; overflow-y: auto; padding: 10px; }
     .sb-item { padding: 7px 9px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: all 0.12s; }
     .sb-item:hover { border-color: #39870c; background: #f0fdf4; }
     .sb-item.on { opacity: 0.4; cursor: default; pointer-events: none; }
@@ -248,8 +256,9 @@
     let connecting = null;  // scenarioId we're connecting FROM
     let selectedNodeId = null; // scenarioId waarvan de details getoond worden
 
-    // Canvas is bewust compact: ruimte voor één (start)kaartje.
-    const CANVAS_H = 195;
+    // Canvas is bewust compact: kaartjes hebben allemaal een vaste hoogte
+    // van 112px (zie CSS .flow-node); het canvas is precies zo hoog.
+    const CANVAS_H = 150;
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -815,7 +824,7 @@
       // Eén rij (het canvas is bewust maar ca. 1 kaartje hoog).
       const count = Object.keys(nodePositions).length;
       const x = 20 + count * 220;
-      const y = 15;
+      const y = 19; // verticaal gecentreerd t.o.v. de vaste kaarthoogte (112px)
       const {data,error} = await sb.from('flow_nodes').insert({scenario_id:sid, x, y, flow_id: activeFlowId, ketentest_id: activeKetentest?.id}).select().single();
       if (error) { alert('Fout: '+error.message); return; }
       nodePositions[sid] = {x, y, dbId: data.id};
