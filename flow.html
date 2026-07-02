@@ -257,8 +257,9 @@
     let selectedNodeId = null; // scenarioId waarvan de details getoond worden
 
     // Canvas is bewust compact: kaartjes hebben allemaal een vaste hoogte
-    // van 112px (zie CSS .flow-node); het canvas is precies zo hoog.
-    const CANVAS_H = 150;
+    // van 112px (zie CSS .flow-node); het canvas biedt daar wat marge omheen.
+    const CANVAS_H = 170;
+    const NODE_H = 112; // vaste kaarthoogte, gebruikt om posities te begrenzen
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -378,7 +379,13 @@
         sb.from('flow_nodes').select('*').eq('flow_id', activeFlowId),
         sb.from('flow_edges').select('*').eq('flow_id', activeFlowId),
       ]);
-      (fn.data || []).forEach(n => nodePositions[n.scenario_id] = {x:n.x, y:n.y, dbId:n.id, isStart:n.is_start||false});
+      (fn.data || []).forEach(n => {
+        // Begrens y defensief: kaartjes met een positie van vóór de
+        // compactere canvashoogte mogen nooit meer buiten beeld (en dus
+        // een scrollbalk) veroorzaken.
+        const y = Math.max(0, Math.min(n.y, CANVAS_H - NODE_H));
+        nodePositions[n.scenario_id] = {x:n.x, y, dbId:n.id, isStart:n.is_start||false};
+      });
       edges = fe.data || [];
     }
 
@@ -824,7 +831,7 @@
       // Eén rij (het canvas is bewust maar ca. 1 kaartje hoog).
       const count = Object.keys(nodePositions).length;
       const x = 20 + count * 220;
-      const y = 19; // verticaal gecentreerd t.o.v. de vaste kaarthoogte (112px)
+      const y = Math.round((CANVAS_H - NODE_H) / 2); // verticaal gecentreerd
       const {data,error} = await sb.from('flow_nodes').insert({scenario_id:sid, x, y, flow_id: activeFlowId, ketentest_id: activeKetentest?.id}).select().single();
       if (error) { alert('Fout: '+error.message); return; }
       nodePositions[sid] = {x, y, dbId: data.id};
