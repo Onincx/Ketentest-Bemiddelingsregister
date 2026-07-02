@@ -123,6 +123,18 @@ Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-a
 
 ---
 
+## Flows: één canvas per start (nieuw)
+
+De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Dat is vervangen door aparte, benoembare canvassen ("flows"): elk kaartje dat als **start** wordt gemarkeerd hoort voortaan bij zijn eigen flow.
+
+1. Voer eenmalig `flows-setup.sql` uit in de Supabase **SQL Editor**. Dit voegt de tabel `flows` toe en een `flow_id`-kolom aan `flow_nodes` en `flow_edges`.
+2. Open daarna de **Flow**-pagina als beheerder. Bij het eerste bezoek per ketentest migreert de app **automatisch**: bestaande startkaartjes (en alles wat daar transitief mee verbonden was) worden opgesplitst in aparte flows, genoemd naar het startscenario. Kaartjes die nergens bij een start hoorden komen in een verzamelflow "Overige kaartjes" terecht — er gaat dus niets verloren. Dit gebeurt maar één keer; hierna beheer je flows gewoon zelf.
+3. In de linkerkolom kies je met welke flow (canvas) je werkt. Beheerders kunnen daar ook een nieuwe flow aanmaken (✏️ om te hernoemen, 🗑 om te verwijderen).
+4. "Scenario's toevoegen" in de linkerkolom voegt een scenario toe aan de **geselecteerde** flow. Een scenario kan (net als voorheen) maar op één canvas tegelijk staan.
+5. De gast-flow (`flow-gast.html`, bereikt via een deellink) toont dezelfde flows met een keuzemenu bovenaan. **Let op:** dit werkt pas zodra ook de achterliggende database-functie `get_guest_ketentest_data` is bijgewerkt om de nieuwe `flows`-tabel mee te geven — zolang dat niet is gebeurd, valt de gastweergave automatisch terug op het oude gedrag (alles op één canvas), dus er breekt niets.
+
+---
+
 ## Bestandsstructuur
 
 ```
@@ -141,6 +153,7 @@ Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-a
 │   └── supabase-config.js  Configuratie (URL + key invullen)
 ├── supabase-setup.sql    Database setup script (basis)
 ├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit
+├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 └── README.md             Deze handleiding
 ```
 
