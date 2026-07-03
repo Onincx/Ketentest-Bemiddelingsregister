@@ -151,16 +151,10 @@
         <div id="orgProgress"><p class="empty-dash">Laden...</p></div>
       </div>
 
-      <!-- Voortgang per scenario -->
+      <!-- Voortgang per flow -->
       <div class="dash-card">
-        <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per scenario</h3>
-        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;" id="scenarioFilterBtns">
-          <button class="btn btn-sm" id="sf-all" onclick="setScenarioFilter('all',this)" style="background:#8b5cf6;color:#fff;border-color:#8b5cf6;">Alle</button>
-          <button class="btn btn-sm btn-outline" id="sf-nok" onclick="setScenarioFilter('nok',this)">❌ NOK</button>
-          <button class="btn btn-sm btn-outline" id="sf-open" onclick="setScenarioFilter('open',this)">⏳ Open</button>
-          <button class="btn btn-sm btn-outline" id="sf-ok" onclick="setScenarioFilter('ok',this)">✅ Klaar</button>
-        </div>
-        <div id="scenarioProgress"><p class="empty-dash">Laden...</p></div>
+        <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per flow</h3>
+        <div id="flowProgress"><p class="empty-dash">Laden...</p></div>
       </div>
 
       <!-- NOK overzicht -->
@@ -182,6 +176,7 @@
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [];
+    let flows = [], flowNodes = [];
     let activeKetentest = null;
 
     (async () => {
@@ -221,13 +216,15 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [a, r, u, o] = await Promise.all([
+      const [a, r, u, o, fl, fn] = await Promise.all([
         scenarioIds.length
           ? sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order')
           : Promise.resolve({ data: [] }),
         sb.from('activity_results').select('*'),
         sb.from('users').select('*, organisations(name)'),
         sb.from('organisations').select('*').order('name'),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
+        sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id),
       ]);
 
       activities = a.data || [];
@@ -235,6 +232,8 @@
       results    = (r.data || []).filter(x => actIds.has(x.activity_id));
       users      = u.data || [];
       orgs       = o.data || [];
+      flows      = fl.data || [];
+      flowNodes  = fn.data || [];
 
       renderDashboard();
     }
@@ -262,7 +261,7 @@
       document.getElementById('ds-bar').style.width = pct + '%';
 
       renderOrgProgress();
-      renderScenarioProgress();
+      renderFlowProgress();
       renderNokOverview();
       renderCharts();
 
@@ -329,24 +328,44 @@
         }).join('') + '</div>';
     }
 
-    function renderScenarioProgress() {
-      const el = document.getElementById('scenarioProgress');
+    function renderFlowProgress() {
+      const el = document.getElementById('flowProgress');
       if (!scenarios.length) { el.innerHTML = '<p class="empty-dash">Geen scenario\'s gevonden.</p>'; return; }
 
-      const rows = scenarios.map(s => {
-        const acts = activities.filter(a => a.scenario_id === s.id);
+      // Groepeer scenario's per flow (canvas), op basis van flow_nodes.
+      const scenarioToFlowId = {};
+      flowNodes.forEach(n => { scenarioToFlowId[n.scenario_id] = n.flow_id; });
+
+      const groupByFlowId = {};
+      flows.forEach(f => { groupByFlowId[f.id] = { flow: f, scenarioIds: [] }; });
+
+      const unassignedIds = [];
+      scenarios.forEach(s => {
+        const fid = scenarioToFlowId[s.id];
+        if (fid && groupByFlowId[fid]) groupByFlowId[fid].scenarioIds.push(s.id);
+        else unassignedIds.push(s.id);
+      });
+
+      const groups = Object.values(groupByFlowId);
+      if (unassignedIds.length) {
+        groups.push({ flow: { id: null, name: 'Niet gekoppeld aan een flow' }, scenarioIds: unassignedIds });
+      }
+
+      const rows = groups.map(({ flow, scenarioIds }) => {
+        const acts = activities.filter(a => scenarioIds.includes(a.scenario_id));
         const total = acts.length;
-        if (total === 0) return { s, total: 0, ok: 0, nok: 0, pct: 0 };
         const ok  = acts.filter(a => getResult(a.id) === 'ok').length;
         const nok = acts.filter(a => getResult(a.id) === 'nok').length;
-        const pct = Math.round(((ok + nok) / total) * 100);
-        return { s, total, ok, nok, pct };
-      }).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
+        const pct = total > 0 ? Math.round(((ok + nok) / total) * 100) : 0;
+        return { flow, scenarioCount: scenarioIds.length, total, ok, nok, pct };
+      }).filter(r => r.scenarioCount > 0).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
 
-      el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ s, total, ok, nok, pct }) => `
+      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Nog geen flows met scenario\'s gevonden. Ga naar de Flow-pagina om flows aan te maken.</p>'; return; }
+
+      el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ flow, scenarioCount, total, ok, nok, pct }) => `
         <div class="scenario-row">
-          <span class="scenario-code">${s.code}</span>
-          <span class="scenario-title" title="${s.title}">${s.title}</span>
+          <span class="scenario-title" title="${flow.name}" style="flex:1; font-weight:600;">${flow.name}</span>
+          <span style="font-size:11px; color:#9ca3af; flex-shrink:0; white-space:nowrap;">${scenarioCount} scenario${scenarioCount!==1?"'s":''}</span>
           <div class="org-bar-wrap" style="min-width:80px; max-width:80px;">
             ${ok  > 0 ? `<div class="org-bar-ok" style="width:${total>0?Math.round(ok/total*100):0}%"></div>` : ''}
             ${nok > 0 ? `<div class="org-bar-nok" style="width:${total>0?Math.round(nok/total*100):0}%"></div>` : ''}
