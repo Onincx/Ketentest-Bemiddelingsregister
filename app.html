@@ -91,29 +91,27 @@
     .scenario-tab .tab-count { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 99px; font-size: 11px; padding: 0px 6px; margin-left: 5px; font-weight: 500; }
     .scenario-tab.active .tab-count { background: var(--brand-light); border-color: var(--brand-light); color: var(--brand-mid); }
 
-    /* Tegelweergave */
-    .scenario-grid { margin-bottom: 24px; }
-    .scenario-grid-inner { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
-    .scenario-tile {
+    /* Rijweergave (i.p.v. tegels) */
+    .sc-row-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; }
+    .sc-row {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
       background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-lg); padding: 16px;
+      border-left-width: 4px; border-left-style: solid;
+      border-radius: var(--radius-lg); padding: 12px 16px;
       cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
-      display: flex; flex-direction: column; gap: 10px;
-      position: relative;
     }
-    .scenario-tile:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.10); border-color: #b5d4f4; }
-    .scenario-tile.status-ok { border-left: 3px solid #16a34a; }
-    .scenario-tile.status-nok { border-left: 3px solid #dc2626; }
-    .scenario-tile.status-open { border-left: 3px solid #e5e7eb; }
-    .tile-code { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
-    .tile-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
-    .tile-pills { display: flex; flex-wrap: wrap; gap: 4px; }
+    .sc-row:hover { box-shadow: 0 3px 14px rgba(0,0,0,0.09); }
+    .sc-row-code { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; min-width: 76px; flex-shrink: 0; }
+    .sc-row-title { font-size: 13px; font-weight: 600; color: var(--text); flex: 1 1 220px; min-width: 160px; line-height: 1.4; }
+    .sc-row-bar-wrap { width: 90px; flex-shrink: 0; }
+    .sc-row-pills { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; max-width: 320px; justify-content: flex-end; }
     .tile-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; gap: 1px; }
     .tile-bar-ok { background: #16a34a; border-radius: 99px; transition: width 0.3s; }
     .tile-bar-nok { background: #dc2626; border-radius: 99px; transition: width 0.3s; }
-    .tile-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 500; }
-    .tile-expanded { display: none; }
-    .tile-expanded.open { display: block; }
+    .tile-counts { display: flex; gap: 8px; font-size: 11px; font-weight: 500; flex-shrink: 0; white-space: nowrap; min-width: 132px; }
+    @media (max-width: 800px) {
+      .sc-row-pills { max-width: 100%; justify-content: flex-start; }
+    }
     .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
     .my-org { background: var(--accent-light); color: #0f6e56; }
     @media (max-width: 700px) {
@@ -569,11 +567,11 @@
         return;
       }
 
-      // Tabs + tegelraster
-      list.innerHTML = renderTabs(filtered) + '<div id="scenarioGrid"></div>';
-      const grid = document.getElementById('scenarioGrid');
+      // Tabs + rijenlijst
+      list.innerHTML = renderTabs(filtered) + '<div id="scenarioListInner" class="sc-row-list"></div>';
+      const container = document.getElementById('scenarioListInner');
 
-      grid.innerHTML = filtered.map(s => {
+      container.innerHTML = filtered.map(s => {
         const acts = activities.filter(a => a.scenario_id === s.id);
         const status = getScenarioStatus(s.id);
         const nTotal = acts.length;
@@ -586,39 +584,29 @@
 
         const prefixIdx = allPrefixes.indexOf(getScenarioPrefix(s.code));
         const tileColor = TAB_COLORS[prefixIdx % TAB_COLORS.length];
-        return `<div class="scenario-tile status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}', event)"
-          style="border-left: 3px solid ${tileColor.bg}; background: linear-gradient(135deg, ${tileColor.light} 0%, #ffffff 60%);">
-          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:6px;">
-            <span class="tile-code" style="color:${tileColor.bg};">${s.code}</span>
-            <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
-          </div>
-          <div class="tile-title">${s.title}</div>
-          <div class="tile-bar">
-            ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}
-            ${nNok > 0 ? `<div class="tile-bar-nok" style="width:${Math.round(nNok/nTotal*100)}%"></div>` : ''}
-          </div>
-          <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div class="tile-counts">
-              <span style="color:var(--text-muted);">${nTotal} act.</span>
-              ${nOk  > 0 ? `<span style="color:#16a34a;">✓${nOk}</span>` : ''}
-              ${nNok > 0 ? `<span style="color:#dc2626;">✗${nNok}</span>` : ''}
-              ${nOpen > 0 && (nOk > 0 || nNok > 0) ? `<span style="color:var(--warning);">○${nOpen}</span>` : ''}
+        return `<div class="sc-row status-${status}" id="sc-${s.id}" onclick="toggleScenario('${s.id}', event)"
+          style="border-left-color: ${tileColor.bg};">
+          <span class="sc-row-code" style="color:${tileColor.bg};">${s.code}</span>
+          <span class="sc-row-title">${s.title}</span>
+          <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
+          <div class="sc-row-bar-wrap">
+            <div class="tile-bar">
+              ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}
+              ${nNok > 0 ? `<div class="tile-bar-nok" style="width:${Math.round(nNok/nTotal*100)}%"></div>` : ''}
             </div>
-            <div class="tile-pills">
-              ${verantwoordelijken.map(o => `<span title="Verantwoordelijk: ${o.name}" style="background:var(--brand-light);color:var(--brand);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
-              ${acceptanten.map(o => `<span title="Acceptant: ${o.name}" style="background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
-            </div>
+          </div>
+          <div class="tile-counts">
+            <span style="color:var(--text-muted);">${nTotal} act.</span>
+            ${nOk  > 0 ? `<span style="color:#16a34a;">✓${nOk}</span>` : ''}
+            ${nNok > 0 ? `<span style="color:#dc2626;">✗${nNok}</span>` : ''}
+            ${nOpen > 0 && (nOk > 0 || nNok > 0) ? `<span style="color:var(--warning);">○${nOpen}</span>` : ''}
+          </div>
+          <div class="sc-row-pills">
+            ${verantwoordelijken.map(o => `<span title="Verantwoordelijk: ${o.name}" style="background:var(--brand-light);color:var(--brand);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
+            ${acceptanten.map(o => `<span title="Acceptant: ${o.name}" style="background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
           </div>
         </div>`;
       }).join('');
-
-      // Wrap in scenarioGridInner zodat detail panels grid-column: 1/-1 kunnen gebruiken
-      const inner = document.createElement('div');
-      inner.id = 'scenarioGridInner';
-      inner.className = 'scenario-grid-inner';
-      inner.innerHTML = grid.innerHTML;
-      grid.innerHTML = '';
-      grid.appendChild(inner);
     }
 
     function renderActivities(acts) {
@@ -697,17 +685,17 @@
       // Sluit bestaand detail panel
       const existing = document.getElementById('detail-panel-' + (openScenarioId||''));
       if (existing) existing.remove();
-      document.querySelectorAll('.scenario-tile').forEach(t => { t.style.outline = ''; t.classList.remove('tile-active'); });
+      document.querySelectorAll('.sc-row').forEach(t => { t.style.outline = ''; });
 
-      // Zelfde tegel: sluiten
+      // Zelfde rij: sluiten
       if (openScenarioId === id) {
         openScenarioId = null;
         return;
       }
 
       openScenarioId = id;
-      const tile = document.getElementById('sc-' + id);
-      if (tile) tile.style.outline = '2px solid var(--brand-mid)';
+      const row = document.getElementById('sc-' + id);
+      if (row) row.style.outline = '2px solid var(--brand-mid)';
 
       const s = scenarios.find(x => x.id === id);
       const acts = activities.filter(a => a.scenario_id === id).sort((a,b) => a.sort_order - b.sort_order);
@@ -715,7 +703,7 @@
       // Maak detail panel
       const panel = document.createElement('div');
       panel.id = 'detail-panel-' + id;
-      panel.style.cssText = 'grid-column: 1 / -1; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
+      panel.style.cssText = 'background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
       panel.innerHTML = `
         <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -745,29 +733,11 @@
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
         </div>`;
 
-      // Voeg in na de rij van de geklikte tegel
-      // Bereken welke tegel de laatste is in dezelfde rij
-      const grid = document.getElementById('scenarioGridInner');
-      if (!grid) { document.getElementById('scenarioGrid').appendChild(panel); return; }
+      // Voeg het paneel direct in na de aangeklikte rij
+      row.insertAdjacentElement('afterend', panel);
 
-      const tiles = [...grid.querySelectorAll('.scenario-tile')];
-      const tileIndex = tiles.indexOf(tile);
-      const tileRect = tile.getBoundingClientRect();
-
-      // Vind alle tegels op dezelfde rij (zelfde top offset)
-      const tileTop = Math.round(tileRect.top);
-      let lastInRow = tile;
-      for (let i = tileIndex + 1; i < tiles.length; i++) {
-        const r = tiles[i].getBoundingClientRect();
-        if (Math.round(r.top) === tileTop) lastInRow = tiles[i];
-        else break;
-      }
-
-      // Voeg panel in na de laatste tegel in de rij
-      lastInRow.insertAdjacentElement('afterend', panel);
-
-      // Scroll naar tegel
-      setTimeout(() => tile.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+      // Scroll naar rij
+      setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
 
     // Notitie modal
@@ -900,11 +870,11 @@
         if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
       }
 
-      // Update scenario tegel
+      // Update scenario rij
       const sc = document.getElementById('sc-' + scenarioId);
       if (sc) {
         const newStatus = getScenarioStatus(scenarioId);
-        sc.className = `scenario-tile status-${newStatus}`;
+        sc.className = `sc-row status-${newStatus}`;
         const badge = sc.querySelector('.badge');
         if (badge) { badge.className = `badge badge-${newStatus}`; badge.textContent = { ok:'Geslaagd', nok:'Mislukt', open:'Open' }[newStatus]; }
         // Update balk
