@@ -22,7 +22,7 @@
 
     /* Canvas: bewust compact, ca. 2 kaartjes hoog */
     .flow-canvas {
-      position: fixed; left: 240px; right: 0;
+      position: fixed; left: 300px; right: 0;
       background: #f0f4f8;
       overflow-x: auto;
       overflow-y: hidden; /* kaartjes hebben een vaste hoogte; verticaal scrollen is nooit nodig en mag nooit verschijnen */
@@ -31,7 +31,7 @@
 
     /* Detailpaneel: de ruimte die het compacte canvas overlaat */
     .flow-details {
-      position: fixed; left: 240px; right: 0; bottom: 0;
+      position: fixed; left: 300px; right: 0; bottom: 0;
       background: #fff;
       overflow-y: auto;
     }
@@ -117,20 +117,16 @@
     .node-btn.connect.active { background: #39870c; color: #fff; }
     .node-btn.remove { border-color: #fca5a5; color: #dc2626; }
 
-    /* Sidebar: twee losse, begrensde vakken op basis van CSS Grid, zodat
-       beide altijd een eerlijk (en ruim genoeg) aandeel van de hoogte
-       krijgen — een percentage-hoogte binnen een flexbox bleek in de
-       praktijk veel te weinig ruimte te geven aan de flows-lijst. */
+    /* Sidebar: alleen de flows-lijst, iets breder zodat namen goed passen. */
     .flow-sidebar {
       position: fixed; left: 0; bottom: 0;
-      width: 240px; background: #fff;
+      width: 300px; background: #fff;
       border-right: 1px solid #e5e7eb;
       z-index: 100;
-      display: grid; grid-template-rows: minmax(160px, 1fr) minmax(180px, 1.5fr);
+      overflow-y: auto;
+      padding: 14px;
     }
-    .flow-sidebar h4 { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
-    .sidebar-section-flows { min-height: 0; overflow-y: auto; padding: 10px 10px 8px; border-bottom: 2px solid #e5e7eb; }
-    .sidebar-section-scenarios { min-height: 0; overflow-y: auto; padding: 10px; }
+    .flow-sidebar h4 { font-size: 11px; font-weight: 700; color: #6b7280; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 10px; }
     .sb-item { padding: 7px 9px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: all 0.12s; }
     .sb-item:hover { border-color: #39870c; background: #f0fdf4; }
     .sb-item.on { opacity: 0.4; cursor: default; pointer-events: none; }
@@ -138,15 +134,15 @@
     .sb-title { font-size: 11px; color: #374151; margin-top: 1px; line-height: 1.3; }
 
     /* Flows sectie */
-    .flow-item { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 7px 9px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 5px; cursor: pointer; transition: all 0.12s; font-size: 12px; color: #374151; }
+    .flow-item { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; font-size: 13px; color: #374151; }
     .flow-item:hover { border-color: #39870c; background: #f0fdf4; }
     .flow-item.active { background: #39870c; border-color: #39870c; color: #fff; font-weight: 600; }
     .flow-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .flow-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
-    .flow-item-btn { border: none; background: transparent; cursor: pointer; font-size: 11px; padding: 1px 3px; border-radius: 3px; opacity: 0.7; }
+    .flow-item-btn { border: none; background: transparent; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 3px; opacity: 0.7; }
     .flow-item-btn:hover { opacity: 1; background: rgba(0,0,0,0.08); }
     .flow-item.active .flow-item-btn:hover { background: rgba(255,255,255,0.25); }
-    .flow-empty-hint { font-size: 11px; color: #9ca3af; font-style: italic; padding: 4px 2px 10px; line-height: 1.4; }
+    .flow-empty-hint { font-size: 12px; color: #9ca3af; font-style: italic; padding: 4px 2px 10px; line-height: 1.4; }
 
     /* Leeg-canvas state */
     .flow-empty-canvas { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; }
@@ -187,6 +183,9 @@
   <!-- Toolbar -->
   <div class="flow-toolbar" id="toolbar">
     <span class="active-flow-label" id="activeFlowLabel">—</span>
+    <button class="btn btn-sm btn-primary" id="addScenarioBtn" onclick="openAddScenarioModal()">
+      + Scenario toevoegen
+    </button>
     <button class="btn btn-sm btn-outline" id="clearAllBtn" onclick="clearAll()">
       🗑 Deze flow leegmaken
     </button>
@@ -227,16 +226,26 @@
     </div>
   </div>
 
-  <!-- Sidebar -->
+  <!-- Sidebar: alleen de flows -->
   <div class="flow-sidebar" id="sidebar">
-    <div class="sidebar-section-flows">
-      <h4>Flows (canvassen)</h4>
-      <div id="flowList"></div>
-    </div>
-    <div class="sidebar-section-scenarios">
-      <h4>Scenario's toevoegen</h4>
-      <p style="font-size:11px; color:#9ca3af; margin:-4px 0 8px;">aan de geselecteerde flow hierboven</p>
-      <div id="sbList"></div>
+    <h4>Flows (canvassen)</h4>
+    <div id="flowList"></div>
+  </div>
+
+  <!-- Modal: scenario toevoegen aan de actieve flow -->
+  <div class="modal-overlay" id="modalAddScenario" style="display:none;" onclick="closeModalOverlay(event,'modalAddScenario')">
+    <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Scenario toevoegen aan <span id="addScenarioFlowName">deze flow</span></h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalAddScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="addScenarioSearch" placeholder="Zoek op code of titel..." oninput="renderAddScenarioList()" style="width:100%; margin-bottom:12px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+        <div id="addScenarioList" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('modalAddScenario')">Klaar</button>
+      </div>
     </div>
   </div>
 
@@ -298,6 +307,8 @@
       if (!window.isFlowAdmin) {
         const clearBtn = document.getElementById('clearAllBtn');
         if (clearBtn) clearBtn.style.display = 'none';
+        const addBtn = document.getElementById('addScenarioBtn');
+        if (addBtn) addBtn.style.display = 'none';
         const hintText = document.getElementById('connectHintText');
         if (hintText) hintText.textContent = 'Sleep een kaartje om de positie aan te passen. Klik op een kaartje voor de details.';
       }
@@ -311,7 +322,6 @@
       await loadFlowContent();
       applyLayout();
       renderFlowList();
-      renderSidebar();
       renderAll();
     })();
 
@@ -325,7 +335,6 @@
       await loadFlowContent();
       document.getElementById('nodes').innerHTML = '';
       renderFlowList();
-      renderSidebar();
       renderDetails();
       renderAll();
     }
@@ -507,7 +516,7 @@
       saveActiveFlowId();
       await loadFlowContent();
       renderFlowList();
-      renderSidebar();
+      refreshAddScenarioModalIfOpen();
       renderDetails();
       renderAll();
     }
@@ -557,23 +566,55 @@
       }
       document.getElementById('nodes').innerHTML = '';
       renderFlowList();
-      renderSidebar();
+      refreshAddScenarioModalIfOpen();
       renderDetails();
       renderAll();
     }
 
-    // ── Sidebar: scenario's toevoegen ────────────────────────
-    function renderSidebar() {
-      const isAdmin = window.isFlowAdmin;
-      document.getElementById('sbList').innerHTML = scenarios.map(s => {
-        const already = allUsedScenarioIds.has(s.id);
-        const clickable = isAdmin && !already && activeFlowId;
-        return `<div class="sb-item ${already || !isAdmin || !activeFlowId ? 'on' : ''}" onclick="${clickable ? `addNode('${s.id}')` : ''}" style="${clickable ? '' : 'cursor:default;'}">
-          <div class="sb-code">${{ok:'✅',nok:'❌',open:'⏳'}[getStatus(s.id)]} ${s.code}</div>
-          <div class="sb-title">${s.title}</div>
-        </div>`;
-      }).join('');
+    // ── Scenario toevoegen: zoekbare modal i.p.v. vaste lijst ──
+    function openAddScenarioModal() {
+      if (!window.isFlowAdmin) return;
+      if (!activeFlowId) { alert('Maak of selecteer eerst een flow in de linkerkolom.'); return; }
+      const f = flows.find(x => x.id === activeFlowId);
+      document.getElementById('addScenarioFlowName').textContent = f ? `"${f.name}"` : 'deze flow';
+      document.getElementById('addScenarioSearch').value = '';
+      renderAddScenarioList();
+      openModal('modalAddScenario');
+      setTimeout(() => document.getElementById('addScenarioSearch')?.focus(), 50);
     }
+
+    function renderAddScenarioList() {
+      const q = (document.getElementById('addScenarioSearch').value || '').toLowerCase().trim();
+      const el = document.getElementById('addScenarioList');
+      const available = scenarios.filter(s => !allUsedScenarioIds.has(s.id));
+      const filtered = q
+        ? available.filter(s => s.code.toLowerCase().includes(q) || s.title.toLowerCase().includes(q))
+        : available;
+
+      if (!scenarios.length) { el.innerHTML = '<p class="flow-empty-hint">Geen scenario\'s beschikbaar.</p>'; return; }
+      if (!available.length) { el.innerHTML = '<p class="flow-empty-hint">Alle scenario\'s staan al op een flow-canvas.</p>'; return; }
+      if (!filtered.length) { el.innerHTML = `<p class="flow-empty-hint">Geen resultaten voor "${esc(q)}".</p>`; return; }
+
+      el.innerHTML = filtered.map(s => `
+        <div class="sb-item" style="margin-bottom:0;" onclick="addNodeFromModal('${s.id}')">
+          <div class="sb-code">${{ok:'✅',nok:'❌',open:'⏳'}[getStatus(s.id)]} ${esc(s.code)}</div>
+          <div class="sb-title">${esc(s.title)}</div>
+        </div>`).join('');
+    }
+
+    async function addNodeFromModal(sid) {
+      await addNode(sid);
+      renderAddScenarioList(); // toegevoegd scenario meteen uit de lijst laten verdwijnen
+    }
+
+    function refreshAddScenarioModalIfOpen() {
+      const modal = document.getElementById('modalAddScenario');
+      if (modal && modal.style.display === 'flex') renderAddScenarioList();
+    }
+
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
     // ── Nodes ─────────────────────────────────────────────────
     function renderAll() {
@@ -838,7 +879,7 @@
       nodePositions[sid] = {x, y, dbId: data.id};
       allUsedScenarioIds.add(sid);
       renderNodes();
-      renderSidebar();
+      refreshAddScenarioModalIfOpen();
     }
 
     async function removeNode(sid) {
@@ -854,7 +895,7 @@
       document.getElementById('fn-'+sid)?.remove();
       if (selectedNodeId === sid) { selectedNodeId = null; renderDetails(); }
       renderEdges();
-      renderSidebar();
+      refreshAddScenarioModalIfOpen();
     }
 
     async function savePos(sid) {
@@ -873,7 +914,7 @@
       nodePositions = {}; edges = [];
       selectedNodeId = null;
       document.getElementById('nodes').innerHTML = '';
-      renderEdges(); renderSidebar(); renderDetails();
+      renderEdges(); refreshAddScenarioModalIfOpen(); renderDetails();
     }
 
     // ── Details (onder het canvas, i.p.v. los popup-kaartje) ──
