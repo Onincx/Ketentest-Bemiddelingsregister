@@ -114,10 +114,12 @@ Gebruikers van die organisatie kunnen de activiteit dan bewerken in de app.
 Voordat organisaties een testscenario daadwerkelijk gaan uitvoeren, geven ze eerst aan of ze dat scenario willen testen:
 
 1. Voer eenmalig `deelname-setup.sql` uit in de Supabase **SQL Editor** (zelfde werkwijze als `supabase-setup.sql`). Dit voegt de tabel `scenario_participation` toe met de bijbehorende beveiliging (RLS).
-2. Gebruikers vinden het nieuwe overzicht via **Deelname** in de bovenbalk.
-3. Per scenario ziet iedereen een compacte matrix: één kolom per betrokken organisatie, met een status (✅ wil testen, ❌ wil niet testen, ⏳ nog geen keuze).
-4. Elke gebruiker mag de keuze invullen of wijzigen namens de **eigen** organisatie (beheerders mogen dit namens elke organisatie). Bij "niet testen" is een reden verplicht.
-5. Per scenario wordt automatisch bepaald of het **wordt uitgevoerd** (iedereen wil), **niet wordt uitgevoerd** (niemand wil), **verdeeld** is (sommigen wel, sommigen niet), of nog **wacht op input**.
+2. Voer daarna ook `flow-deelname-setup.sql` uit — dit voegt de tabel `flow_participation` toe. **Sinds deze update werkt de Deelname-pagina op flow-niveau, niet meer op scenarioniveau** (zie hieronder); `scenario_participation` wordt niet meer gebruikt door de pagina zelf, maar blijft bestaan voor het geval je de oude gegevens nog wilt inzien.
+3. Gebruikers vinden het overzicht via **Ketentest → Deelname** in de bovenbalk.
+4. Per **flow** (niet per los scenario) ziet een organisatie een compacte matrix: één kolom per betrokken organisatie, met een status (✅ wil testen, ❌ wil niet testen, ⏳ nog geen keuze). Een organisatie is "betrokken" bij een flow zodra ze bij minimaal één activiteit van minimaal één scenario in die flow verantwoordelijk of acceptant zijn.
+5. Elke gebruiker mag de keuze invullen, wijzigen **of weer wissen** (terug naar "nog geen keuze") namens de **eigen** organisatie (beheerders mogen dit namens elke organisatie). Bij "niet testen" is een reden verplicht.
+6. Gewone gebruikers zien alleen de flows waar hun eigen organisatie bij betrokken is; beheerders zien alle flows.
+7. Per flow wordt automatisch bepaald of deze **wordt uitgevoerd** (iedereen wil), **niet wordt uitgevoerd** (niemand wil), **verdeeld** is (sommigen wel, sommigen niet), of nog **wacht op input**.
 
 Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-app zelf (`app.html`).
 
@@ -152,7 +154,8 @@ De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Da
 ├── js/
 │   └── supabase-config.js  Configuratie (URL + key invullen)
 ├── supabase-setup.sql    Database setup script (basis)
-├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit
+├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit (legacy, scenario-niveau)
+├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 └── README.md             Deze handleiding
 ```

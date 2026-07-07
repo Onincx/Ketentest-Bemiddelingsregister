@@ -20,14 +20,14 @@
     table.deelname-table tr:last-child td { border-bottom:none; }
     table.deelname-table th:last-child, table.deelname-table td:last-child { border-right:none; }
 
-    .dn-scenario-cell { position:sticky; left:0; background:var(--white); z-index:2; padding:10px 14px; min-width:230px; max-width:300px; border-right:2px solid var(--border) !important; }
+    .dn-flow-cell { position:sticky; left:0; background:var(--white); z-index:2; padding:10px 14px; min-width:230px; max-width:300px; border-right:2px solid var(--border) !important; }
     .dn-corner { position:sticky; left:0; top:0; z-index:4; background:var(--surface); border-right:2px solid var(--border) !important; }
     .dn-org-header { position:sticky; top:0; background:var(--surface); z-index:3; padding:8px 6px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); white-space:nowrap; min-width:58px; cursor:default; }
     .dn-cell { text-align:center; padding:8px 4px; min-width:58px; font-size:15px; }
     .dn-cell.dn-clickable { cursor:pointer; }
     .dn-cell.dn-clickable:hover { background:var(--surface); }
-    .dn-scenario-code { font-size:11px; font-weight:700; color:var(--text-muted); }
-    .dn-scenario-title { font-size:13px; color:var(--text); font-weight:500; margin:2px 0 6px; line-height:1.35; }
+    .dn-flow-name { font-size:13px; color:var(--text); font-weight:600; line-height:1.35; margin-bottom:6px; }
+    .dn-flow-meta { font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:2px; }
     .dn-status-badge { display:inline-block; border-radius:99px; padding:2px 9px; font-size:10px; font-weight:700; white-space:nowrap; }
     .dn-filter-btn { transition: all 0.15s; }
     @media (max-width: 700px) { .stats-grid { grid-template-columns: repeat(2,1fr); } }
@@ -100,8 +100,8 @@
   <div class="page-wrap">
     <div class="page-header">
       <div class="page-header-left">
-        <h1>Deelname aan testscenario's</h1>
-        <p>Geef per scenario aan of jullie organisatie dit gaat testen — vóórdat de ketentest wordt uitgevoerd.</p>
+        <h1>Deelname aan flows</h1>
+        <p>Geef per flow aan of jullie organisatie deze gaat testen — vóórdat de ketentest wordt uitgevoerd.</p>
       </div>
       <button class="btn btn-outline" onclick="loadDeelname()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
@@ -118,7 +118,7 @@
     <div id="mainContent" style="display:none;">
       <!-- Statistieken -->
       <div class="stats-grid" id="dnStats" style="margin-bottom:20px;">
-        <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="dn-total">—</div></div>
+        <div class="stat-card"><div class="stat-label">Flows totaal</div><div class="stat-value" id="dn-total">—</div></div>
         <div class="stat-card"><div class="stat-label">Wordt uitgevoerd</div><div class="stat-value green" id="dn-ja">—</div></div>
         <div class="stat-card"><div class="stat-label">Wordt niet uitgevoerd</div><div class="stat-value red" id="dn-nee">—</div></div>
         <div class="stat-card"><div class="stat-label">Verdeeld / wachten op input</div><div class="stat-value orange" id="dn-overig">—</div></div>
@@ -135,11 +135,11 @@
 
       <!-- Legenda -->
       <div class="dn-legend">
-        <span>✅ Organisatie wil testen</span>
-        <span>❌ Organisatie wil niet testen (met reden)</span>
+        <span>✅ Organisatie wil deze flow testen</span>
+        <span>❌ Organisatie wil deze flow niet testen (met reden)</span>
         <span>⏳ Nog geen keuze gemaakt</span>
-        <span style="color:#d1d5db;">· Organisatie niet betrokken bij dit scenario</span>
-        <span>Klik op een cel in jullie eigen kolom om een keuze in te vullen of te wijzigen.</span>
+        <span style="color:#d1d5db;">· Organisatie niet betrokken bij deze flow</span>
+        <span>Klik op een cel in jullie eigen kolom om een keuze in te vullen, te wijzigen of te wissen.</span>
       </div>
 
       <div id="deelnameTableWrap"><p class="empty-dash">Laden...</p></div>
@@ -155,24 +155,28 @@
         <button class="btn btn-ghost btn-icon" onclick="closeModal('modalDeelname')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="dnScenarioId">
+        <input type="hidden" id="dnFlowId">
         <input type="hidden" id="dnOrgId">
         <p id="deelnameModalSub" style="font-size:13px; color:var(--text-muted); margin-bottom:16px;"></p>
 
-        <div style="display:flex; gap:10px; margin-bottom:16px;">
+        <div style="display:flex; gap:10px; margin-bottom:10px;">
           <button type="button" id="dnBtnJa" onclick="dnChoose(true)"
             style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #86efac; background:#f0fdf4; color:#16a34a;">
-            ✅ Ja, wij testen dit scenario
+            ✅ Ja, wij testen deze flow
           </button>
           <button type="button" id="dnBtnNee" onclick="dnChoose(false)"
             style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #fca5a5; background:#fff5f5; color:#dc2626;">
-            ❌ Nee, wij testen dit niet
+            ❌ Nee, wij testen deze flow niet
           </button>
         </div>
 
+        <button type="button" id="dnBtnClear" onclick="dnClear()" style="display:none; width:100%; margin-bottom:16px; padding:9px; font-size:12px; font-weight:500; border:1px solid var(--border); background:var(--white); color:var(--text-muted); border-radius:var(--radius); cursor:pointer;">
+          ↺ Keuze wissen (terug naar "nog geen keuze")
+        </button>
+
         <div class="form-group" id="dnReasonGroup" style="display:none;">
           <label>Reden waarom niet <span style="color:var(--danger);">*</span> <span style="color:var(--text-muted); font-weight:400;">(verplicht)</span></label>
-          <textarea id="dnReason" placeholder="Leg kort uit waarom jullie organisatie dit scenario niet gaat testen..."></textarea>
+          <textarea id="dnReason" placeholder="Leg kort uit waarom jullie organisatie deze flow niet gaat testen..."></textarea>
         </div>
 
         <div id="alertDeelname" class="alert" style="display:none;"></div>
@@ -188,10 +192,11 @@
   <script src="js/supabase-config.js?v=22"></script>
   <script>
     let currentUser = null, currentProfile = null, myOrgId = null;
-    let scenarios = [], activities = [], participation = [], orgs = [];
+    let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
     let activeKetentest = null;
     let currentFilter = 'all';
     let dnChoice = null;
+    let dnExistingId = null;
 
     (async () => {
       currentUser = await requireAuth();
@@ -233,17 +238,19 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [a, p, o] = await Promise.all([
+      const [a, fl, fn, p, o] = await Promise.all([
         scenarioIds.length
           ? sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds)
           : Promise.resolve({ data: [] }),
-        scenarioIds.length
-          ? sb.from('scenario_participation').select('*').in('scenario_id', scenarioIds)
-          : Promise.resolve({ data: [] }),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
+        sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_participation').select('*'),
         sb.from('organisations').select('*').order('name'),
       ]);
 
       activities = a.data || [];
+      flows = fl.data || [];
+      flowNodes = (fn.data || []).filter(n => n.flow_id);
       participation = p.data || [];
       orgs = o.data || [];
 
@@ -251,31 +258,45 @@
       document.getElementById('lastUpdated').textContent = 'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
     }
 
-    // Organisaties die betrokken zijn bij een scenario: verantwoordelijk
-    // voor een activiteit, óf acceptant van een activiteit.
-    function betrokkenOrgIds(scenarioId) {
+    // Scenario's die bij een flow horen
+    function flowScenarioIds(flowId) {
+      return flowNodes.filter(n => n.flow_id === flowId).map(n => n.scenario_id);
+    }
+
+    // Organisaties die betrokken zijn bij een flow: verantwoordelijk voor
+    // of acceptant van minimaal 1 activiteit van minimaal 1 scenario in
+    // die flow.
+    function betrokkenOrgIdsForFlow(flowId) {
+      const sids = new Set(flowScenarioIds(flowId));
       const set = new Set();
-      activities.filter(act => act.scenario_id === scenarioId).forEach(act => {
+      activities.filter(act => sids.has(act.scenario_id)).forEach(act => {
         if (act.organisation_id) set.add(act.organisation_id);
         if (act.acceptant_org_id) set.add(act.acceptant_org_id);
       });
       return [...set];
     }
 
+    // Flows die deze gebruiker mag zien: beheerders zien alles, gewone
+    // gebruikers alleen de flows waar hun organisatie bij betrokken is.
+    function visibleFlows() {
+      if (currentProfile?.role === 'admin') return flows;
+      return flows.filter(f => betrokkenOrgIdsForFlow(f.id).includes(myOrgId));
+    }
+
     function allInvolvedOrgs() {
       const set = new Set();
-      scenarios.forEach(s => betrokkenOrgIds(s.id).forEach(id => set.add(id)));
+      visibleFlows().forEach(f => betrokkenOrgIdsForFlow(f.id).forEach(id => set.add(id)));
       return orgs.filter(o => set.has(o.id));
     }
 
-    function getParticipation(scenarioId, orgId) {
-      return participation.find(x => x.scenario_id === scenarioId && x.organisation_id === orgId) || null;
+    function getParticipation(flowId, orgId) {
+      return participation.find(x => x.flow_id === flowId && x.organisation_id === orgId) || null;
     }
 
-    function scenarioStatus(scenarioId) {
-      const involved = betrokkenOrgIds(scenarioId);
+    function flowStatus(flowId) {
+      const involved = betrokkenOrgIdsForFlow(flowId);
       if (!involved.length) return { status: 'geen', decided: 0, total: 0 };
-      const decisions = involved.map(oid => getParticipation(scenarioId, oid));
+      const decisions = involved.map(oid => getParticipation(flowId, oid));
       const decided = decisions.filter(d => d).length;
       if (decided < involved.length) return { status: 'wachten', decided, total: involved.length };
       const allYes = decisions.every(d => d.wants_to_test === true);
@@ -296,13 +317,14 @@
 
     function renderStats() {
       let ja = 0, nee = 0, overig = 0;
-      scenarios.forEach(s => {
-        const st = scenarioStatus(s.id).status;
+      const vf = visibleFlows();
+      vf.forEach(f => {
+        const st = flowStatus(f.id).status;
         if (st === 'ja') ja++;
         else if (st === 'nee') nee++;
         else overig++; // verdeeld, wachten of geen
       });
-      document.getElementById('dn-total').textContent = scenarios.length;
+      document.getElementById('dn-total').textContent = vf.length;
       document.getElementById('dn-ja').textContent = ja;
       document.getElementById('dn-nee').textContent = nee;
       document.getElementById('dn-overig').textContent = overig;
@@ -328,40 +350,46 @@
 
     function renderMatrix() {
       const wrap = document.getElementById('deelnameTableWrap');
+      const vf = visibleFlows();
 
-      if (!scenarios.length) {
-        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen testscenario\'s voor deze ketentest.</p></div>';
+      if (!flows.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen flows voor deze ketentest. Maak die aan via de Flow-pagina.</p></div>';
+        return;
+      }
+      if (!vf.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Jullie organisatie is bij geen enkele flow betrokken (nog niet als verantwoordelijke of acceptant gekoppeld aan een activiteit).</p></div>';
         return;
       }
 
       const involvedOrgs = allInvolvedOrgs();
       if (!involvedOrgs.length) {
-        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen organisaties gekoppeld aan activiteiten binnen deze scenario\'s.</p></div>';
+        wrap.innerHTML = '<div class="empty-state"><p>Er zijn nog geen organisaties gekoppeld aan activiteiten binnen deze flows.</p></div>';
         return;
       }
 
-      const filtered = scenarios.filter(s => currentFilter === 'all' || scenarioStatus(s.id).status === currentFilter);
+      const filtered = vf.filter(f => currentFilter === 'all' || flowStatus(f.id).status === currentFilter);
 
       if (!filtered.length) {
-        wrap.innerHTML = '<div class="empty-state"><p>Geen scenario\'s in deze filter.</p></div>';
+        wrap.innerHTML = '<div class="empty-state"><p>Geen flows in deze filter.</p></div>';
         return;
       }
 
       let html = `<div class="deelname-table-wrap"><table class="deelname-table">
         <thead><tr>
-          <th class="dn-corner dn-scenario-cell">Scenario</th>
+          <th class="dn-corner dn-flow-cell">Flow</th>
           ${involvedOrgs.map(o => `<th class="dn-org-header" title="${esc(o.name)}">${esc(o.code || o.name)}${o.id === myOrgId ? ' 👤' : ''}</th>`).join('')}
         </tr></thead><tbody>`;
 
-      filtered.forEach(s => {
-        const involved = betrokkenOrgIds(s.id);
-        const st = scenarioStatus(s.id);
+      filtered.forEach(f => {
+        const involved = betrokkenOrgIdsForFlow(f.id);
+        const st = flowStatus(f.id);
         const borderColor = BORDER_COLOR[st.status];
+        const scenarioCount = flowScenarioIds(f.id).length;
 
         html += `<tr>
-          <td class="dn-scenario-cell" style="border-left:3px solid ${borderColor};">
-            <div class="dn-scenario-code">${esc(s.code)}</div>
-            <div class="dn-scenario-title">${esc(s.title)}</div>
+          <td class="dn-flow-cell" style="border-left:3px solid ${borderColor};">
+            <div class="dn-flow-meta">${scenarioCount} scenario${scenarioCount === 1 ? '' : "'s"}</div>
+            <div class="dn-flow-name">${esc(f.name)}</div>
             ${statusBadge(st.status, st.decided, st.total)}
           </td>`;
 
@@ -370,15 +398,15 @@
             html += `<td class="dn-cell" style="color:#e5e7eb;">·</td>`;
             return;
           }
-          const p = getParticipation(s.id, o.id);
+          const p = getParticipation(f.id, o.id);
           const clickable = cellClickable(o.id);
           const cls = clickable ? 'dn-cell dn-clickable' : 'dn-cell';
-          const onclick = clickable ? ` onclick="openDeelnameModal('${s.id}','${o.id}')"` : '';
+          const onclick = clickable ? ` onclick="openDeelnameModal('${f.id}','${o.id}')"` : '';
 
           let icon, tip;
           if (!p) { icon = '⏳'; tip = 'Nog geen keuze gemaakt'; }
-          else if (p.wants_to_test) { icon = '✅'; tip = 'Wil dit scenario testen'; }
-          else { icon = '❌'; tip = 'Wil dit scenario niet testen — reden: ' + (p.reason || '—'); }
+          else if (p.wants_to_test) { icon = '✅'; tip = 'Wil deze flow testen'; }
+          else { icon = '❌'; tip = 'Wil deze flow niet testen — reden: ' + (p.reason || '—'); }
 
           html += `<td class="${cls}"${onclick} title="${esc(o.name)}: ${esc(tip)}">${icon}</td>`;
         });
@@ -401,26 +429,28 @@
       renderMatrix();
     }
 
-    // ---------- Modal: keuze invullen ----------
+    // ---------- Modal: keuze invullen / wijzigen / wissen ----------
 
-    function openDeelnameModal(scenarioId, orgId) {
+    function openDeelnameModal(flowId, orgId) {
       if (!cellClickable(orgId)) return;
-      const scenario = scenarios.find(x => x.id === scenarioId);
+      const flow = flows.find(x => x.id === flowId);
       const org = orgs.find(x => x.id === orgId);
-      if (!scenario || !org) return;
+      if (!flow || !org) return;
 
-      document.getElementById('dnScenarioId').value = scenarioId;
+      document.getElementById('dnFlowId').value = flowId;
       document.getElementById('dnOrgId').value = orgId;
-      document.getElementById('deelnameModalTitle').textContent = `${scenario.code} — ${scenario.title}`;
+      document.getElementById('deelnameModalTitle').textContent = flow.name;
 
       const namensZelf = orgId === myOrgId;
       document.getElementById('deelnameModalSub').textContent = namensZelf
-        ? `Gaat ${org.name} dit scenario testen?`
+        ? `Gaat ${org.name} deze flow testen?`
         : `Je past dit in namens ${org.name} (als beheerder).`;
 
-      const existing = getParticipation(scenarioId, orgId);
+      const existing = getParticipation(flowId, orgId);
       dnChoice = existing ? existing.wants_to_test : null;
+      dnExistingId = existing ? existing.id : null;
       document.getElementById('dnReason').value = existing?.reason || '';
+      document.getElementById('dnBtnClear').style.display = existing ? '' : 'none';
       hideAlert('alertDeelname');
       updateDnButtons();
       openModal('modalDeelname');
@@ -451,13 +481,13 @@
     }
 
     async function saveDeelname() {
-      const scenarioId = document.getElementById('dnScenarioId').value;
+      const flowId = document.getElementById('dnFlowId').value;
       const orgId = document.getElementById('dnOrgId').value;
       const reason = document.getElementById('dnReason').value.trim();
 
       if (dnChoice === null) return;
       if (dnChoice === false && !reason) {
-        showAlert('Geef een reden op waarom deze organisatie het scenario niet gaat testen.', 'error', 'alertDeelname');
+        showAlert('Geef een reden op waarom deze organisatie de flow niet gaat testen.', 'error', 'alertDeelname');
         return;
       }
 
@@ -466,19 +496,42 @@
       const origLabel = btn.textContent;
       btn.textContent = 'Opslaan...';
 
-      const { error } = await sb.from('scenario_participation').upsert({
-        scenario_id: scenarioId,
+      const { error } = await sb.from('flow_participation').upsert({
+        flow_id: flowId,
         organisation_id: orgId,
         wants_to_test: dnChoice,
         reason: dnChoice ? null : reason,
         decided_by: currentUser.id,
-      }, { onConflict: 'scenario_id,organisation_id' });
+      }, { onConflict: 'flow_id,organisation_id' });
 
       btn.textContent = origLabel;
 
       if (error) {
         showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertDeelname');
         btn.disabled = false;
+        return;
+      }
+
+      closeModal('modalDeelname');
+      await loadDeelname();
+    }
+
+    // Zet een eerder gemaakte keuze terug naar "nog geen keuze".
+    async function dnClear() {
+      if (!dnExistingId) return;
+      if (!confirm('Keuze verwijderen? De status gaat terug naar "nog geen keuze".')) return;
+
+      const btn = document.getElementById('dnBtnClear');
+      btn.disabled = true;
+      btn.textContent = 'Bezig...';
+
+      const { error } = await sb.from('flow_participation').delete().eq('id', dnExistingId);
+
+      btn.disabled = false;
+      btn.textContent = '↺ Keuze wissen (terug naar "nog geen keuze")';
+
+      if (error) {
+        showAlert('Fout bij wissen: ' + error.message, 'error', 'alertDeelname');
         return;
       }
 
