@@ -246,21 +246,31 @@
   </div>
 
   <!-- Modal: scenario toevoegen aan de actieve flow -->
-  <div class="modal-overlay" id="modalAddScenario" style="display:none;" onclick="closeModalOverlay(event,'modalAddScenario')">
+  <!-- Modal: flow bewerken (naam + doel) -->
+  <div class="modal-overlay" id="modalEditFlow" style="display:none;" onclick="closeModalOverlay(event,'modalEditFlow')">
     <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
       <div class="modal-header">
-        <h3>Scenario toevoegen aan <span id="addScenarioFlowName">deze flow</span></h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalAddScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        <h3>Flow bewerken</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalEditFlow')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
-        <input type="text" id="addScenarioSearch" placeholder="Zoek op code of titel..." oninput="renderAddScenarioList()" style="width:100%; margin-bottom:12px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
-        <div id="addScenarioList" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+        <input type="hidden" id="editFlowId">
+        <div class="form-group">
+          <label>Naam</label>
+          <input type="text" id="editFlowName" placeholder="Naam van de flow" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
+          <label>Doel <span style="color:var(--text-muted); font-weight:400;">(optioneel — wordt automatisch getoond bij Deelname)</span></label>
+          <textarea id="editFlowDoel" placeholder="Waar dient deze flow voor? Bijv. &quot;Testen van de aanvraagketen voor nieuwe cliënten bij gemeente X.&quot;"></textarea>
+        </div>
       </div>
       <div class="modal-footer">
-        <button class="btn btn-primary" onclick="closeModal('modalAddScenario')">Klaar</button>
+        <button class="btn btn-outline" onclick="closeModal('modalEditFlow')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveFlowEdit()">Opslaan</button>
       </div>
     </div>
   </div>
+
 
   <!-- Connect hint -->
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
@@ -512,7 +522,7 @@
             <span class="flow-item-name" title="${esc(f.name)}">${esc(f.name)}</span>
             ${window.isFlowAdmin ? `
             <span class="flow-item-actions">
-              <button class="flow-item-btn" onclick="event.stopPropagation(); renameFlow('${f.id}')" title="Naam wijzigen">✏️</button>
+              <button class="flow-item-btn" onclick="event.stopPropagation(); openEditFlowModal('${f.id}')" title="Naam/doel bewerken">✏️</button>
               <button class="flow-item-btn" onclick="event.stopPropagation(); deleteFlow('${f.id}')" title="Flow verwijderen">🗑</button>
             </span>` : ''}
           </div>`).join('');
@@ -548,16 +558,28 @@
       await selectFlow(data.id);
     }
 
-    async function renameFlow(id) {
+    function openEditFlowModal(id) {
       if (!window.isFlowAdmin) return;
       const f = flows.find(x => x.id === id);
       if (!f) return;
-      const name = prompt('Nieuwe naam voor deze flow:', f.name);
-      if (name === null) return;
-      if (!name.trim() || name.trim() === f.name) return;
-      const { error } = await sb.from('flows').update({ name: name.trim() }).eq('id', id);
-      if (error) { alert('Fout bij hernoemen: ' + error.message); return; }
-      f.name = name.trim();
+      document.getElementById('editFlowId').value = id;
+      document.getElementById('editFlowName').value = f.name;
+      document.getElementById('editFlowDoel').value = f.doel || '';
+      openModal('modalEditFlow');
+    }
+
+    async function saveFlowEdit() {
+      const id = document.getElementById('editFlowId').value;
+      const name = document.getElementById('editFlowName').value.trim();
+      const doel = document.getElementById('editFlowDoel').value.trim();
+      if (!name) { alert('Geef de flow een naam.'); return; }
+
+      const { error } = await sb.from('flows').update({ name, doel: doel || null }).eq('id', id);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+
+      const f = flows.find(x => x.id === id);
+      if (f) { f.name = name; f.doel = doel || null; }
+      closeModal('modalEditFlow');
       renderFlowList();
     }
 

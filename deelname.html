@@ -20,7 +20,10 @@
     table.deelname-table tr:last-child td { border-bottom:none; }
     table.deelname-table th:last-child, table.deelname-table td:last-child { border-right:none; }
 
-    .dn-flow-cell { position:sticky; left:0; background:var(--white); z-index:2; padding:10px 14px; min-width:230px; max-width:300px; border-right:2px solid var(--border) !important; }
+    .dn-flow-cell { position:sticky; left:0; background:var(--white); z-index:2; padding:10px 14px; min-width:260px; max-width:320px; border-right:2px solid var(--border) !important; }
+    .dn-flow-doel { font-size:11px; color:var(--text-muted); font-style:italic; margin:4px 0 8px; line-height:1.45; }
+    .dn-flow-scenarios { display:flex; flex-wrap:wrap; gap:4px; margin-top:8px; }
+    .dn-scn-chip { background:var(--surface); border:1px solid var(--border); color:var(--text-muted); border-radius:4px; padding:1px 6px; font-size:10px; font-weight:600; white-space:nowrap; }
     .dn-corner { position:sticky; left:0; top:0; z-index:4; background:var(--surface); border-right:2px solid var(--border) !important; }
     .dn-org-header { position:sticky; top:0; background:var(--surface); z-index:3; padding:8px 6px; text-align:center; font-size:11px; font-weight:700; color:var(--text-muted); white-space:nowrap; min-width:58px; cursor:default; }
     .dn-cell { text-align:center; padding:8px 4px; min-width:58px; font-size:15px; }
@@ -384,13 +387,16 @@
         const involved = betrokkenOrgIdsForFlow(f.id);
         const st = flowStatus(f.id);
         const borderColor = BORDER_COLOR[st.status];
-        const scenarioCount = flowScenarioIds(f.id).length;
+        const sids = flowScenarioIds(f.id);
+        const flowScenarios = scenarios.filter(s => sids.includes(s.id)).sort((a,b) => (a.code || '').localeCompare(b.code || ''));
 
         html += `<tr>
           <td class="dn-flow-cell" style="border-left:3px solid ${borderColor};">
-            <div class="dn-flow-meta">${scenarioCount} scenario${scenarioCount === 1 ? '' : "'s"}</div>
+            <div class="dn-flow-meta">${flowScenarios.length} scenario${flowScenarios.length === 1 ? '' : "'s"}</div>
             <div class="dn-flow-name">${esc(f.name)}</div>
+            ${f.doel ? `<p class="dn-flow-doel">${esc(f.doel)}</p>` : ''}
             ${statusBadge(st.status, st.decided, st.total)}
+            ${flowScenarios.length ? `<div class="dn-flow-scenarios">${flowScenarios.map(s => `<span class="dn-scn-chip" title="${esc(s.title)}">${esc(s.code)}</span>`).join('')}</div>` : ''}
           </td>`;
 
         involvedOrgs.forEach(o => {

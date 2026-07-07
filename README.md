@@ -120,6 +120,7 @@ Voordat organisaties een testscenario daadwerkelijk gaan uitvoeren, geven ze eer
 5. Elke gebruiker mag de keuze invullen, wijzigen **of weer wissen** (terug naar "nog geen keuze") namens de **eigen** organisatie (beheerders mogen dit namens elke organisatie). Bij "niet testen" is een reden verplicht.
 6. Gewone gebruikers zien alleen de flows waar hun eigen organisatie bij betrokken is; beheerders zien alle flows.
 7. Per flow wordt automatisch bepaald of deze **wordt uitgevoerd** (iedereen wil), **niet wordt uitgevoerd** (niemand wil), **verdeeld** is (sommigen wel, sommigen niet), of nog **wacht op input**.
+8. Beheerders kunnen per flow een **doel** vastleggen (via het ✏️-icoon in de flowlijst op de Flow-pagina). Dit doel en de lijst van onderliggende scenario's (codes) worden automatisch getoond bij elke flow op de Deelname-pagina, zodat gebruikers meteen begrijpen waar ze een keuze over maken. Voer hiervoor eenmalig `flows-doel-setup.sql` uit in de Supabase SQL Editor.
 
 Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-app zelf (`app.html`).
 
@@ -157,6 +158,7 @@ De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Da
 ├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit (legacy, scenario-niveau)
 ├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
+├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
 └── README.md             Deze handleiding
 ```
 
