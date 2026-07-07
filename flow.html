@@ -176,7 +176,16 @@
         <a href="deelname.html">Deelname</a>
       </div>
     </div>
-    <div id="adminLink" style="display:none;"><a href="admin.html">Beheer</a></div>
+    <div class="nav-dropdown" id="adminLink" style="display:none;">
+      <a href="admin.html">Beheer <span class="nav-dropdown-caret">▾</span></a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=scenarios">Testscenario's</a>
+        <a href="admin.html?tab=organisations">Organisaties</a>
+        <a href="admin.html?tab=users">Gebruikers</a>
+        <a href="admin.html?tab=notifications">Notificaties</a>
+        <a href="admin.html?tab=ketentests">Ketentesten</a>
+      </div>
+    </div>
     <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
