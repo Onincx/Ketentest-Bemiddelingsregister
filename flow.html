@@ -172,6 +172,7 @@
     <div class="nav-dropdown">
       <a href="app.html" class="active">Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">Testscenario's</a>
         <a href="flow.html" class="active">Flow</a>
         <a href="deelname.html">Deelname</a>
       </div>
@@ -179,7 +180,6 @@
     <div class="nav-dropdown" id="adminLink" style="display:none;">
       <a href="admin.html">Beheer <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
-        <a href="admin.html?tab=scenarios">Testscenario's</a>
         <a href="admin.html?tab=organisations">Organisaties</a>
         <a href="admin.html?tab=users">Gebruikers</a>
         <a href="admin.html?tab=notifications">Notificaties</a>
@@ -315,7 +315,11 @@
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      if (currentProfile?.role === 'admin') document.getElementById('adminLink').style.display = '';
+      if (currentProfile?.role === 'admin') {
+        document.getElementById('adminLink').style.display = '';
+        const navScenariosLink = document.getElementById('navScenariosLink');
+        if (navScenariosLink) navScenariosLink.style.display = '';
+      }
       window.isFlowAdmin = currentProfile?.role === 'admin';
       if (!window.isFlowAdmin) {
         const clearBtn = document.getElementById('clearAllBtn');
