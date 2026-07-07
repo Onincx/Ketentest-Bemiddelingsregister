@@ -246,7 +246,7 @@
           ? sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds)
           : Promise.resolve({ data: [] }),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
-        sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id),
         sb.from('flow_participation').select('*'),
         sb.from('organisations').select('*').order('name'),
       ]);
@@ -281,9 +281,28 @@
 
     // Flows die deze gebruiker mag zien: beheerders zien alles, gewone
     // gebruikers alleen de flows waar hun organisatie bij betrokken is.
+    // Gesorteerd op de code van het scenario dat als start is gemarkeerd
+    // (flows zonder gemarkeerde start komen achteraan).
+    function flowStartScenarioCode(flowId) {
+      const startNode = flowNodes.find(n => n.flow_id === flowId && n.is_start);
+      if (!startNode) return null;
+      const s = scenarios.find(x => x.id === startNode.scenario_id);
+      return s?.code || null;
+    }
+
     function visibleFlows() {
-      if (currentProfile?.role === 'admin') return flows;
-      return flows.filter(f => betrokkenOrgIdsForFlow(f.id).includes(myOrgId));
+      const list = currentProfile?.role === 'admin'
+        ? flows
+        : flows.filter(f => betrokkenOrgIdsForFlow(f.id).includes(myOrgId));
+
+      return list.slice().sort((a, b) => {
+        const ca = flowStartScenarioCode(a.id);
+        const cb = flowStartScenarioCode(b.id);
+        if (ca && cb) return ca.localeCompare(cb, undefined, { numeric: true });
+        if (ca && !cb) return -1;
+        if (!ca && cb) return 1;
+        return a.name.localeCompare(b.name, undefined, { numeric: true });
+      });
     }
 
     function allInvolvedOrgs() {
