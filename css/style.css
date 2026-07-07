@@ -123,7 +123,6 @@ textarea { resize: vertical; min-height: 80px; }
   transition: color 0.15s;
 }
 .topnav a:hover, .topnav a.active { color: #fff; text-decoration: none; }
-.topnav a.active { border-bottom: 2px solid var(--accent); }
 .topnav-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .topnav-user { color: rgba(255,255,255,0.75); font-size: 13px; }
 
