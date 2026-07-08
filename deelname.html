@@ -280,7 +280,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=22"></script>
   <script>
-    let currentUser = null, currentProfile = null, myOrgId = null, isAdmin = false;
+    let currentUser = null, currentProfile = null, myOrgId = null, isCurrentAdmin = false;
     let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
     let activeKetentest = null;
     let currentFilter = 'all';
@@ -301,11 +301,11 @@
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
       myOrgId = currentProfile?.organisation_id || null;
-      isAdmin = currentProfile?.role === 'admin';
+      isCurrentAdmin = currentProfile?.role === 'admin';
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
-      if (isAdmin) {
+      if (isCurrentAdmin) {
         document.getElementById('adminLink').style.display = '';
         const navScenariosLink = document.getElementById('navScenariosLink');
         if (navScenariosLink) navScenariosLink.style.display = '';
@@ -331,7 +331,7 @@
     async function loadDeelname() {
       if (!activeKetentest) return;
       document.getElementById('noKetentestState').style.display = 'none';
-      document.getElementById(isAdmin ? 'adminView' : 'userView').style.display = '';
+      document.getElementById(isCurrentAdmin ? 'adminView' : 'userView').style.display = '';
 
       const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
       scenarios = scenarioData || [];
@@ -353,7 +353,7 @@
       participation = p.data || [];
       orgs = o.data || [];
 
-      if (isAdmin) {
+      if (isCurrentAdmin) {
         renderStats();
         renderMatrix();
         document.getElementById('lastUpdatedAdmin').textContent = 'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
@@ -395,7 +395,7 @@
     // Gesorteerd op de code van het scenario dat als start is gemarkeerd
     // (flows zonder gemarkeerde start komen achteraan).
     function visibleFlows() {
-      const list = isAdmin
+      const list = isCurrentAdmin
         ? flows
         : flows.filter(f => betrokkenOrgIdsForFlow(f.id).includes(myOrgId));
 
@@ -449,7 +449,7 @@
        ============================================================ */
 
     function cellClickable(orgId) {
-      return orgId === myOrgId || isAdmin;
+      return orgId === myOrgId || isCurrentAdmin;
     }
 
     function renderStats() {
