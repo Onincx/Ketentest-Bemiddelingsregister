@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deelname — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -67,7 +67,6 @@
     .notif-verwijderd { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
     .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
     .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
-    .dn-focus-orgs { display:flex; flex-wrap:wrap; gap:6px; }
     .dn-focus-current { font-size:13px; padding:11px 14px; background:var(--surface); border-radius:var(--radius); margin-bottom:14px; line-height:1.5; }
     .dn-choice-row { display:flex; gap:10px; margin-bottom:6px; }
     .dn-choice-btn { flex:1; padding:16px 12px; font-size:14px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid; transition: all .12s; }
@@ -257,11 +256,11 @@
         <div style="display:flex; gap:10px; margin-bottom:10px;">
           <button type="button" id="dnBtnJa" onclick="dnChoose(true)"
             style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #86efac; background:#f0fdf4; color:#16a34a;">
-            ✅ Ja, wij testen deze flow
+            ✅ Flow opnemen in ketentest
           </button>
           <button type="button" id="dnBtnNee" onclick="dnChoose(false)"
             style="flex:1; padding:14px 10px; font-size:13px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid #fca5a5; background:#fff5f5; color:#dc2626;">
-            ❌ Nee, wij testen deze flow niet
+            ❌ Flow niet opnemen in ketentest
           </button>
         </div>
 
@@ -615,7 +614,7 @@
       openModal('modalDeelname');
     }
 
-    function dnChoose(val) { dnChoice = val; updateDnButtons(); }
+    function dnChoose(val) { dnChoice = (dnChoice === val) ? null : val; updateDnButtons(); }
 
     function updateDnButtons() {
       const jaBtn = document.getElementById('dnBtnJa');
@@ -768,7 +767,6 @@
       const sids = flowScenarioIds(f.id);
       const flowScenarios = scenarios.filter(s => sids.includes(s.id)).sort((a,b) => (a.code||'').localeCompare(b.code||'', undefined, {numeric:true}));
       const p = getParticipation(f.id, myOrgId);
-      const otherOrgIds = betrokkenOrgIdsForFlow(f.id).filter(id => id !== myOrgId);
 
       document.getElementById('dnFocusCard').innerHTML = `
         <div class="dn-focus-header">
@@ -785,30 +783,18 @@
                 <div style="flex:1; min-width:0;">
                   <div>${esc(s.title)}</div>
                   ${renderNotifLabels(getScenarioNotificaties(s.id))}
+                  ${renderScenarioOrgChips(s.id)}
                 </div>
               </div>`).join('') : '<p style="font-size:13px;color:var(--text-muted);">Geen scenario\'s gevonden.</p>'}
           </div>
         </div>
 
-        ${otherOrgIds.length ? `
-        <div class="dn-focus-section">
-          <h4>Andere betrokken organisaties</h4>
-          <div class="dn-focus-orgs">
-            ${otherOrgIds.map(oid => {
-              const org = orgs.find(o => o.id === oid);
-              const op = getParticipation(f.id, oid);
-              const icon = !op ? '⏳' : (op.wants_to_test ? '✅' : '❌');
-              return `<span class="org-chip-sm">${icon} ${esc(org?.name || org?.code || '')}</span>`;
-            }).join('')}
-          </div>
-        </div>` : ''}
-
         <div class="dn-focus-section" style="margin-bottom:8px;">
-          <h4>Jullie beslissing</h4>
+          <h4>Beslissing</h4>
           ${p ? `<p class="dn-focus-current">${p.wants_to_test ? '✅ Jullie hebben aangegeven deze flow te gaan testen.' : '❌ Jullie hebben aangegeven deze flow <strong>niet</strong> te testen — reden: "' + esc(p.reason || '') + '"'}</p>` : ''}
           <div class="dn-choice-row">
-            <button type="button" id="dnFocusJa" onclick="focusChoose(true)" class="dn-choice-btn dn-choice-ja ${p && p.wants_to_test ? 'active' : ''}">✅ Ja, wij testen deze flow</button>
-            <button type="button" id="dnFocusNee" onclick="focusChoose(false)" class="dn-choice-btn dn-choice-nee ${p && !p.wants_to_test ? 'active' : ''}">❌ Nee, wij testen deze flow niet</button>
+            <button type="button" id="dnFocusJa" onclick="focusChoose(true)" class="dn-choice-btn dn-choice-ja ${p && p.wants_to_test ? 'active' : ''}">✅ Flow opnemen in ketentest</button>
+            <button type="button" id="dnFocusNee" onclick="focusChoose(false)" class="dn-choice-btn dn-choice-nee ${p && !p.wants_to_test ? 'active' : ''}">❌ Flow niet opnemen in ketentest</button>
           </div>
           <div class="form-group" id="dnFocusReasonGroup" style="display:${p && !p.wants_to_test ? '' : 'none'};">
             <label>Reden waarom niet <span style="color:var(--danger);">*</span></label>
@@ -830,13 +816,32 @@
       document.getElementById('dnNextBtn').disabled = !p;
     }
 
+    // Toont per scenario de betrokken zorgaanbieders (verantwoordelijke(n)
+    // en acceptant(en)), zodat je meteen ziet wie erbij betrokken is zonder
+    // een aparte "andere organisaties"-sectie nodig te hebben.
+    function renderScenarioOrgChips(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      const verantwoordelijken = [...new Map(acts.filter(a => a.organisation_id).map(a => [a.organisation_id, a.organisation_id])).keys()];
+      const acceptanten = [...new Map(acts.filter(a => a.acceptant_org_id).map(a => [a.acceptant_org_id, a.acceptant_org_id])).keys()];
+      if (!verantwoordelijken.length && !acceptanten.length) return '';
+
+      const chip = (orgId, icon, label) => {
+        const org = orgs.find(o => o.id === orgId);
+        return `<span class="org-chip-sm" title="${label}: ${esc(org?.name || '')}">${icon} ${esc(org?.code || org?.name || '')}</span>`;
+      };
+      return `<div class="dn-flow-scenarios" style="margin-top:6px;">
+        ${verantwoordelijken.map(id => chip(id, '👤', 'Verantwoordelijk')).join('')}
+        ${acceptanten.map(id => chip(id, '✅', 'Acceptant')).join('')}
+      </div>`;
+    }
+
     function focusChoose(val) {
-      dnFocusChoice = val;
+      dnFocusChoice = (dnFocusChoice === val) ? null : val;
       const ja = document.getElementById('dnFocusJa');
       const nee = document.getElementById('dnFocusNee');
-      ja.classList.toggle('active', val === true);
-      nee.classList.toggle('active', val === false);
-      document.getElementById('dnFocusReasonGroup').style.display = val === false ? '' : 'none';
+      ja.classList.toggle('active', dnFocusChoice === true);
+      nee.classList.toggle('active', dnFocusChoice === false);
+      document.getElementById('dnFocusReasonGroup').style.display = dnFocusChoice === false ? '' : 'none';
       updateFocusButtons();
     }
 
