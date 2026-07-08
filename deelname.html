@@ -383,7 +383,7 @@
 
       const [a, fl, fn, p, o] = await Promise.all([
         scenarioIds.length
-          ? sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds)
+          ? sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id,description').in('scenario_id', scenarioIds)
           : Promise.resolve({ data: [] }),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
         sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id),
