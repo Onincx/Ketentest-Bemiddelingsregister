@@ -60,7 +60,13 @@
     .dn-focus-section { margin-bottom:26px; }
     .dn-focus-section h4 { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--text-muted); margin-bottom:10px; }
     .dn-focus-scenarios { display:flex; flex-direction:column; gap:6px; }
-    .dn-focus-scn-row { display:flex; align-items:center; gap:12px; padding:9px 12px; background:var(--surface); border-radius:var(--radius); font-size:13px; }
+    .dn-focus-scn-row { display:flex; align-items:flex-start; gap:12px; padding:9px 12px; background:var(--surface); border-radius:var(--radius); font-size:13px; }
+    .notif-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; border:1px solid transparent; }
+    .notif-nieuw      { background:#d1fae5; color:#065f46; border-color:#6ee7b7; }
+    .notif-gewijzigd  { background:#fef3c7; color:#92400e; border-color:#fcd34d; }
+    .notif-verwijderd { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
+    .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
+    .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
     .dn-focus-orgs { display:flex; flex-wrap:wrap; gap:6px; }
     .dn-focus-current { font-size:13px; padding:11px 14px; background:var(--surface); border-radius:var(--radius); margin-bottom:14px; line-height:1.5; }
     .dn-choice-row { display:flex; gap:10px; margin-bottom:6px; }
@@ -282,7 +288,45 @@
   <script>
     let currentUser = null, currentProfile = null, myOrgId = null, isCurrentAdmin = false;
     let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
+    let NOTIFICATIES = [];
     let activeKetentest = null;
+
+    // Bouw regex die zowel spaties als underscores herkent, hoofdletterongevoelig.
+    // Identiek aan de implementatie in admin.html/app.html, zodat herkenning
+    // overal consistent werkt.
+    function buildPattern(naam) {
+      const escaped = naam
+        .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+        .replace(/[_\s]+/g, '[_\\s]+');
+      return new RegExp(escaped, 'gi');
+    }
+
+    async function loadNotificationDefs() {
+      if (!activeKetentest) { NOTIFICATIES = []; return; }
+      const { data, error } = await sb.from('notification_definitions').select('*').eq('ketentest_id', activeKetentest.id).order('naam');
+      if (error) { console.error('loadNotificationDefs error:', error); NOTIFICATIES = []; return; }
+      NOTIFICATIES = data || [];
+    }
+
+    function getScenarioNotificaties(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      const found = new Map();
+      acts.forEach(a => {
+        const text = (a.description || '');
+        NOTIFICATIES.forEach(n => {
+          const pattern = buildPattern(n.naam);
+          if (pattern.test(text) && !found.has(n.naam)) found.set(n.naam, n);
+        });
+      });
+      return [...found.values()];
+    }
+
+    function renderNotifLabels(notifs) {
+      if (!notifs.length) return '';
+      return '<div class="notif-labels-wrap">' +
+        notifs.map(n => `<span class="notif-label notif-${n.type}" title="${esc(n.naam)}">${esc(n.naam)}</span>`).join('') +
+        '</div>';
+    }
     let currentFilter = 'all';
     let dnChoice = null;
     let dnExistingId = null;
@@ -352,6 +396,8 @@
       flowNodes = (fn.data || []).filter(n => n.flow_id);
       participation = p.data || [];
       orgs = o.data || [];
+
+      await loadNotificationDefs();
 
       if (isCurrentAdmin) {
         renderStats();
@@ -736,7 +782,10 @@
             ${flowScenarios.length ? flowScenarios.map(s => `
               <div class="dn-focus-scn-row">
                 <span class="dn-scn-chip" style="flex-shrink:0;">${esc(s.code)}</span>
-                <span style="flex:1;">${esc(s.title)}</span>
+                <div style="flex:1; min-width:0;">
+                  <div>${esc(s.title)}</div>
+                  ${renderNotifLabels(getScenarioNotificaties(s.id))}
+                </div>
               </div>`).join('') : '<p style="font-size:13px;color:var(--text-muted);">Geen scenario\'s gevonden.</p>'}
           </div>
         </div>
