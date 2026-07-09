@@ -242,7 +242,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=22"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {};
@@ -275,24 +275,13 @@
         return;
       }
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
+      await renderKetentestSwitcher();
 
       await loadData();
       document.getElementById('statsGrid').style.display = '';
       document.getElementById('filterBar').style.display = '';
       renderAll();
     })();
-
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      activeKetentest = result.active;
-      activeFilter = 'all';
-      activeTabPrefix = null;
-      openScenarioId = null;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadData();
-      renderAll();
-    }
 
     let flowNodes = [], flowEdges = [];
 

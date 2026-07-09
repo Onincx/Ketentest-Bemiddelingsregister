@@ -284,7 +284,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=22"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let currentUser = null, currentProfile = null, myOrgId = null, isCurrentAdmin = false;
     let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
@@ -381,19 +381,12 @@
       const result = await ensureActiveKetentest();
       if (!result) { document.getElementById('noKetentestState').style.display = ''; return; }
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
+      await renderKetentestSwitcher();
 
       document.getElementById('dnReason').addEventListener('input', updateDnButtons);
 
       await loadDeelname();
     })();
-
-    async function onKetentestChanged() {
-      const result = await ensureActiveKetentest();
-      activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadDeelname();
-    }
 
     async function loadDeelname() {
       if (!activeKetentest) return;

@@ -146,6 +146,18 @@ Beheerders kunnen nu bij het aanmaken van een gebruiker zelf een **tijdelijk wac
 
 **Belangrijk:** wil je dat gebruikers meteen met hun tijdelijke wachtwoord kunnen inloggen (zonder eerst een bevestigingsmail te hoeven openen), zorg dan dat in Supabase onder **Authentication → Providers → Email** de optie **"Confirm email"** staat **uitgeschakeld**. Staat die optie aan, dan moet de gebruiker eerst een bevestigingslink volgen voordat inloggen lukt — en die e-mail wordt in deze flow niet meer verstuurd.
 
+## Ketentest kiezen bij het inloggen + toegang per gebruiker (nieuw)
+
+De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het **inlogscherm**, en beheerders kunnen nu per gebruiker bepalen welke ketentest(en) die gebruiker mag zien:
+
+1. Voer eenmalig `user-ketentest-access-setup.sql` uit in de Supabase SQL Editor. Dit voegt de koppeltabel `user_ketentest_access` toe.
+2. Bij **Beheer → Gebruikers** kun je per gebruiker (rol "Gebruiker" of "Manager") aanvinken tot welke ketentesten die toegang heeft. Beheerders zijn hiervan uitgezonderd — die zien altijd alle ketentesten.
+3. Na het inloggen:
+   - Heeft een gebruiker toegang tot **precies 1** ketentest, dan komt die er automatisch in terecht (geen extra stap).
+   - Heeft een gebruiker toegang tot **meerdere** ketentesten, dan verschijnt een keuzescherm met de ketentesten **alfabetisch gesorteerd**.
+   - Heeft een gebruiker **geen enkele** ketentest toegewezen gekregen, dan verschijnt een melding om contact op te nemen met de beheerder.
+4. In de navigatiebalk staat nu alleen nog een label met de actieve ketentest, met een link terug naar het keuzescherm om te wisselen (in plaats van de oude dropdown die de pagina liet verversen).
+
 ---
 
 ## Bestandsstructuur
@@ -170,6 +182,7 @@ Beheerders kunnen nu bij het aanmaken van een gebruiker zelf een **tijdelijk wac
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
+├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 └── README.md             Deze handleiding
 ```
 

@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -188,7 +188,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=22"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [];
@@ -215,17 +215,10 @@
       const result = await ensureActiveKetentest();
       if (!result) return;
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
+      await renderKetentestSwitcher();
 
       await loadDashboard();
     })();
-
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadDashboard();
-    }
 
     async function loadDashboard() {
       if (!activeKetentest) return;

@@ -280,7 +280,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=22"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -347,7 +347,7 @@
       const result = await ensureActiveKetentest();
       if (!result) return;
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
+      await renderKetentestSwitcher();
 
       await loadKetentestData();
       await loadFlowContent();
@@ -355,20 +355,6 @@
       renderFlowList();
       renderAll();
     })();
-
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      activeKetentest = result.active;
-      cancelConnect();
-      selectedNodeId = null;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadKetentestData();
-      await loadFlowContent();
-      document.getElementById('nodes').innerHTML = '';
-      renderFlowList();
-      renderDetails();
-      renderAll();
-    }
 
     window.addEventListener('resize', applyLayout);
 

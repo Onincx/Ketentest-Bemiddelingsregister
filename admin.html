@@ -398,11 +398,16 @@
         </div>
         <div class="form-group">
           <label>Rol</label>
-          <select id="userRole">
+          <select id="userRole" onchange="toggleUserKetentestAccessVisibility()">
             <option value="user">Gebruiker</option>
             <option value="manager">Manager</option>
             <option value="admin">Beheerder</option>
           </select>
+        </div>
+        <div class="form-group" id="userKetentestAccessGroup">
+          <label>Toegang tot ketentesten</label>
+          <div id="userKetentestAccessList" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); padding:8px;"></div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Deze gebruiker ziet alleen de hier aangevinkte ketentesten. Beheerders zien altijd alle ketentesten.</p>
         </div>
         <div class="form-group" id="userTempPwGroup">
           <label>Tijdelijk wachtwoord</label>
@@ -661,7 +666,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=22"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let ketentests = [], activeKetentest = null;
@@ -695,7 +700,7 @@
       }
       ketentests = result.all;
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
+      await renderKetentestSwitcher();
       await loadAll();
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
@@ -704,15 +709,6 @@
         showTab(requestedTab);
       }
     })();
-
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      ketentests = result.all;
-      activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadAll();
-      showTab(activeTab === 'ketentests' ? 'scenarios' : activeTab);
-    }
 
     async function loadAll() {
       // Orgs must load first so loadActivities can resolve acceptant_org
@@ -1129,13 +1125,13 @@
         const result = await ensureActiveKetentest();
         ketentests = result.all;
         activeKetentest = result.active;
-        await renderKetentestSwitcher(onKetentestChanged);
+        await renderKetentestSwitcher();
         await loadAll();
       } else {
         // Update naam in switcher als die actief was
         if (activeKetentest && activeKetentest.id === id) {
           activeKetentest = ketentests.find(k => k.id === id) || activeKetentest;
-          await renderKetentestSwitcher(onKetentestChanged);
+          await renderKetentestSwitcher();
         }
       }
 
@@ -1166,7 +1162,7 @@
             setActiveKetentestId(ketentests[0].id);
             const result = await ensureActiveKetentest();
             activeKetentest = result.active;
-            await renderKetentestSwitcher(onKetentestChanged);
+            await renderKetentestSwitcher();
             await loadAll();
           } else {
             activeKetentest = null;
@@ -1368,6 +1364,8 @@
       document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
       document.getElementById('saveUserBtn').textContent = 'Gebruiker aanmaken';
       document.getElementById('alertUser').style.display = 'none';
+      renderUserKetentestAccessCheckboxes([]);
+      toggleUserKetentestAccessVisibility();
       openModal('modalUser');
     }
 
@@ -1380,7 +1378,22 @@
       document.getElementById('userTempPassword').value = `${word}${num}${symbol}`;
     }
 
-    function editUser(id) {
+    function renderUserKetentestAccessCheckboxes(selectedIds) {
+      const el = document.getElementById('userKetentestAccessList');
+      if (!ketentests.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Nog geen ketentesten aangemaakt.</p>'; return; }
+      el.innerHTML = ketentests.map(k => `
+        <label style="display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${k.id}" ${selectedIds.includes(k.id) ? 'checked' : ''}>
+          ${k.naam}
+        </label>`).join('');
+    }
+
+    function toggleUserKetentestAccessVisibility() {
+      const role = document.getElementById('userRole').value;
+      document.getElementById('userKetentestAccessGroup').style.display = role === 'admin' ? 'none' : '';
+    }
+
+    async function editUser(id) {
       const u = users.find(x => x.id === id);
       document.getElementById('userId').value = u.id;
       document.getElementById('userEmail').value = u.email;
@@ -1391,6 +1404,11 @@
       document.getElementById('userTempPwGroup').style.display = 'none';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
+
+      const { data: access } = await sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id);
+      renderUserKetentestAccessCheckboxes((access || []).map(a => a.ketentest_id));
+      toggleUserKetentestAccessVisibility();
+
       openModal('modalUser');
     }
 
@@ -1400,11 +1418,13 @@
       const name = document.getElementById('userName').value.trim();
       const orgId = document.getElementById('userOrg').value;
       const role = document.getElementById('userRole').value;
+      const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
 
       if (!email) { showAlert('Vul een e-mailadres in.', 'error', 'alertUser'); return; }
 
       const btn = document.getElementById('saveUserBtn');
       btn.disabled = true; btn.textContent = 'Bezig...';
+      let targetUserId = id;
 
       if (id) {
         // Update bestaand profiel
@@ -1429,12 +1449,23 @@
           return;
         }
 
-        const userId = signUpData?.user?.id;
-        if (userId) {
+        targetUserId = signUpData?.user?.id;
+        if (targetUserId) {
           await sb.from('users').upsert({
-            id: userId, email, name, organisation_id: orgId || null, role,
+            id: targetUserId, email, name, organisation_id: orgId || null, role,
             activated: false, must_change_password: true,
           });
+        }
+      }
+
+      // Ketentesttoegang bijwerken (niet relevant voor beheerders, die zien
+      // sowieso alles): oude toegang vervangen door de nu aangevinkte set.
+      if (targetUserId && role !== 'admin') {
+        await sb.from('user_ketentest_access').delete().eq('user_id', targetUserId);
+        if (selectedKetentestIds.length) {
+          await sb.from('user_ketentest_access').insert(
+            selectedKetentestIds.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
+          );
         }
       }
 
