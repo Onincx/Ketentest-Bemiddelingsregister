@@ -136,6 +136,16 @@ De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Da
 4. "Scenario's toevoegen" in de linkerkolom voegt een scenario toe aan de **geselecteerde** flow. Een scenario kan (net als voorheen) maar op één canvas tegelijk staan.
 5. De gast-flow (`flow-gast.html`, bereikt via een deellink) toont dezelfde flows met een keuzemenu bovenaan. **Let op:** dit werkt pas zodra ook de achterliggende database-functie `get_guest_ketentest_data` is bijgewerkt om de nieuwe `flows`-tabel mee te geven — zolang dat niet is gebeurd, valt de gastweergave automatisch terug op het oude gedrag (alles op één canvas), dus er breekt niets.
 
+## Verplichte wachtwoordwijziging bij eerste login (nieuw)
+
+Beheerders kunnen nu bij het aanmaken van een gebruiker zelf een **tijdelijk wachtwoord** invoeren (in plaats van een uitnodigingsmail te versturen):
+
+1. Voer eenmalig `users-force-password-setup.sql` uit in de Supabase SQL Editor. Dit voegt het veld `must_change_password` toe aan `users`.
+2. Bij **Beheer → Gebruikers → Gebruiker uitnodigen** vul je naast de gebruikersgegevens ook een tijdelijk wachtwoord in (of klik op "🎲 Genereer" voor een willekeurig wachtwoord). Geef dit tijdelijke wachtwoord zelf door aan de gebruiker (telefonisch, persoonlijk, etc.) — er wordt geen e-mail meer verstuurd.
+3. Zodra die gebruiker voor het eerst inlogt met het tijdelijke wachtwoord, wordt die **automatisch doorgestuurd** naar een scherm om direct een eigen wachtwoord te kiezen — pas daarna kan de rest van de applicatie gebruikt worden. Het tijdelijke wachtwoord werkt vanaf dat moment niet meer (het is overschreven door het zelfgekozen wachtwoord).
+
+**Belangrijk:** wil je dat gebruikers meteen met hun tijdelijke wachtwoord kunnen inloggen (zonder eerst een bevestigingsmail te hoeven openen), zorg dan dat in Supabase onder **Authentication → Providers → Email** de optie **"Confirm email"** staat **uitgeschakeld**. Staat die optie aan, dan moet de gebruiker eerst een bevestigingslink volgen voordat inloggen lukt — en die e-mail wordt in deze flow niet meer verstuurd.
+
 ---
 
 ## Bestandsstructuur
@@ -159,6 +169,7 @@ De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Da
 ├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
+├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 └── README.md             Deze handleiding
 ```
 

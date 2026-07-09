@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beheer — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -403,6 +403,14 @@
             <option value="manager">Manager</option>
             <option value="admin">Beheerder</option>
           </select>
+        </div>
+        <div class="form-group" id="userTempPwGroup">
+          <label>Tijdelijk wachtwoord</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="userTempPassword" placeholder="Minimaal 8 tekens" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="generateTempPassword()">🎲 Genereer</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Geef dit wachtwoord door aan de gebruiker (bijv. telefonisch of persoonlijk). Bij de eerste keer inloggen moet de gebruiker direct een eigen wachtwoord kiezen — dit tijdelijke wachtwoord werkt daarna niet meer.</p>
         </div>
         <div id="alertUser" class="alert" style="display:none;"></div>
       </div>
@@ -1355,10 +1363,21 @@
       document.getElementById('userName').value = '';
       document.getElementById('userOrg').value = '';
       document.getElementById('userRole').value = 'user';
+      document.getElementById('userTempPassword').value = '';
+      document.getElementById('userTempPwGroup').style.display = '';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
-      document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
+      document.getElementById('saveUserBtn').textContent = 'Gebruiker aanmaken';
       document.getElementById('alertUser').style.display = 'none';
       openModal('modalUser');
+    }
+
+    function generateTempPassword() {
+      const words = ['Kentest','Regio','Zorgketen','Bemiddel','Toets','Scenario','Vlucht','Rivier','Beemd','Wolken'];
+      const word = words[Math.floor(Math.random() * words.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      const symbols = ['!','#','$','%','&','*'];
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+      document.getElementById('userTempPassword').value = `${word}${num}${symbol}`;
     }
 
     function editUser(id) {
@@ -1369,6 +1388,7 @@
       document.getElementById('userOrg').value = u.organisation_id || '';
       document.getElementById('userRole').value = u.role || 'user';
       document.getElementById('userEmail').disabled = true;
+      document.getElementById('userTempPwGroup').style.display = 'none';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
       openModal('modalUser');
@@ -1389,38 +1409,39 @@
       if (id) {
         // Update bestaand profiel
         await sb.from('users').update({ name, organisation_id: orgId || null, role }).eq('id', id);
-        document.getElementById('userId').value = '';
-        document.getElementById('userEmail').disabled = false;
-        document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
-        document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
       } else {
-        // Maak gebruiker aan via signUp (geen wachtwoord nodig, stuur reset link)
-        const siteUrl = window.location.origin + window.location.pathname.replace('admin.html','');
-        const tempPassword = crypto.randomUUID(); // tijdelijk wachtwoord
-        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-          email,
-          password: tempPassword,
-          options: { emailRedirectTo: siteUrl + 'invite.html' }
-        });
+        const tempPassword = document.getElementById('userTempPassword').value;
+        if (!tempPassword || tempPassword.length < 8) {
+          showAlert('Kies een tijdelijk wachtwoord van minimaal 8 tekens (of klik op "Genereer").', 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Gebruiker aanmaken';
+          return;
+        }
+
+        // Maak het account aan met het door de beheerder gekozen tijdelijke
+        // wachtwoord. must_change_password: true dwingt af dat de gebruiker
+        // bij de eerste keer inloggen direct een eigen wachtwoord kiest —
+        // zie invite.html en requireAuth() in supabase-config.js.
+        const { data: signUpData, error: signUpError } = await sb.auth.signUp({ email, password: tempPassword });
 
         if (signUpError) {
           showAlert('Fout bij aanmaken: ' + signUpError.message, 'error', 'alertUser');
-          btn.disabled = false; btn.textContent = 'Uitnodiging versturen';
+          btn.disabled = false; btn.textContent = 'Gebruiker aanmaken';
           return;
         }
 
         const userId = signUpData?.user?.id;
         if (userId) {
-          await sb.from('users').upsert({ id: userId, email, name, organisation_id: orgId || null, role, activated: false });
-          // Stuur wachtwoord-reset e-mail zodat gebruiker een eigen wachtwoord kan instellen
-          await sb.auth.resetPasswordForEmail(email, { redirectTo: siteUrl + 'invite.html' });
+          await sb.from('users').upsert({
+            id: userId, email, name, organisation_id: orgId || null, role,
+            activated: false, must_change_password: true,
+          });
         }
       }
 
       closeModal('modalUser');
       btn.disabled = false;
       await loadUsers(); renderUsers();
-      showAlert('Gebruiker opgeslagen. Uitnodigingsmail verstuurd.', 'success');
+      showAlert(id ? 'Gebruiker opgeslagen.' : 'Gebruiker aangemaakt. Geef het tijdelijke wachtwoord door aan de gebruiker.', 'success');
     }
 
     function deleteUser(id, email) {

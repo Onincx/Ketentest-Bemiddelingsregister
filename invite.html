@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wachtwoord aanmaken — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
@@ -42,8 +42,8 @@
       </div>
 
       <div id="formWrap">
-        <h1 style="font-size:20px; margin-bottom:6px;">Wachtwoord aanmaken</h1>
-        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Kies een wachtwoord om je account te activeren.</p>
+        <h1 style="font-size:20px; margin-bottom:6px;">Kies een eigen wachtwoord</h1>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Je bent ingelogd met een tijdelijk wachtwoord. Stel hieronder je eigen wachtwoord in om verder te gaan — het tijdelijke wachtwoord werkt daarna niet meer.</p>
 
         <div id="alert" class="alert alert-error" style="display:none;"></div>
 
@@ -95,6 +95,14 @@
         showAlert('Er ging iets mis. De uitnodigingslink is mogelijk verlopen. Vraag de beheerder om een nieuwe uitnodiging.');
         btn.innerHTML = 'Wachtwoord opslaan en inloggen'; btn.disabled = false;
         return;
+      }
+
+      // Verplichte wachtwoordwijziging is hiermee voltooid: het tijdelijke
+      // wachtwoord werkt vanaf nu niet meer (overschreven), en de gebruiker
+      // hoeft dit scherm niet meer te zien.
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        await sb.from('users').update({ must_change_password: false, activated: true }).eq('id', currentUser.id);
       }
 
       document.getElementById('formWrap').style.display = 'none';

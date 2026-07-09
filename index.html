@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inloggen — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
@@ -78,6 +78,7 @@
       const user = await getCurrentUser();
       if (user) {
         const profile = await getUserProfile(user.id);
+        if (profile?.must_change_password) { window.location.href = 'invite.html'; return; }
         if (profile?.role === 'admin') window.location.href = 'admin.html';
         else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
         else window.location.href = 'app.html';
@@ -110,6 +111,7 @@
       }
 
       const profile = await getUserProfile(data.user.id);
+      if (profile?.must_change_password) { window.location.href = 'invite.html'; return; }
       if (profile?.role === 'admin') window.location.href = 'admin.html';
       else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
       else window.location.href = 'app.html';
