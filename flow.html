@@ -189,7 +189,6 @@
         <a href="admin.html?tab=ketentests">Ketentesten</a>
       </div>
     </div>
-    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
@@ -280,7 +279,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=23"></script>
+  <script src="js/supabase-config.js?v=24"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -347,7 +346,6 @@
       const result = await ensureActiveKetentest();
       if (!result) return;
       activeKetentest = result.active;
-      await renderKetentestSwitcher();
 
       await loadKetentestData();
       await loadFlowContent();
