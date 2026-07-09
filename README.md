@@ -158,6 +158,15 @@ De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het *
    - Heeft een gebruiker **geen enkele** ketentest toegewezen gekregen, dan verschijnt een melding om contact op te nemen met de beheerder.
 4. In de navigatiebalk staat nu alleen nog een label met de actieve ketentest, met een link terug naar het keuzescherm om te wisselen (in plaats van de oude dropdown die de pagina liet verversen).
 
+## Voorbereiding op vrijgave: laatste login, startmoment en logboek (nieuw)
+
+Drie aanvullingen om de ketentestmonitor gecontroleerd te kunnen vrijgeven:
+
+1. **Laatste login per gebruiker** — voer eenmalig `users-last-login-setup.sql` uit. Dit voegt een beveiligde functie toe die (alleen voor beheerders) het laatste inlogmoment per gebruiker ophaalt uit Supabase Auth. Zichtbaar als nieuwe kolom bij **Beheer → Gebruikers**.
+2. **Startmoment per ketentest** — voer eenmalig `ketentest-start-setup.sql` uit. Bij **Beheer → Ketentesten** kun je nu per ketentest een start-datum/tijd instellen. Zolang dat moment niet is bereikt, kunnen gewone gebruikers (en managers) geen activiteiten op OK/NOK zetten — ze zien in plaats daarvan wanneer de test start. Beheerders zijn hiervan altijd uitgezonderd, zodat je zelf kunt voorbereiden/testen. Laat je dit veld leeg, dan geldt (zoals voorheen) geen enkele beperking.
+   - **Let op:** dit is een gebruiksvriendelijkheids-maatregel aan de voorkant (client-side), geen harde beveiligingsgrens — een technisch onderlegde gebruiker die de pagina handmatig aanpast, zou de knoppen alsnog kunnen activeren. Wil je dit ook hard afdwingen in de database zelf (via een trigger), laat het weten.
+3. **Logboek** — voer eenmalig `activity-log-setup.sql` uit. Onder **Beheer → Logboek** zie je de laatste 300 handelingen binnen de actieve ketentest: wie een resultaat (OK/NOK) heeft gezet, en wie een deelname-keuze heeft gemaakt of gewist, met tijdstip en details. Filterbaar per type handeling.
+
 ---
 
 ## Bestandsstructuur
@@ -183,6 +192,9 @@ De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het *
 ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
+├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
+├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
+├── activity-log-setup.sql     Database uitbreiding: logboek van gebruikershandelingen
 └── README.md             Deze handleiding
 ```
 

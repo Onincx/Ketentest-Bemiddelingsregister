@@ -63,6 +63,7 @@
         <a href="admin.html?tab=users" data-tab="users" onclick="return navTab('users', event)">Gebruikers</a>
         <a href="admin.html?tab=notifications" data-tab="notifications" onclick="return navTab('notifications', event)">Notificaties</a>
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
+        <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
       </div>
     </div>
     <div class="topnav-right">
@@ -134,8 +135,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th></th></tr></thead>
-            <tbody id="userTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th>Laatst ingelogd</th><th></th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -292,6 +293,34 @@
       </div>
       <div id="scenarioAdminList"></div>
     </div>
+
+    <!-- TAB: Logboek -->
+    <div id="tab-logboek" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Logboek</h1>
+          <p>Handelingen van gebruikers binnen de actieve ketentest: wie heeft wat gedaan, en wanneer.</p>
+        </div>
+        <button class="btn btn-outline" onclick="loadActivityLog()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Vernieuwen
+        </button>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="logFilterBtns">
+        <button class="btn btn-sm" data-f="all" onclick="setLogFilter('all',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Alle</button>
+        <button class="btn btn-sm btn-outline" data-f="activity_result" onclick="setLogFilter('activity_result',this)">Resultaten (OK/NOK)</button>
+        <button class="btn btn-sm btn-outline" data-f="flow_participation" onclick="setLogFilter('flow_participation',this)">Deelname-keuzes</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tijdstip</th><th>Gebruiker</th><th>Handeling</th><th>Details</th></tr></thead>
+            <tbody id="logTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size:11px; color:var(--text-muted); margin-top:10px;">Toont de laatste 300 handelingen binnen de actieve ketentest.</p>
+    </div>
   </div>
 
   <!-- Modal: Ketentest -->
@@ -306,6 +335,11 @@
         <div class="form-group">
           <label>Naam van de ketentest</label>
           <input type="text" id="ketentestNaam" placeholder="bijv. Bemiddelingsregister, iWlz Aanvraag...">
+        </div>
+        <div class="form-group">
+          <label>Start (optioneel)</label>
+          <input type="datetime-local" id="ketentestStartOp">
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Zolang dit moment nog niet is bereikt, kunnen gewone gebruikers nog geen activiteiten op OK/NOK zetten. Leeg laten = geen beperking.</p>
         </div>
         <div id="alertKetentest" class="alert" style="display:none;"></div>
       </div>
@@ -704,7 +738,7 @@
       await loadAll();
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['ketentests','organisations','users','notifications','scenarios'];
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek'];
       if (requestedTab && validTabs.includes(requestedTab) && requestedTab !== 'ketentests') {
         showTab(requestedTab);
       }
@@ -734,6 +768,13 @@
     async function loadUsers() {
       const { data } = await sb.from('users').select('*, organisations(name)').order('email');
       users = data || [];
+
+      const { data: loginData, error: loginError } = await sb.rpc('get_users_with_last_login');
+      if (!loginError && loginData) {
+        const loginMap = {};
+        loginData.forEach(r => loginMap[r.id] = r.last_sign_in_at);
+        users.forEach(u => u.last_sign_in_at = loginMap[u.id] || null);
+      }
     }
     async function loadScenarios() {
       if (!activeKetentest) { scenarios = []; return; }
@@ -755,11 +796,11 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', ['ketentests','organisations','users','notifications','scenarios'][i] === tab);
+        b.classList.toggle('active', ['ketentests','organisations','users','notifications','scenarios','logboek'][i] === tab);
       });
       document.querySelectorAll('#beheerDropdownMenu a').forEach(a => {
         a.classList.toggle('active', a.dataset.tab === tab);
@@ -770,6 +811,7 @@
       if (tab === 'options') renderOptions();
       if (tab === 'notifications') { showNotifSubTab('manage'); }
       if (tab === 'ketentests') renderKetentestTable();
+      if (tab === 'logboek') loadActivityLog();
     }
 
     // Wisselt van tabblad zonder de pagina opnieuw te laden (gebruikt door
@@ -1053,10 +1095,12 @@
       tb.innerHTML = ketentests.map(k => {
         const isActive = activeKetentest && k.id === activeKetentest.id;
         const date = new Date(k.created_at).toLocaleDateString('nl-NL');
+        const startInFuture = k.start_op && new Date(k.start_op) > new Date();
         return `<tr style="${isActive ? 'background:#eaf3e0;' : ''}">
           <td>
             <strong>${k.naam}</strong>
             ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; margin-left:8px; font-size:11px;">Actief</span>' : ''}
+            ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; margin-left:8px; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
           </td>
           <td id="ktScenCount-${k.id}" style="color:var(--text-muted)">…</td>
           <td style="color:var(--text-muted)">${date}</td>
@@ -1080,9 +1124,81 @@
       });
     }
 
+    // ── Logboek ───────────────────────────────────────────────
+    let logEntries = [];
+    let logFilter = 'all';
+    const LOG_ACTION_LABELS = {
+      activity_result: '✅ Resultaat gezet',
+      flow_participation: '📋 Deelname-keuze',
+      flow_participation_clear: '↺ Deelname-keuze gewist',
+    };
+
+    async function loadActivityLog() {
+      const tb = document.getElementById('logTable');
+      tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      if (!activeKetentest) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Geen actieve ketentest.</td></tr>'; return; }
+
+      const { data, error } = await sb.from('activity_log')
+        .select('*, users(email,name)')
+        .eq('ketentest_id', activeKetentest.id)
+        .order('created_at', { ascending: false })
+        .limit(300);
+
+      if (error) {
+        tb.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:32px;">Fout bij laden: ${error.message}</td></tr>`;
+        return;
+      }
+
+      logEntries = data || [];
+      renderActivityLog();
+    }
+
+    function renderActivityLog() {
+      const tb = document.getElementById('logTable');
+      const filtered = logFilter === 'all' ? logEntries : logEntries.filter(l => l.action === logFilter);
+
+      if (!filtered.length) {
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen handelingen gevonden.</p></div></td></tr>';
+        return;
+      }
+
+      tb.innerHTML = filtered.map(l => {
+        const who = l.users?.name || l.users?.email || 'Onbekende gebruiker';
+        const label = LOG_ACTION_LABELS[l.action] || l.action;
+        const d = l.details || {};
+        let detailText = '';
+        if (l.action === 'activity_result') {
+          detailText = `${d.scenario_code || ''} — ${d.activity_description || ''}: <strong>${(d.result || '').toUpperCase()}</strong>${d.notes ? ` ("${d.notes}")` : ''}`;
+        } else if (l.action === 'flow_participation') {
+          detailText = `${d.flow_name || ''}: <strong>${d.wants_to_test ? 'wordt getest' : 'wordt niet getest'}</strong>${d.reason ? ` — reden: "${d.reason}"` : ''}`;
+        } else if (l.action === 'flow_participation_clear') {
+          detailText = `${d.flow_name || ''}: keuze verwijderd`;
+        } else {
+          detailText = JSON.stringify(d);
+        }
+        return `<tr>
+          <td style="white-space:nowrap; color:var(--text-muted); font-size:12px;">${new Date(l.created_at).toLocaleString('nl-NL')}</td>
+          <td>${who}</td>
+          <td>${label}</td>
+          <td style="font-size:13px;">${detailText}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setLogFilter(f, btn) {
+      logFilter = f;
+      document.querySelectorAll('#logFilterBtns .btn').forEach(b => {
+        b.classList.add('btn-outline'); b.style.background=''; b.style.color=''; b.style.borderColor='';
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      renderActivityLog();
+    }
+
     function openNewKetentestModal() {
       document.getElementById('ketentestId').value = '';
       document.getElementById('ketentestNaam').value = '';
+      document.getElementById('ketentestStartOp').value = '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest toevoegen';
       document.getElementById('alertKetentest').style.display = 'none';
       openModal('modalKetentest');
@@ -1093,22 +1209,34 @@
       if (!k) return;
       document.getElementById('ketentestId').value = k.id;
       document.getElementById('ketentestNaam').value = k.naam;
+      document.getElementById('ketentestStartOp').value = k.start_op ? toDatetimeLocalValue(k.start_op) : '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
       document.getElementById('alertKetentest').style.display = 'none';
       openModal('modalKetentest');
     }
 
+    // Zet een ISO-tijdstip (uit de database, met tijdzone) om naar de
+    // waarde die een <input type="datetime-local"> verwacht (lokale tijd,
+    // zonder tijdzone-aanduiding).
+    function toDatetimeLocalValue(isoString) {
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
     async function saveKetentest() {
       const id = document.getElementById('ketentestId').value;
       const naam = document.getElementById('ketentestNaam').value.trim();
+      const startOpRaw = document.getElementById('ketentestStartOp').value;
+      const start_op = startOpRaw ? new Date(startOpRaw).toISOString() : null;
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKetentest'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('ketentests').update({ naam }).eq('id', id);
+        const res = await sb.from('ketentests').update({ naam, start_op }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('ketentests').insert({ naam });
+        const res = await sb.from('ketentests').insert({ naam, start_op });
         dbError = res.error;
       }
 
@@ -1334,7 +1462,7 @@
       orgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
 
       if (!users.length) {
-        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
         return;
       }
       tb.innerHTML = users.map(u => `<tr>
@@ -1343,6 +1471,7 @@
         <td>${u.organisations?.name ? `<span class="org-badge">${u.organisations.name}</span>` : '—'}</td>
         <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : u.role === 'manager' ? 'Manager' : 'Gebruiker'}</span></td>
         <td><span class="badge ${u.activated ? 'badge-ok' : 'badge-open'}">${u.activated ? 'Actief' : 'Uitgenodigd'}</span></td>
+        <td style="font-size:12px; color:var(--text-muted);">${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('nl-NL') : 'Nooit ingelogd'}</td>
         <td style="text-align:right;">
           <button class="btn btn-ghost btn-sm btn-icon" onclick="editUser('${u.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteUser('${u.id}','${u.email}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>

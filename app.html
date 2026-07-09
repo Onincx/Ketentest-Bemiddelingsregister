@@ -168,6 +168,7 @@
         <a href="admin.html?tab=users">Gebruikers</a>
         <a href="admin.html?tab=notifications">Notificaties</a>
         <a href="admin.html?tab=ketentests">Ketentesten</a>
+        <a href="admin.html?tab=logboek">Logboek</a>
       </div>
     </div>
     <div class="topnav-right">
@@ -632,6 +633,7 @@
       const myOrgId = currentProfile?.organisation_id;
       // Sorteer op volgnummer zodat we per activiteit de voorganger kunnen bepalen
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
+      const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
 
       return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
@@ -662,6 +664,11 @@
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="Activiteit #${prevAct.sort_order} moet eerst op OK gezet worden">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   Wacht op #${prevAct.sort_order}
+                </div>
+              ` : notStartedYet ? `
+                <div style="display:flex; align-items:center; gap:6px; color:#92400e; font-size:12px;" title="De ketentest start op ${new Date(activeKetentest.start_op).toLocaleString('nl-NL')}">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  Start: ${new Date(activeKetentest.start_op).toLocaleDateString('nl-NL')}
                 </div>
               ` : `
               <div class="result-toggle">
@@ -880,6 +887,25 @@
       }
 
       updateStats();
+
+      // Log deze handeling voor het beheerders-logboek (best effort — een
+      // eventuele fout hierbij mag het opslaan van het resultaat zelf niet
+      // verstoren).
+      try {
+        const scenario = scenarios.find(s => s.id === scenarioId);
+        const act = activities.find(a => a.id === activityId);
+        await sb.from('activity_log').insert({
+          user_id: currentUser.id,
+          ketentest_id: activeKetentest?.id,
+          action: 'activity_result',
+          details: {
+            scenario_code: scenario?.code || '',
+            activity_description: act?.description || '',
+            result,
+            notes: notes || null,
+          },
+        });
+      } catch (e) { console.error('Loggen mislukt:', e); }
 
       // Herrender de volledige activiteitentabel van dit scenario, zodat de
       // blokkade-status van volgende activiteiten ook meteen wordt bijgewerkt.
