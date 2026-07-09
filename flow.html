@@ -5,7 +5,7 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flow — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=24">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -37,6 +37,9 @@
     }
     .details-inner { max-width: 960px; margin: 0 auto; padding: 14px 24px 20px; }
     .details-placeholder { text-align: center; color: #9ca3af; font-size: 12px; padding: 28px 20px; font-style: italic; }
+    .flow-doel-banner { background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: var(--radius); padding: 12px 16px; margin-bottom: 4px; }
+    .flow-doel-banner-label { font-size: 10px; font-weight: 700; color: #16803d; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .flow-doel-banner p { font-size: 13px; color: #14532d; line-height: 1.5; margin: 0; }
     .details-header-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f3f4f6; }
     .details-code { font-size: 11px; font-weight: 800; letter-spacing: 0.03em; flex-shrink: 0; }
     .details-title-compact { font-size: 15px; font-weight: 700; color: #111; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -134,10 +137,10 @@
     .sb-title { font-size: 11px; color: #374151; margin-top: 1px; line-height: 1.3; }
 
     /* Flows sectie */
-    .flow-item { display: flex; align-items: center; justify-content: space-between; gap: 4px; padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; font-size: 13px; color: #374151; }
+    .flow-item { display: flex; align-items: flex-start; justify-content: space-between; gap: 6px; padding: 9px 10px; border: 1px solid #e5e7eb; border-radius: 6px; margin-bottom: 6px; cursor: pointer; transition: all 0.12s; font-size: 13px; color: #374151; }
     .flow-item:hover { border-color: #39870c; background: #f0fdf4; }
     .flow-item.active { background: #39870c; border-color: #39870c; color: #fff; font-weight: 600; }
-    .flow-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .flow-item-name { flex: 1; min-width: 0; white-space: normal; word-break: break-word; line-height: 1.35; padding-top: 1px; }
     .flow-item-actions { display: flex; gap: 2px; flex-shrink: 0; }
     .flow-item-btn { border: none; background: transparent; cursor: pointer; font-size: 12px; padding: 2px 4px; border-radius: 3px; opacity: 0.7; }
     .flow-item-btn:hover { opacity: 1; background: rgba(0,0,0,0.08); }
@@ -234,6 +237,7 @@
 
   <!-- Detailpaneel onder het canvas -->
   <div class="flow-details" id="detailsPanel">
+    <div id="flowDoelBanner" class="details-inner" style="display:none; padding-bottom:0;"></div>
     <div class="details-inner" id="detailsContent">
       <div class="details-placeholder">Selecteer een kaartje in de flow hierboven om de details te zien.</div>
     </div>
@@ -417,10 +421,10 @@
         sb.from('flow_edges').select('*').eq('flow_id', activeFlowId),
       ]);
       (fn.data || []).forEach(n => {
-        // Begrens y defensief: kaartjes met een positie van vóór de
-        // compactere canvashoogte mogen nooit meer buiten beeld (en dus
-        // een scrollbalk) veroorzaken.
-        const y = Math.max(0, Math.min(n.y, CANVAS_H - NODE_H));
+        // Verticale positie wordt altijd genormaliseerd naar het midden van
+        // het canvas — zo hebben alle flows dezelfde uitlijning, ook als er
+        // nog een afwijkende y-waarde uit het verleden is opgeslagen.
+        const y = Math.round((CANVAS_H - NODE_H) / 2);
         nodePositions[n.scenario_id] = {x:n.x, y, dbId:n.id, isStart:n.is_start||false};
       });
       edges = fe.data || [];
@@ -533,6 +537,23 @@
       el.innerHTML = html;
 
       document.getElementById('emptyCanvasState').style.display = flows.length ? 'none' : '';
+      renderFlowDoelBanner();
+    }
+
+    // Toont het doel van de actieve flow bovenin het detailpaneel (rechts),
+    // los van eventuele scenario-details eronder — zo is altijd meteen
+    // duidelijk waar deze flow voor bedoeld is, ook zonder een kaartje aan
+    // te klikken.
+    function renderFlowDoelBanner() {
+      const banner = document.getElementById('flowDoelBanner');
+      const activeFlow = flows.find(f => f.id === activeFlowId);
+      if (!activeFlow || !activeFlow.doel) { banner.style.display = 'none'; banner.innerHTML = ''; return; }
+      banner.innerHTML = `
+        <div class="flow-doel-banner">
+          <div class="flow-doel-banner-label">🎯 Doel van deze flow</div>
+          <p>${esc(activeFlow.doel)}</p>
+        </div>`;
+      banner.style.display = '';
     }
 
     async function selectFlow(id) {
@@ -731,14 +752,12 @@
         const rect = canvas.getBoundingClientRect();
         const el = document.getElementById('fn-' + dragging);
         const nodeW = el?.offsetWidth  || 190;
-        const nodeH = el?.offsetHeight || 110;
         const maxX = 3000 - nodeW; // canvasInner is 3000px breed
-        const maxY = Math.max(0, CANVAS_H - nodeH);
         const x = Math.min(maxX, Math.max(0, e.clientX - rect.left + canvas.scrollLeft - dragOff.x));
-        const y = Math.min(maxY, Math.max(0, e.clientY - rect.top  + canvas.scrollTop  - dragOff.y));
+        // Verticale positie ligt vast (zie loadFlowContent) zodat alle
+        // flows dezelfde uitlijning houden — alleen horizontaal verslepen.
         nodePositions[dragging].x = x;
-        nodePositions[dragging].y = y;
-        if (el) { el.style.left = x+'px'; el.style.top = y+'px'; }
+        if (el) { el.style.left = x+'px'; }
         renderEdges();
       }
       if (connecting) {
