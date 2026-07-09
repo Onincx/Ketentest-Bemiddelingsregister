@@ -67,6 +67,7 @@
     .notif-verwijderd { background:#fee2e2; color:#991b1b; border-color:#fca5a5; }
     .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
     .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:5px; }
+    .bericht-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; font-family:monospace; background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
     .dn-focus-current { font-size:13px; padding:11px 14px; background:var(--surface); border-radius:var(--radius); margin-bottom:14px; line-height:1.5; }
     .dn-choice-row { display:flex; gap:10px; margin-bottom:6px; }
     .dn-choice-btn { flex:1; padding:16px 12px; font-size:14px; font-weight:600; border-radius:var(--radius); cursor:pointer; border:1.5px solid; transition: all .12s; }
@@ -324,6 +325,29 @@
       if (!notifs.length) return '';
       return '<div class="notif-labels-wrap">' +
         notifs.map(n => `<span class="notif-label notif-${n.type}" title="${esc(n.naam)}">${esc(n.naam)}</span>`).join('') +
+        '</div>';
+    }
+
+    // Berichten: automatisch gesignaleerd op basis van een vast patroon
+    // (2 of 3 letters gevolgd door 2 of 3 cijfers, bijv. "AB12" of "ABC123")
+    // — in tegenstelling tot notificaties is hier geen beheerde lijst met
+    // definities voor nodig.
+    const BERICHT_PATTERN = /\b[A-Za-z]{2,3}[0-9]{2,3}\b/g;
+
+    function getScenarioBerichten(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      const found = new Set();
+      acts.forEach(a => {
+        const matches = (a.description || '').match(BERICHT_PATTERN) || [];
+        matches.forEach(m => found.add(m.toUpperCase()));
+      });
+      return [...found].sort();
+    }
+
+    function renderBerichtLabels(berichten) {
+      if (!berichten.length) return '';
+      return '<div class="notif-labels-wrap">' +
+        berichten.map(b => `<span class="bericht-label" title="Bericht: ${esc(b)}">📨 ${esc(b)}</span>`).join('') +
         '</div>';
     }
     let currentFilter = 'all';
@@ -783,6 +807,7 @@
                 <div style="flex:1; min-width:0;">
                   <div>${esc(s.title)}</div>
                   ${renderNotifLabels(getScenarioNotificaties(s.id))}
+                  ${renderBerichtLabels(getScenarioBerichten(s.id))}
                   ${renderScenarioOrgChips(s.id)}
                 </div>
               </div>`).join('') : '<p style="font-size:13px;color:var(--text-muted);">Geen scenario\'s gevonden.</p>'}
