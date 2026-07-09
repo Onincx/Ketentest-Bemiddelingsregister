@@ -190,6 +190,7 @@
       </div>
     </div>
     <div class="topnav-right">
+      <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
     </div>
@@ -279,7 +280,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=24"></script>
+  <script src="js/supabase-config.js?v=25"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -343,6 +344,7 @@
         if (hintText) hintText.textContent = 'Sleep een kaartje om de positie aan te passen. Klik op een kaartje voor de details.';
       }
 
+      await renderActiveKetentestLabel();
       const result = await ensureActiveKetentest();
       if (!result) return;
       activeKetentest = result.active;
