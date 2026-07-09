@@ -121,23 +121,19 @@ async function ensureActiveKetentest() {
 // Toont de naam van de actieve ketentest in de navigatiebalk, met een
 // link om terug te gaan naar het keuzescherm (index.html) om te
 // wisselen. Verwacht een element met id="ketentestSwitcher".
-async function renderKetentestSwitcher() {
-  const container = document.getElementById('ketentestSwitcher');
-  if (!container) return null;
-
+// Toont de naam van de actieve ketentest als niet-klikbaar label in de
+// navigatiebalk. Verwacht een element met id="ketentestLabel".
+async function renderActiveKetentestLabel() {
+  const el = document.getElementById('ketentestLabel');
+  if (!el) return null;
   const result = await ensureActiveKetentest();
-  if (!result) { container.innerHTML = ''; return null; }
-
-  const { active, all } = result;
-  container.innerHTML = `
-    <a href="index.html" title="${all.length > 1 ? 'Wissel van ketentest' : 'Actieve ketentest'}"
-      style="background:#fff; border:none; color:#154273; text-decoration:none;
-      border-radius:6px; padding:6px 14px; font-size:13px; font-weight:700;
-      display:flex; align-items:center; gap:7px; box-shadow:0 1px 3px rgba(0,0,0,0.15);">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#39870c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-      <span>${active.naam}</span>
-      ${all.length > 1 ? '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3L4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/></svg>' : ''}
-    </a>`;
-
-  return active;
+  if (!result) { el.style.display = 'none'; return null; }
+  el.textContent = result.active.naam;
+  el.style.display = '';
+  return result.active;
 }
+
+// Opmerking: het tonen van de actieve ketentest in de navigatiebalk is
+// verwijderd (was overbodig sinds de keuze op het inlogscherm gebeurt).
+// ensureActiveKetentest() hierboven blijft wél gebruikt om te bepalen
+// welke ketentest actief is.
