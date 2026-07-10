@@ -1548,6 +1548,10 @@
       const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
 
       if (!email) { showAlert('Vul een e-mailadres in.', 'error', 'alertUser'); return; }
+      if (!id && role !== 'admin' && !selectedKetentestIds.length) {
+        showAlert('Koppel minimaal 1 ketentest aan deze gebruiker (of kies de rol Beheerder, die ziet altijd alles).', 'error', 'alertUser');
+        return;
+      }
 
       const btn = document.getElementById('saveUserBtn');
       btn.disabled = true; btn.textContent = 'Bezig...';
