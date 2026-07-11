@@ -220,10 +220,16 @@ tr:hover td { background: var(--surface); }
 
 /* Stats grid */
 .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
-.stat-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px 20px; position: relative; min-height: 130px; }
-.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; min-height: 58px; }
-.stat-value { font-size: 26px; font-weight: 700; color: var(--text); }
-.stat-sub { position: absolute; left: 20px; right: 20px; bottom: 16px; font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+.stat-card {
+  background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-lg);
+  padding: 16px 20px;
+  display: grid;
+  grid-template-rows: 60px auto auto;
+  row-gap: 4px;
+}
+.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; overflow: hidden; align-self: start; }
+.stat-value { font-size: 26px; font-weight: 700; color: var(--text); align-self: start; }
+.stat-sub { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
 .stat-value.green { color: #0f6e56; }
 .stat-value.red { color: var(--danger); }
 .stat-value.orange { color: var(--warning); }
