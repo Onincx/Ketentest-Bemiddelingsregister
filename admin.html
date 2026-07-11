@@ -1491,6 +1491,7 @@
       document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
       document.getElementById('saveUserBtn').textContent = 'Gebruiker aanmaken';
       document.getElementById('alertUser').style.display = 'none';
+      originalKetentestAccessIds = [];
       renderUserKetentestAccessCheckboxes([]);
       toggleUserKetentestAccessVisibility();
       openModal('modalUser');
@@ -1520,6 +1521,8 @@
       document.getElementById('userKetentestAccessGroup').style.display = role === 'admin' ? 'none' : '';
     }
 
+    let originalKetentestAccessIds = null; // null = niet geladen (nieuwe gebruiker of fout), anders array met huidige toegang
+
     async function editUser(id) {
       const u = users.find(x => x.id === id);
       document.getElementById('userId').value = u.id;
@@ -1532,10 +1535,22 @@
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
 
-      const { data: access } = await sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id);
-      renderUserKetentestAccessCheckboxes((access || []).map(a => a.ketentest_id));
-      toggleUserKetentestAccessVisibility();
+      const { data: access, error: accessError } = await sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id);
 
+      if (accessError) {
+        // Bij een fout NIET doen alsof de gebruiker nergens toegang toe
+        // heeft — dat zou bij het opslaan de bestaande koppelingen kunnen
+        // wissen. In plaats daarvan de sectie blokkeren en duidelijk maken
+        // dat opslaan de ketentesttoegang niet zal aanpassen.
+        originalKetentestAccessIds = null;
+        document.getElementById('userKetentestAccessList').innerHTML =
+          `<p style="font-size:12px; color:var(--danger);">Kon huidige ketentesttoegang niet laden (${accessError.message}). Opslaan laat de toegang van deze gebruiker ongewijzigd.</p>`;
+      } else {
+        originalKetentestAccessIds = (access || []).map(a => a.ketentest_id);
+        renderUserKetentestAccessCheckboxes(originalKetentestAccessIds);
+      }
+
+      toggleUserKetentestAccessVisibility();
       openModal('modalUser');
     }
 
@@ -1604,12 +1619,22 @@
       }
 
       // Ketentesttoegang bijwerken (niet relevant voor beheerders, die zien
-      // sowieso alles): oude toegang vervangen door de nu aangevinkte set.
-      if (targetUserId && role !== 'admin') {
-        await sb.from('user_ketentest_access').delete().eq('user_id', targetUserId);
-        if (selectedKetentestIds.length) {
+      // sowieso alles). We passen alleen het verschil toe t.o.v. de
+      // oorspronkelijk geladen toegang — nooit een blinde delete-en-
+      // opnieuw-invoegen — zodat een mislukte of lege lading nooit per
+      // ongeluk bestaande toegang wist. Kon de bestaande toegang niet
+      // geladen worden (originalKetentestAccessIds is null), dan raken we
+      // 'm hier bewust niet aan.
+      if (targetUserId && role !== 'admin' && originalKetentestAccessIds !== null) {
+        const toAdd = selectedKetentestIds.filter(kid => !originalKetentestAccessIds.includes(kid));
+        const toRemove = originalKetentestAccessIds.filter(kid => !selectedKetentestIds.includes(kid));
+
+        if (toRemove.length) {
+          await sb.from('user_ketentest_access').delete().eq('user_id', targetUserId).in('ketentest_id', toRemove);
+        }
+        if (toAdd.length) {
           await sb.from('user_ketentest_access').insert(
-            selectedKetentestIds.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
+            toAdd.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
           );
         }
       }
