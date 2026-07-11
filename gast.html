@@ -81,7 +81,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let guestScenarios = [], guestActivities = [], guestResults = {};
     let guestFlowNodes = [], guestFlowEdges = [];
@@ -137,23 +137,35 @@
       return 'open';
     }
 
-    // Clientnaam = code van het scenario dat in dezelfde flow als "start"
-    // is gemarkeerd. Zit een scenario niet in een flow (of is er geen start
-    // gemarkeerd), dan is de clientnaam gewoon de eigen scenariocode.
+    // Geeft het eerste scenario ID in de flow (geen inkomende edges)
+    function getFlowRootId(scenarioId) {
+      const onCanvas = new Set(guestFlowNodes.map(n => n.scenario_id));
+      if (!onCanvas.has(scenarioId)) return null; // niet in een flow
+
+      let current = scenarioId;
+      const visited = new Set();
+      while (true) {
+        if (visited.has(current)) break; // voorkom loops
+        visited.add(current);
+        const incoming = guestFlowEdges.find(e => e.to_id === current && onCanvas.has(e.from_id));
+        if (!incoming) break; // geen inkomende edge = dit is de root
+        current = incoming.from_id;
+      }
+      return current;
+    }
+
     function getClientnaam(scenarioId) {
-      const node = guestFlowNodes.find(n => n.scenario_id === scenarioId);
-      const s = guestScenarios.find(x => x.id === scenarioId);
-      if (!node || !node.flow_id) return s?.code || '';
-
-      const startNode = guestFlowNodes.find(n => n.flow_id === node.flow_id && n.is_start);
-      if (!startNode) return s?.code || '';
-
-      const startScenario = guestScenarios.find(x => x.id === startNode.scenario_id);
-      return startScenario?.code || s?.code || '';
+      const rootId = getFlowRootId(scenarioId);
+      if (!rootId) {
+        const s = guestScenarios.find(x => x.id === scenarioId);
+        return s?.code || '';
+      }
+      const root = guestScenarios.find(x => x.id === rootId);
+      return root?.code || '';
     }
 
     function isInFlow(scenarioId) {
-      return guestFlowNodes.some(n => n.scenario_id === scenarioId && n.flow_id);
+      return guestFlowNodes.some(n => n.scenario_id === scenarioId);
     }
 
     function renderAll() {

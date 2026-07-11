@@ -97,7 +97,6 @@
 
   <nav class="topnav" id="mainNav" style="background:#39870c !important; top:121px;">
     <div class="topnav-logo" style="color:#fff;"><span id="navKetentestNaam">Flow</span></div>
-    <select id="flowSelect" onchange="onFlowSelectChange()" style="display:none; margin-left:20px; background:rgba(255,255,255,0.15); color:#fff; border:1px solid rgba(255,255,255,0.3); border-radius:6px; padding:4px 8px; font-size:12px; max-width:220px;"></select>
     <a href="#" id="ketentestGuestLink" style="color:rgba(255,255,255,0.85); font-size:14px; font-weight:500; margin-left:24px; display:flex; align-items:center; gap:6px;">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
       Bekijk Scenario's
@@ -129,17 +128,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=23"></script>
   <script>
     let scenarios = [], activities = [], results = [], orgs = {};
     let nodePositions = {};
     let edges = [];
-    let flows = [];       // [{id,name}] — leeg = oude situatie (alles op één canvas)
-    let allNodes = [];    // ruwe flow_nodes (met flow_id indien beschikbaar)
-    let allEdges = [];    // ruwe flow_edges (met flow_id indien beschikbaar)
-    let activeFlowId = null;
-
-    function escHtml(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     function bannerH() {
       return (document.querySelector('img[src="ZinBanner.png"]')?.getBoundingClientRect().height || 121);
@@ -182,52 +175,22 @@
       activities = data.activities || [];
       results    = data.results || [];
 
-      // 'flows' bestaat alleen als de guest-RPC al is bijgewerkt voor de
-      // nieuwe canvas-per-flow opzet. Is dat nog niet zo, dan vallen we
-      // terug op het oude gedrag: alle kaartjes op één canvas.
-      flows    = data.flows || [];
-      allNodes = data.flow_nodes || [];
-      allEdges = data.flow_edges || [];
+      nodePositions = {};
+      (data.flow_nodes || []).forEach(n => {
+        nodePositions[n.scenario_id] = { x: n.x, y: n.y, isStart: n.is_start || false };
+      });
+      edges = data.flow_edges || [];
 
       // Organisatienamen voor de popup (acceptant) zijn al meegeleverd via
       // activities.acceptant_name, dus een losse orgs-lookup is hier niet nodig.
 
       document.getElementById('loadingState').style.display = 'none';
       document.getElementById('canvas').style.display = '';
-      setupFlowSelector();
-      applyActiveFlow();
       applyLayout();
+      renderAll();
     })();
 
     window.addEventListener('resize', applyLayout);
-
-    function setupFlowSelector() {
-      const sel = document.getElementById('flowSelect');
-      if (!flows.length) { sel.style.display = 'none'; return; }
-      activeFlowId = flows[0].id;
-      sel.innerHTML = flows.map(f => `<option value="${escHtml(f.id)}">${escHtml(f.name)}</option>`).join('');
-      sel.style.display = '';
-    }
-
-    function onFlowSelectChange() {
-      activeFlowId = document.getElementById('flowSelect').value;
-      applyActiveFlow();
-    }
-
-    function applyActiveFlow() {
-      nodePositions = {};
-      const relevantNodes = flows.length ? allNodes.filter(n => n.flow_id === activeFlowId) : allNodes;
-      relevantNodes.forEach(n => {
-        nodePositions[n.scenario_id] = { x: n.x, y: n.y, isStart: n.is_start || false };
-      });
-      const sids = new Set(Object.keys(nodePositions));
-      const relevantEdges = flows.length ? allEdges.filter(e => e.flow_id === activeFlowId) : allEdges;
-      edges = relevantEdges.filter(e => sids.has(e.from_id) && sids.has(e.to_id));
-
-      closePopup();
-      document.getElementById('nodes').innerHTML = '';
-      renderAll();
-    }
 
     function showError() {
       document.getElementById('loadingState').style.display = 'none';
