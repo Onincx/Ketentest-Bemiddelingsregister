@@ -1572,7 +1572,21 @@
         // wachtwoord. must_change_password: true dwingt af dat de gebruiker
         // bij de eerste keer inloggen direct een eigen wachtwoord kiest —
         // zie invite.html en requireAuth() in supabase-config.js.
+        //
+        // Let op: sb.auth.signUp() logt de browser automatisch in als de
+        // NIEUWE gebruiker (omdat "Confirm email" uit staat voor deze
+        // flow). We bewaren daarom eerst de sessie van de beheerder, en
+        // zetten die er direct na het aanmaken weer terug.
+        const { data: { session: adminSession } } = await sb.auth.getSession();
+
         const { data: signUpData, error: signUpError } = await sb.auth.signUp({ email, password: tempPassword });
+
+        if (adminSession) {
+          await sb.auth.setSession({
+            access_token: adminSession.access_token,
+            refresh_token: adminSession.refresh_token,
+          });
+        }
 
         if (signUpError) {
           showAlert('Fout bij aanmaken: ' + signUpError.message, 'error', 'alertUser');
