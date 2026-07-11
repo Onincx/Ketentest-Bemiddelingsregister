@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -51,7 +51,6 @@
     .topnav-logo { color: #fff !important; }
     .topnav a { color: rgba(255,255,255,0.85) !important; }
     .topnav a:hover, .topnav a.active { color: #fff !important; }
-    .topnav a.active { border-bottom-color: #fff !important; }
   </style>
 
 
@@ -64,22 +63,41 @@
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
       Dashboard
     </a>
-    <a href="app.html">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
-      Ketentest
-    </a>
-    <a href="flow.html">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
-      Flow
-    </a>
-    <div id="adminLink" style="display:none;">
+    <div class="nav-dropdown">
+      <a href="app.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+        Ketentest <span class="nav-dropdown-caret">▾</span>
+      </a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+          Testscenario's
+        </a>
+        <a href="flow.html">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          Flow
+        </a>
+        <a href="deelname.html">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+          Deelname
+        </a>
+      </div>
+    </div>
+    <div class="nav-dropdown" id="adminLink" style="display:none;">
       <a href="admin.html">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        Beheer
+        Beheer <span class="nav-dropdown-caret">▾</span>
       </a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=organisations">Organisaties</a>
+        <a href="admin.html?tab=users">Gebruikers</a>
+        <a href="admin.html?tab=notifications">Notificaties</a>
+        <a href="admin.html?tab=ketentests">Ketentesten</a>
+        <a href="admin.html?tab=logboek">Logboek</a>
+      </div>
     </div>
-    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
     <div class="topnav-right">
+      <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -92,7 +110,7 @@
     <div class="page-header">
       <div class="page-header-left">
         <h1>Dashboard</h1>
-        <p id="dashSubtitle">Voortgang en status van de ketentest Bemiddelingsregister</p>
+        <p>Voortgang en status van de ketentest Bemiddelingsregister</p>
       </div>
       <button class="btn btn-outline" onclick="loadDashboard()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
@@ -101,12 +119,15 @@
     </div>
 
     <!-- Totaal statistieken -->
-    <div class="stats-grid" id="totalStats" style="margin-bottom:24px;">
+    <div class="stats-grid" id="totalStats" style="margin-bottom:24px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
+      <div class="stat-card"><div class="stat-label">Flows totaal</div><div class="stat-value" id="ds-flows">—</div></div>
+      <div class="stat-card"><div class="stat-label">Nog te beoordelen flows</div><div class="stat-value orange" id="ds-flows-wachten">—</div></div>
       <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
       <div class="stat-card"><div class="stat-label">Activiteiten totaal</div><div class="stat-value" id="ds-activities">—</div></div>
       <div class="stat-card"><div class="stat-label">Afgerond</div><div class="stat-value green" id="ds-done">—</div></div>
       <div class="stat-card"><div class="stat-label">NOK's</div><div class="stat-value red" id="ds-nok">—</div></div>
     </div>
+    <p style="font-size:11px; color:var(--text-muted); margin:-16px 0 24px;">Scenario's, activiteiten en afgerond tellen alleen mee als de bijbehorende flow niet volledig is afgewezen bij Deelname.</p>
 
     <!-- Totale voortgangsbalk -->
     <div style="margin-bottom:24px;">
@@ -143,20 +164,14 @@
 
       <!-- Voortgang per organisatie -->
       <div class="dash-card" style="grid-column: 1 / -1;">
-        <h3><div class="dot" style="background:var(--brand-mid);"></div><span id="orgProgressTitle">Voortgang per organisatie</span></h3>
+        <h3><div class="dot" style="background:var(--brand-mid);"></div>Voortgang per organisatie</h3>
         <div id="orgProgress"><p class="empty-dash">Laden...</p></div>
       </div>
 
-      <!-- Voortgang per scenario -->
+      <!-- Voortgang per flow -->
       <div class="dash-card">
-        <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per scenario</h3>
-        <div style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;" id="scenarioFilterBtns">
-          <button class="btn btn-sm" id="sf-all" onclick="setScenarioFilter('all',this)" style="background:#8b5cf6;color:#fff;border-color:#8b5cf6;">Alle</button>
-          <button class="btn btn-sm btn-outline" id="sf-nok" onclick="setScenarioFilter('nok',this)">❌ NOK</button>
-          <button class="btn btn-sm btn-outline" id="sf-open" onclick="setScenarioFilter('open',this)">⏳ Open</button>
-          <button class="btn btn-sm btn-outline" id="sf-ok" onclick="setScenarioFilter('ok',this)">✅ Klaar</button>
-        </div>
-        <div id="scenarioProgress"><p class="empty-dash">Laden...</p></div>
+        <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per flow</h3>
+        <div id="flowProgress"><p class="empty-dash">Laden...</p></div>
       </div>
 
       <!-- NOK overzicht -->
@@ -174,53 +189,37 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=23"></script>
+  <script src="js/supabase-config.js?v=25"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [];
+    let flows = [], flowNodes = [], flowParticipation = [];
     let activeKetentest = null;
-    // Admin/manager zien de volledige ketentest; overige gebruikers (rol 'user')
-    // krijgen een dashboard geschoold tot hun eigen organisatie.
-    let isAdminView = true;
 
     (async () => {
       currentUser = await requireAuth();
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
 
-      isAdminView = ['admin','manager'].includes(currentProfile?.role);
-
-      // Gebruikers zonder rol admin/manager én zonder eigen organisatie hebben
-      // niets om te tonen op dit dashboard.
-      if (!isAdminView && !currentProfile?.organisation_id) {
+      // Alleen admin en manager mogen dashboard zien
+      if (!['admin','manager'].includes(currentProfile?.role)) {
         window.location.href = 'app.html'; return;
       }
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
+        const navScenariosLink = document.getElementById('navScenariosLink');
+        if (navScenariosLink) navScenariosLink.style.display = '';
       }
 
-      if (!isAdminView) {
-        const orgNaam = currentProfile?.organisations?.name || 'jouw organisatie';
-        document.getElementById('dashSubtitle').textContent = `Voortgang van ${orgNaam} binnen deze ketentest`;
-        document.getElementById('orgProgressTitle').textContent = 'Jouw voortgang';
-      }
-
+      await renderActiveKetentestLabel();
       const result = await ensureActiveKetentest();
       if (!result) return;
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
 
       await loadDashboard();
     })();
-
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadDashboard();
-    }
 
     async function loadDashboard() {
       if (!activeKetentest) return;
@@ -229,34 +228,26 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [a, r, u, o] = await Promise.all([
+      const [a, r, u, o, fl, fn, fp] = await Promise.all([
         scenarioIds.length
           ? sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order')
           : Promise.resolve({ data: [] }),
         sb.from('activity_results').select('*'),
         sb.from('users').select('*, organisations(name)'),
         sb.from('organisations').select('*').order('name'),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
+        sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_participation').select('*'),
       ]);
 
       activities = a.data || [];
+      const actIds = new Set(activities.map(x => x.id));
+      results    = (r.data || []).filter(x => actIds.has(x.activity_id));
       users      = u.data || [];
       orgs       = o.data || [];
-
-      if (!isAdminView) {
-        // Scoped view: alleen activiteiten waar de eigen organisatie bij
-        // betrokken is (als verantwoordelijke of als acceptant), en alleen
-        // scenario's/organisaties die daarmee samenhangen.
-        const myOrgId = currentProfile?.organisation_id;
-        activities = activities.filter(a =>
-          a.organisation_id === myOrgId || a.acceptant_org?.id === myOrgId
-        );
-        const relevantScenarioIds = new Set(activities.map(a => a.scenario_id));
-        scenarios = scenarios.filter(s => relevantScenarioIds.has(s.id));
-        orgs = orgs.filter(o => o.id === myOrgId);
-      }
-
-      const actIds = new Set(activities.map(x => x.id));
-      results = (r.data || []).filter(x => actIds.has(x.activity_id));
+      flows      = fl.data || [];
+      flowNodes  = fn.data || [];
+      flowParticipation = fp.data || [];
 
       renderDashboard();
     }
@@ -265,18 +256,63 @@
       return results.find(r => r.activity_id === activityId)?.result || 'open';
     }
 
+    // Organisaties die betrokken zijn bij een flow (verantwoordelijk voor of
+    // acceptant van minimaal 1 activiteit van minimaal 1 scenario erin).
+    function betrokkenOrgIdsForFlow(flowId) {
+      const sids = new Set(flowNodes.filter(n => n.flow_id === flowId).map(n => n.scenario_id));
+      const set = new Set();
+      activities.filter(a => sids.has(a.scenario_id)).forEach(a => {
+        if (a.organisation_id) set.add(a.organisation_id);
+        if (a.acceptant_org_id) set.add(a.acceptant_org_id);
+      });
+      return [...set];
+    }
+
+    // Status van een flow op basis van de deelname-keuzes: 'ja' (iedereen
+    // wil testen), 'nee' (niemand wil testen), 'verdeeld' (gemengd), of
+    // 'wachten' (nog niet iedereen heeft een keuze gemaakt).
+    function getFlowStatus(flowId) {
+      const involved = betrokkenOrgIdsForFlow(flowId);
+      if (!involved.length) return 'geen';
+      const decisions = involved.map(oid => flowParticipation.find(p => p.flow_id === flowId && p.organisation_id === oid));
+      const decided = decisions.filter(d => d).length;
+      if (decided < involved.length) return 'wachten';
+      if (decisions.every(d => d.wants_to_test === true)) return 'ja';
+      if (decisions.every(d => d.wants_to_test === false)) return 'nee';
+      return 'verdeeld';
+    }
+
     function renderDashboard() {
-      const totalActs = activities.length;
-      const doneActs  = results.filter(r => r.result === 'ok' || r.result === 'nok').length;
-      const nokActs   = results.filter(r => r.result === 'nok').length;
-      const okScenarios = scenarios.filter(s => {
-        const acts = activities.filter(a => a.scenario_id === s.id);
+      // Scenario's die bij een volledig afgewezen flow horen ('nee' - alle
+      // betrokken organisaties willen 'm niet testen) tellen niet mee als
+      // "daadwerkelijk meegenomen". Scenario's zonder flow tellen altijd mee.
+      const rejectedScenarioIds = new Set();
+      flows.forEach(f => {
+        if (getFlowStatus(f.id) === 'nee') {
+          flowNodes.filter(n => n.flow_id === f.id).forEach(n => rejectedScenarioIds.add(n.scenario_id));
+        }
+      });
+
+      const includedScenarios  = scenarios.filter(s => !rejectedScenarioIds.has(s.id));
+      const includedActivities = activities.filter(a => !rejectedScenarioIds.has(a.scenario_id));
+      const includedActIds     = new Set(includedActivities.map(a => a.id));
+      const includedResults    = results.filter(r => includedActIds.has(r.activity_id));
+
+      const totalActs = includedActivities.length;
+      const doneActs  = includedResults.filter(r => r.result === 'ok' || r.result === 'nok').length;
+      const nokActs   = includedResults.filter(r => r.result === 'nok').length;
+      const okScenarios = includedScenarios.filter(s => {
+        const acts = includedActivities.filter(a => a.scenario_id === s.id);
         return acts.length > 0 && acts.every(a => getResult(a.id) === 'ok');
       }).length;
 
-      document.getElementById('ds-scenarios').textContent = scenarios.length;
+      const flowsWachten = flows.filter(f => getFlowStatus(f.id) === 'wachten').length;
+
+      document.getElementById('ds-flows').textContent = flows.length;
+      document.getElementById('ds-flows-wachten').textContent = flowsWachten;
+      document.getElementById('ds-scenarios').textContent = includedScenarios.length;
       document.getElementById('ds-activities').textContent = totalActs;
-      document.getElementById('ds-done').textContent = `${okScenarios} / ${scenarios.length}`;
+      document.getElementById('ds-done').textContent = `${okScenarios} / ${includedScenarios.length}`;
       document.getElementById('ds-nok').textContent = nokActs;
 
       const pct = totalActs > 0 ? Math.round((doneActs / totalActs) * 100) : 0;
@@ -284,7 +320,7 @@
       document.getElementById('ds-bar').style.width = pct + '%';
 
       renderOrgProgress();
-      renderScenarioProgress();
+      renderFlowProgress();
       renderNokOverview();
       renderCharts();
 
@@ -329,7 +365,7 @@
           const rolDelen = [];
           if (aantalVerantwoordelijk > 0) rolDelen.push(`${aantalVerantwoordelijk} als verantwoordelijke`);
           if (aantalAcceptant > 0) rolDelen.push(`${aantalAcceptant} als acceptant`);
-          return `<div onclick="location.href='app.html?org=${org.id}'" title="Klik voor de scenario's van ${org.name}" style="cursor:pointer; border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; border-top:3px solid ${statusColor};">
+          return `<div style="border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; border-top:3px solid ${statusColor};">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px;">
               <div>
                 <div style="font-size:14px; font-weight:700; color:#1a1a1a;">${org.name}</div>
@@ -351,24 +387,44 @@
         }).join('') + '</div>';
     }
 
-    function renderScenarioProgress() {
-      const el = document.getElementById('scenarioProgress');
+    function renderFlowProgress() {
+      const el = document.getElementById('flowProgress');
       if (!scenarios.length) { el.innerHTML = '<p class="empty-dash">Geen scenario\'s gevonden.</p>'; return; }
 
-      const rows = scenarios.map(s => {
-        const acts = activities.filter(a => a.scenario_id === s.id);
+      // Groepeer scenario's per flow (canvas), op basis van flow_nodes.
+      const scenarioToFlowId = {};
+      flowNodes.forEach(n => { scenarioToFlowId[n.scenario_id] = n.flow_id; });
+
+      const groupByFlowId = {};
+      flows.forEach(f => { groupByFlowId[f.id] = { flow: f, scenarioIds: [] }; });
+
+      const unassignedIds = [];
+      scenarios.forEach(s => {
+        const fid = scenarioToFlowId[s.id];
+        if (fid && groupByFlowId[fid]) groupByFlowId[fid].scenarioIds.push(s.id);
+        else unassignedIds.push(s.id);
+      });
+
+      const groups = Object.values(groupByFlowId);
+      if (unassignedIds.length) {
+        groups.push({ flow: { id: null, name: 'Niet gekoppeld aan een flow' }, scenarioIds: unassignedIds });
+      }
+
+      const rows = groups.map(({ flow, scenarioIds }) => {
+        const acts = activities.filter(a => scenarioIds.includes(a.scenario_id));
         const total = acts.length;
-        if (total === 0) return { s, total: 0, ok: 0, nok: 0, pct: 0 };
         const ok  = acts.filter(a => getResult(a.id) === 'ok').length;
         const nok = acts.filter(a => getResult(a.id) === 'nok').length;
-        const pct = Math.round(((ok + nok) / total) * 100);
-        return { s, total, ok, nok, pct };
-      }).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
+        const pct = total > 0 ? Math.round(((ok + nok) / total) * 100) : 0;
+        return { flow, scenarioCount: scenarioIds.length, total, ok, nok, pct };
+      }).filter(r => r.scenarioCount > 0).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
 
-      el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ s, total, ok, nok, pct }) => `
-        <div class="scenario-row" onclick="location.href='app.html?open=${s.id}'" title="Klik om dit scenario te openen" style="cursor:pointer;">
-          <span class="scenario-code">${s.code}</span>
-          <span class="scenario-title" title="${s.title}">${s.title}</span>
+      if (!rows.length) { el.innerHTML = '<p class="empty-dash">Nog geen flows met scenario\'s gevonden. Ga naar de Flow-pagina om flows aan te maken.</p>'; return; }
+
+      el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ flow, scenarioCount, total, ok, nok, pct }) => `
+        <div class="scenario-row">
+          <span class="scenario-title" title="${flow.name}" style="flex:1; font-weight:600;">${flow.name}</span>
+          <span style="font-size:11px; color:#9ca3af; flex-shrink:0; white-space:nowrap;">${scenarioCount} scenario${scenarioCount!==1?"'s":''}</span>
           <div class="org-bar-wrap" style="min-width:80px; max-width:80px;">
             ${ok  > 0 ? `<div class="org-bar-ok" style="width:${total>0?Math.round(ok/total*100):0}%"></div>` : ''}
             ${nok > 0 ? `<div class="org-bar-nok" style="width:${total>0?Math.round(nok/total*100):0}%"></div>` : ''}
@@ -396,7 +452,7 @@
       }).filter(x => x.act && x.scen);
 
       el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ r, act, scen, org }) => `
-        <div class="nok-row" onclick="location.href='app.html?open=${scen.id}'" title="Klik om dit scenario te openen" style="cursor:pointer;">
+        <div class="nok-row">
           <span class="nok-badge">NOK</span>
           <div>
             <div class="nok-desc">${act.description || '—'}</div>
@@ -488,7 +544,7 @@
         const bg = `rgba(220,38,38,${0.08 + intensity * 0.25})`;
         const border = `rgba(220,38,38,${0.2 + intensity * 0.5})`;
 
-        return `<div onclick="location.href='app.html?open=${s.id}'" title="Klik om dit scenario te openen" style="cursor:pointer; display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; background:${bg}; border:1px solid ${border}; border-radius:8px; border-left:3px solid #dc2626;">
+        return `<div style="display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; background:${bg}; border:1px solid ${border}; border-radius:8px; border-left:3px solid #dc2626;">
           <div style="flex:1; min-width:0;">
             <div style="display:flex; align-items:center; gap:6px;">
               <span style="font-size:11px; font-weight:700; color:#dc2626;">${s.code}</span>

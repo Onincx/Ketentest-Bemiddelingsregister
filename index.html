@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Inloggen — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
@@ -29,10 +29,12 @@
     .btn-primary { background: #39870c !important; border-color: #39870c !important; }
     .btn-primary:hover { background: #2d6e09 !important; border-color: #2d6e09 !important; }
     input:focus { border-color: #39870c !important; box-shadow: 0 0 0 3px rgba(57,135,12,0.15) !important; }
+    .kt-choice-item { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border:1px solid var(--border); border-radius:var(--radius); cursor:pointer; font-size:14px; font-weight:600; color:var(--text); transition:all .12s; }
+    .kt-choice-item:hover { border-color:#39870c; background:#f0fdf4; }
   </style>
 
   <div class="login-page">
-    <div class="login-card">
+    <div class="login-card" id="loginCard">
       <div class="login-logo">
         <div class="login-logo-icon">
           <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -68,19 +70,46 @@
         Geen account? Je ontvangt een uitnodiging van de beheerder.
       </p>
     </div>
+
+    <!-- Ketentest kiezen: getoond na succesvol inloggen als er meer dan
+         één ketentest beschikbaar is voor deze gebruiker. -->
+    <div class="login-card" id="ketentestChoiceCard" style="display:none;">
+      <div class="login-logo">
+        <div class="login-logo-icon">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18.5C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fill-opacity="0.9"/>
+            <path d="M7 10L9 12L13 8" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="login-logo-text">
+          <h2>Bemiddelingsregister</h2>
+          <p>Ketentest platform</p>
+        </div>
+      </div>
+
+      <h1 style="font-size:20px; margin-bottom:6px;">Kies een ketentest</h1>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:20px;">Je hebt toegang tot de volgende ketentesten. Kies er één om verder te gaan.</p>
+
+      <div id="ketentestChoiceAlert" class="alert alert-error" style="display:none;"></div>
+      <div id="ketentestChoiceList" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+      <button class="btn btn-ghost btn-sm" style="margin-top:18px; width:100%; justify-content:center;" onclick="logoutFromChoice()">
+        Uitloggen
+      </button>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=23"></script>
+  <script src="js/supabase-config.js?v=25"></script>
   <script>
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
     // Redirect als al ingelogd
     (async () => {
       const user = await getCurrentUser();
       if (user) {
         const profile = await getUserProfile(user.id);
-        if (profile?.role === 'admin') window.location.href = 'admin.html';
-        else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
-        else window.location.href = 'app.html';
+        await proceedAfterAuth(profile);
       }
     })();
 
@@ -110,9 +139,56 @@
       }
 
       const profile = await getUserProfile(data.user.id);
+      await proceedAfterAuth(profile);
+      btn.innerHTML = 'Inloggen'; btn.disabled = false;
+    }
+
+    // Bepaalt, na een geslaagde login (of als er al een sessie was), de
+    // vervolgstap: wachtwoord wijzigen (verplicht), direct doorgaan (0 of 1
+    // ketentest beschikbaar), of eerst een ketentest laten kiezen.
+    async function proceedAfterAuth(profile) {
+      if (profile?.must_change_password) { window.location.href = 'invite.html'; return; }
+
+      const options = await getAccessibleKetentests(); // al alfabetisch gesorteerd
+
+      if (!options.length) {
+        document.getElementById('loginCard').style.display = 'none';
+        document.getElementById('ketentestChoiceCard').style.display = '';
+        document.getElementById('ketentestChoiceList').innerHTML = '';
+        showAlert('Je hebt nog geen toegang tot een ketentest. Neem contact op met de beheerder.', 'error', 'ketentestChoiceAlert');
+        return;
+      }
+
+      if (options.length === 1) {
+        setActiveKetentestId(options[0].id);
+        redirectToLanding(profile);
+        return;
+      }
+
+      window._pendingProfile = profile;
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('ketentestChoiceCard').style.display = '';
+      document.getElementById('ketentestChoiceList').innerHTML = options.map(k => `
+        <div class="kt-choice-item" onclick="chooseKetentest('${k.id}')">
+          <span>${esc(k.naam)}</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>`).join('');
+    }
+
+    function redirectToLanding(profile) {
       if (profile?.role === 'admin') window.location.href = 'admin.html';
       else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
       else window.location.href = 'app.html';
+    }
+
+    function chooseKetentest(id) {
+      setActiveKetentestId(id);
+      redirectToLanding(window._pendingProfile);
+    }
+
+    async function logoutFromChoice() {
+      await sb.auth.signOut();
+      window.location.reload();
     }
   </script>
 

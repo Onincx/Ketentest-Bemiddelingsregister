@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wachtwoord aanmaken — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/tabler-icons.min.css" rel="stylesheet">
@@ -23,6 +23,12 @@
     .topnav a { color: rgba(255,255,255,0.85) !important; }
     .topnav a:hover, .topnav a.active { color: #fff !important; }
     .topnav a.active { border-bottom-color: #fff !important; }
+    .login-page { background: linear-gradient(135deg, #2d6e09 0%, #39870c 100%) !important; }
+    .login-logo-icon { background: #39870c !important; }
+    .login-logo-text h2 { color: #39870c !important; }
+    .btn-primary { background: #39870c !important; border-color: #39870c !important; }
+    .btn-primary:hover { background: #2d6e09 !important; border-color: #2d6e09 !important; }
+    input:focus { border-color: #39870c !important; box-shadow: 0 0 0 3px rgba(57,135,12,0.15) !important; }
   </style>
 
 
@@ -32,7 +38,7 @@
         <div class="login-logo-icon">
           <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18.5C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fill-opacity="0.9"/>
-            <path d="M7 10L9 12L13 8" stroke="#1a3a5c" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M7 10L9 12L13 8" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
         </div>
         <div class="login-logo-text">
@@ -42,8 +48,8 @@
       </div>
 
       <div id="formWrap">
-        <h1 style="font-size:20px; margin-bottom:6px;">Wachtwoord aanmaken</h1>
-        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Kies een wachtwoord om je account te activeren.</p>
+        <h1 style="font-size:20px; margin-bottom:6px;">Kies een eigen wachtwoord</h1>
+        <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Je bent ingelogd met een tijdelijk wachtwoord. Stel hieronder je eigen wachtwoord in om verder te gaan — het tijdelijke wachtwoord werkt daarna niet meer.</p>
 
         <div id="alert" class="alert alert-error" style="display:none;"></div>
 
@@ -70,7 +76,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=23"></script>
+  <script src="js/supabase-config.js?v=25"></script>
   <script>
     // Supabase verwerkt de token automatisch uit de URL hash bij het laden
     async function savePassword() {
@@ -95,6 +101,14 @@
         showAlert('Er ging iets mis. De uitnodigingslink is mogelijk verlopen. Vraag de beheerder om een nieuwe uitnodiging.');
         btn.innerHTML = 'Wachtwoord opslaan en inloggen'; btn.disabled = false;
         return;
+      }
+
+      // Verplichte wachtwoordwijziging is hiermee voltooid: het tijdelijke
+      // wachtwoord werkt vanaf nu niet meer (overschreven), en de gebruiker
+      // hoeft dit scherm niet meer te zien.
+      const currentUser = await getCurrentUser();
+      if (currentUser) {
+        await sb.from('users').update({ must_change_password: false, activated: true }).eq('id', currentUser.id);
       }
 
       document.getElementById('formWrap').style.display = 'none';

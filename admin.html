@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beheer — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=20">
+  <link rel="stylesheet" href="css/style.css?v=25">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -39,7 +39,6 @@
     .topnav-logo { color: #fff !important; }
     .topnav a { color: rgba(255,255,255,0.85) !important; }
     .topnav a:hover, .topnav a.active { color: #fff !important; }
-    .topnav a.active { border-bottom-color: #fff !important; }
   </style>
 
 
@@ -48,12 +47,27 @@
       <div class="logo-dot"></div>
       Bemiddelingsregister
     </div>
-    <a href="admin.html" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Beheer</a>
     <a href="dashboard.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Dashboard</a>
-    <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
-    <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest</a>
-    <div id="ketentestSwitcher" style="margin-left:16px;"></div>
+    <div class="nav-dropdown">
+      <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest <span class="nav-dropdown-caret">▾</span></a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=scenarios" id="navScenariosLink" onclick="return navTab('scenarios', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</a>
+        <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
+        <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
+      </div>
+    </div>
+    <div class="nav-dropdown" id="beheerDropdown">
+      <a href="admin.html" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> Beheer <span class="nav-dropdown-caret">▾</span></a>
+      <div class="nav-dropdown-menu" id="beheerDropdownMenu">
+        <a href="admin.html?tab=organisations" data-tab="organisations" onclick="return navTab('organisations', event)">Organisaties</a>
+        <a href="admin.html?tab=users" data-tab="users" onclick="return navTab('users', event)">Gebruikers</a>
+        <a href="admin.html?tab=notifications" data-tab="notifications" onclick="return navTab('notifications', event)">Notificaties</a>
+        <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
+        <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
+      </div>
+    </div>
     <div class="topnav-right">
+      <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen
@@ -63,17 +77,6 @@
 
   <div class="page-wrap">
     <div id="alert" class="alert" style="display:none;"></div>
-
-
-    <!-- Tabs -->
-    <div class="tabs">
-      <button class="tab-btn active" onclick="showTab('ketentests')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg> Ketentesten</button>
-      <button class="tab-btn" onclick="showTab('organisations')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Organisaties</button>
-      <button class="tab-btn" onclick="showTab('users')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg> Gebruikers</button>
-      <button class="tab-btn" onclick="showTab('notifications')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</button>
-      <button class="tab-btn" onclick="showTab('scenarios')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</button>
-
-    </div>
 
     <!-- TAB: Organisaties -->
     <!-- TAB: Ketentesten -->
@@ -132,8 +135,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th></th></tr></thead>
-            <tbody id="userTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th>Laatst ingelogd</th><th></th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -192,29 +195,53 @@
           <h1>Notificaties</h1>
           <p>Beheer de notificaties van deze ketentest en bekijk waar ze worden gebruikt in de testscenario's.</p>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button class="btn btn-outline" id="scanBtn" onclick="scanActivities()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Scan activiteiten
-          </button>
+      </div>
+
+      <!-- Subtabs -->
+      <div class="tabs" style="margin-bottom:20px;">
+        <button class="tab-btn active" id="notifsub-btn-manage" onclick="showNotifSubTab('manage')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Beheren
+        </button>
+        <button class="tab-btn" id="notifsub-btn-usage" onclick="showNotifSubTab('usage')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          Gebruik in scenario's
+        </button>
+      </div>
+
+      <!-- SUBTAB: Beheren -->
+      <div id="notifsub-manage">
+        <div class="page-header" style="margin-bottom:16px;">
+          <div class="page-header-left"></div>
           <button class="btn btn-primary" onclick="openNewNotificationModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Notificatie toevoegen
           </button>
         </div>
-      </div>
-      <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
-
-      <div class="card" style="padding:0; margin-bottom:24px;">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Naam</th><th>Type</th><th></th></tr></thead>
-            <tbody id="notificationDefTable"><tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
-          </table>
+        <div class="card" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Naam</th><th>Type</th><th></th></tr></thead>
+              <tbody id="notificationDefTable"><tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            </table>
+          </div>
         </div>
       </div>
 
-      <div id="notificationsOverview"></div>
+      <!-- SUBTAB: Gebruik in scenario's -->
+      <div id="notifsub-usage" style="display:none;">
+        <div class="page-header" style="margin-bottom:16px;">
+          <div class="page-header-left">
+            <p style="font-size:13px; color:var(--text-muted); margin:0;">Scan de activiteiten om te zien in welke scenario's elke notificatie voorkomt.</p>
+          </div>
+          <button class="btn btn-outline" id="scanBtn" onclick="scanActivities()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Scan activiteiten
+          </button>
+        </div>
+        <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
+        <div id="notificationsOverview"></div>
+      </div>
     </div>
 
     <!-- Modal: Notificatie -->
@@ -266,6 +293,34 @@
       </div>
       <div id="scenarioAdminList"></div>
     </div>
+
+    <!-- TAB: Logboek -->
+    <div id="tab-logboek" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Logboek</h1>
+          <p>Handelingen van gebruikers binnen de actieve ketentest: wie heeft wat gedaan, en wanneer.</p>
+        </div>
+        <button class="btn btn-outline" onclick="loadActivityLog()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Vernieuwen
+        </button>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="logFilterBtns">
+        <button class="btn btn-sm" data-f="all" onclick="setLogFilter('all',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Alle</button>
+        <button class="btn btn-sm btn-outline" data-f="activity_result" onclick="setLogFilter('activity_result',this)">Resultaten (OK/NOK)</button>
+        <button class="btn btn-sm btn-outline" data-f="flow_participation" onclick="setLogFilter('flow_participation',this)">Deelname-keuzes</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Tijdstip</th><th>Gebruiker</th><th>Handeling</th><th>Details</th></tr></thead>
+            <tbody id="logTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+      <p style="font-size:11px; color:var(--text-muted); margin-top:10px;">Toont de laatste 300 handelingen binnen de actieve ketentest.</p>
+    </div>
   </div>
 
   <!-- Modal: Ketentest -->
@@ -280,6 +335,11 @@
         <div class="form-group">
           <label>Naam van de ketentest</label>
           <input type="text" id="ketentestNaam" placeholder="bijv. Bemiddelingsregister, iWlz Aanvraag...">
+        </div>
+        <div class="form-group">
+          <label>Start (optioneel)</label>
+          <input type="datetime-local" id="ketentestStartOp">
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Zolang dit moment nog niet is bereikt, kunnen gewone gebruikers nog geen activiteiten op OK/NOK zetten. Leeg laten = geen beperking.</p>
         </div>
         <div id="alertKetentest" class="alert" style="display:none;"></div>
       </div>
@@ -372,11 +432,24 @@
         </div>
         <div class="form-group">
           <label>Rol</label>
-          <select id="userRole">
+          <select id="userRole" onchange="toggleUserKetentestAccessVisibility()">
             <option value="user">Gebruiker</option>
             <option value="manager">Manager</option>
             <option value="admin">Beheerder</option>
           </select>
+        </div>
+        <div class="form-group" id="userKetentestAccessGroup">
+          <label>Toegang tot ketentesten</label>
+          <div id="userKetentestAccessList" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); padding:8px;"></div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Deze gebruiker ziet alleen de hier aangevinkte ketentesten. Beheerders zien altijd alle ketentesten.</p>
+        </div>
+        <div class="form-group" id="userTempPwGroup">
+          <label>Tijdelijk wachtwoord</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="userTempPassword" placeholder="Minimaal 8 tekens" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="generateTempPassword()">🎲 Genereer</button>
+          </div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Geef dit wachtwoord door aan de gebruiker (bijv. telefonisch of persoonlijk). Bij de eerste keer inloggen moet de gebruiker direct een eigen wachtwoord kiezen — dit tijdelijke wachtwoord werkt daarna niet meer.</p>
         </div>
         <div id="alertUser" class="alert" style="display:none;"></div>
       </div>
@@ -627,7 +700,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=23"></script>
+  <script src="js/supabase-config.js?v=25"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let ketentests = [], activeKetentest = null;
@@ -651,6 +724,7 @@
       if (!user) return;
       const profile = await getUserProfile(user.id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
+      await renderActiveKetentestLabel();
 
       const result = await ensureActiveKetentest();
       if (!result) {
@@ -661,18 +735,14 @@
       }
       ketentests = result.all;
       activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
       await loadAll();
-    })();
 
-    async function onKetentestChanged(newId) {
-      const result = await ensureActiveKetentest();
-      ketentests = result.all;
-      activeKetentest = result.active;
-      await renderKetentestSwitcher(onKetentestChanged);
-      await loadAll();
-      showTab(activeTab === 'ketentests' ? 'scenarios' : activeTab);
-    }
+      const requestedTab = new URLSearchParams(window.location.search).get('tab');
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek'];
+      if (requestedTab && validTabs.includes(requestedTab) && requestedTab !== 'ketentests') {
+        showTab(requestedTab);
+      }
+    })();
 
     async function loadAll() {
       // Orgs must load first so loadActivities can resolve acceptant_org
@@ -698,6 +768,13 @@
     async function loadUsers() {
       const { data } = await sb.from('users').select('*, organisations(name)').order('email');
       users = data || [];
+
+      const { data: loginData, error: loginError } = await sb.rpc('get_users_with_last_login');
+      if (!loginError && loginData) {
+        const loginMap = {};
+        loginData.forEach(r => loginMap[r.id] = r.last_sign_in_at);
+        users.forEach(u => u.last_sign_in_at = loginMap[u.id] || null);
+      }
     }
     async function loadScenarios() {
       if (!activeKetentest) { scenarios = []; return; }
@@ -719,16 +796,47 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
-        b.classList.toggle('active', ['ketentests','organisations','users','notifications','scenarios'][i] === tab);
+        b.classList.toggle('active', ['ketentests','organisations','users','notifications','scenarios','logboek'][i] === tab);
       });
+      document.querySelectorAll('#beheerDropdownMenu a').forEach(a => {
+        a.classList.toggle('active', a.dataset.tab === tab);
+      });
+      const scenariosNavLink = document.getElementById('navScenariosLink');
+      if (scenariosNavLink) scenariosNavLink.classList.toggle('active', tab === 'scenarios');
       activeTab = tab;
       if (tab === 'options') renderOptions();
-      if (tab === 'notifications') { renderNotificationDefTable(); renderNotifications(); }
+      if (tab === 'notifications') { showNotifSubTab('manage'); }
       if (tab === 'ketentests') renderKetentestTable();
+      if (tab === 'logboek') loadActivityLog();
+    }
+
+    // Wisselt van tabblad zonder de pagina opnieuw te laden (gebruikt door
+    // de Beheer-links in de dropdown van de topnav), met de URL als nette
+    // fallback (bijv. voor "openen in nieuw tabblad").
+    function navTab(tab, e) {
+      if (e) e.preventDefault();
+      showTab(tab);
+      history.replaceState(null, '', 'admin.html?tab=' + tab);
+      return false;
+    }
+
+    // ---- NOTIFICATIES: subtabs (Beheren / Gebruik in scenario's) ----
+    function showNotifSubTab(sub) {
+      const manageEl = document.getElementById('notifsub-manage');
+      const usageEl  = document.getElementById('notifsub-usage');
+      if (manageEl) manageEl.style.display = sub === 'manage' ? '' : 'none';
+      if (usageEl)  usageEl.style.display  = sub === 'usage'  ? '' : 'none';
+      const manageBtn = document.getElementById('notifsub-btn-manage');
+      const usageBtn  = document.getElementById('notifsub-btn-usage');
+      if (manageBtn) manageBtn.classList.toggle('active', sub === 'manage');
+      if (usageBtn)  usageBtn.classList.toggle('active', sub === 'usage');
+
+      if (sub === 'manage') renderNotificationDefTable();
+      if (sub === 'usage')  renderNotifications();
     }
 
     // ---- ORGS ----
@@ -987,10 +1095,12 @@
       tb.innerHTML = ketentests.map(k => {
         const isActive = activeKetentest && k.id === activeKetentest.id;
         const date = new Date(k.created_at).toLocaleDateString('nl-NL');
+        const startInFuture = k.start_op && new Date(k.start_op) > new Date();
         return `<tr style="${isActive ? 'background:#eaf3e0;' : ''}">
           <td>
             <strong>${k.naam}</strong>
             ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; margin-left:8px; font-size:11px;">Actief</span>' : ''}
+            ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; margin-left:8px; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
           </td>
           <td id="ktScenCount-${k.id}" style="color:var(--text-muted)">…</td>
           <td style="color:var(--text-muted)">${date}</td>
@@ -1014,9 +1124,81 @@
       });
     }
 
+    // ── Logboek ───────────────────────────────────────────────
+    let logEntries = [];
+    let logFilter = 'all';
+    const LOG_ACTION_LABELS = {
+      activity_result: '✅ Resultaat gezet',
+      flow_participation: '📋 Deelname-keuze',
+      flow_participation_clear: '↺ Deelname-keuze gewist',
+    };
+
+    async function loadActivityLog() {
+      const tb = document.getElementById('logTable');
+      tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      if (!activeKetentest) { tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Geen actieve ketentest.</td></tr>'; return; }
+
+      const { data, error } = await sb.from('activity_log')
+        .select('*, users(email,name)')
+        .eq('ketentest_id', activeKetentest.id)
+        .order('created_at', { ascending: false })
+        .limit(300);
+
+      if (error) {
+        tb.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--danger); padding:32px;">Fout bij laden: ${error.message}</td></tr>`;
+        return;
+      }
+
+      logEntries = data || [];
+      renderActivityLog();
+    }
+
+    function renderActivityLog() {
+      const tb = document.getElementById('logTable');
+      const filtered = logFilter === 'all' ? logEntries : logEntries.filter(l => l.action === logFilter);
+
+      if (!filtered.length) {
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen handelingen gevonden.</p></div></td></tr>';
+        return;
+      }
+
+      tb.innerHTML = filtered.map(l => {
+        const who = l.users?.name || l.users?.email || 'Onbekende gebruiker';
+        const label = LOG_ACTION_LABELS[l.action] || l.action;
+        const d = l.details || {};
+        let detailText = '';
+        if (l.action === 'activity_result') {
+          detailText = `${d.scenario_code || ''} — ${d.activity_description || ''}: <strong>${(d.result || '').toUpperCase()}</strong>${d.notes ? ` ("${d.notes}")` : ''}`;
+        } else if (l.action === 'flow_participation') {
+          detailText = `${d.flow_name || ''}: <strong>${d.wants_to_test ? 'wordt getest' : 'wordt niet getest'}</strong>${d.reason ? ` — reden: "${d.reason}"` : ''}`;
+        } else if (l.action === 'flow_participation_clear') {
+          detailText = `${d.flow_name || ''}: keuze verwijderd`;
+        } else {
+          detailText = JSON.stringify(d);
+        }
+        return `<tr>
+          <td style="white-space:nowrap; color:var(--text-muted); font-size:12px;">${new Date(l.created_at).toLocaleString('nl-NL')}</td>
+          <td>${who}</td>
+          <td>${label}</td>
+          <td style="font-size:13px;">${detailText}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function setLogFilter(f, btn) {
+      logFilter = f;
+      document.querySelectorAll('#logFilterBtns .btn').forEach(b => {
+        b.classList.add('btn-outline'); b.style.background=''; b.style.color=''; b.style.borderColor='';
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      renderActivityLog();
+    }
+
     function openNewKetentestModal() {
       document.getElementById('ketentestId').value = '';
       document.getElementById('ketentestNaam').value = '';
+      document.getElementById('ketentestStartOp').value = '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest toevoegen';
       document.getElementById('alertKetentest').style.display = 'none';
       openModal('modalKetentest');
@@ -1027,22 +1209,34 @@
       if (!k) return;
       document.getElementById('ketentestId').value = k.id;
       document.getElementById('ketentestNaam').value = k.naam;
+      document.getElementById('ketentestStartOp').value = k.start_op ? toDatetimeLocalValue(k.start_op) : '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
       document.getElementById('alertKetentest').style.display = 'none';
       openModal('modalKetentest');
     }
 
+    // Zet een ISO-tijdstip (uit de database, met tijdzone) om naar de
+    // waarde die een <input type="datetime-local"> verwacht (lokale tijd,
+    // zonder tijdzone-aanduiding).
+    function toDatetimeLocalValue(isoString) {
+      const d = new Date(isoString);
+      const pad = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    }
+
     async function saveKetentest() {
       const id = document.getElementById('ketentestId').value;
       const naam = document.getElementById('ketentestNaam').value.trim();
+      const startOpRaw = document.getElementById('ketentestStartOp').value;
+      const start_op = startOpRaw ? new Date(startOpRaw).toISOString() : null;
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKetentest'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('ketentests').update({ naam }).eq('id', id);
+        const res = await sb.from('ketentests').update({ naam, start_op }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('ketentests').insert({ naam });
+        const res = await sb.from('ketentests').insert({ naam, start_op });
         dbError = res.error;
       }
 
@@ -1059,15 +1253,14 @@
         const result = await ensureActiveKetentest();
         ketentests = result.all;
         activeKetentest = result.active;
-        await renderKetentestSwitcher(onKetentestChanged);
         await loadAll();
       } else {
         // Update naam in switcher als die actief was
         if (activeKetentest && activeKetentest.id === id) {
           activeKetentest = ketentests.find(k => k.id === id) || activeKetentest;
-          await renderKetentestSwitcher(onKetentestChanged);
         }
       }
+      await renderActiveKetentestLabel();
 
       renderKetentestTable();
       showAlert('Ketentest opgeslagen.', 'success');
@@ -1096,15 +1289,14 @@
             setActiveKetentestId(ketentests[0].id);
             const result = await ensureActiveKetentest();
             activeKetentest = result.active;
-            await renderKetentestSwitcher(onKetentestChanged);
             await loadAll();
           } else {
             activeKetentest = null;
-            document.getElementById('ketentestSwitcher').innerHTML = '';
             scenarios = []; activities = [];
             renderScenarios();
           }
         }
+        await renderActiveKetentestLabel();
         renderKetentestTable();
         showAlert('Ketentest verwijderd.', 'success');
       };
@@ -1270,7 +1462,7 @@
       orgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
 
       if (!users.length) {
-        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
         return;
       }
       tb.innerHTML = users.map(u => `<tr>
@@ -1279,6 +1471,7 @@
         <td>${u.organisations?.name ? `<span class="org-badge">${u.organisations.name}</span>` : '—'}</td>
         <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : u.role === 'manager' ? 'Manager' : 'Gebruiker'}</span></td>
         <td><span class="badge ${u.activated ? 'badge-ok' : 'badge-open'}">${u.activated ? 'Actief' : 'Uitgenodigd'}</span></td>
+        <td style="font-size:12px; color:var(--text-muted);">${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('nl-NL') : 'Nooit ingelogd'}</td>
         <td style="text-align:right;">
           <button class="btn btn-ghost btn-sm btn-icon" onclick="editUser('${u.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
           <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteUser('${u.id}','${u.email}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
@@ -1287,19 +1480,55 @@
     }
 
     function openNewUserModal() {
+      editUserRequestToken++; // eventueel nog lopend editUser()-verzoek ongeldig maken
       document.getElementById('userId').value = '';
       document.getElementById('userEmail').value = '';
       document.getElementById('userEmail').disabled = false;
       document.getElementById('userName').value = '';
       document.getElementById('userOrg').value = '';
       document.getElementById('userRole').value = 'user';
+      document.getElementById('userTempPassword').value = '';
+      document.getElementById('userTempPwGroup').style.display = '';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
-      document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
+      document.getElementById('saveUserBtn').textContent = 'Gebruiker aanmaken';
       document.getElementById('alertUser').style.display = 'none';
+      originalKetentestAccessIds = [];
+      renderUserKetentestAccessCheckboxes([]);
+      toggleUserKetentestAccessVisibility();
       openModal('modalUser');
     }
 
-    function editUser(id) {
+    function generateTempPassword() {
+      const words = ['Kentest','Regio','Zorgketen','Bemiddel','Toets','Scenario','Vlucht','Rivier','Beemd','Wolken'];
+      const word = words[Math.floor(Math.random() * words.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      const symbols = ['!','#','$','%','&','*'];
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+      document.getElementById('userTempPassword').value = `${word}${num}${symbol}`;
+    }
+
+    function renderUserKetentestAccessCheckboxes(selectedIds) {
+      const el = document.getElementById('userKetentestAccessList');
+      if (!ketentests.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Nog geen ketentesten aangemaakt.</p>'; return; }
+      el.innerHTML = ketentests.map(k => `
+        <label style="display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${k.id}" ${selectedIds.includes(k.id) ? 'checked' : ''}>
+          ${k.naam}
+        </label>`).join('');
+    }
+
+    function toggleUserKetentestAccessVisibility() {
+      const role = document.getElementById('userRole').value;
+      document.getElementById('userKetentestAccessGroup').style.display = role === 'admin' ? 'none' : '';
+    }
+
+    let originalKetentestAccessIds = null; // null = niet geladen (nieuwe gebruiker of fout), anders array met huidige toegang
+
+    let editUserRequestToken = 0;
+
+    async function editUser(id) {
+      const myToken = ++editUserRequestToken;
+
       const u = users.find(x => x.id === id);
       document.getElementById('userId').value = u.id;
       document.getElementById('userEmail').value = u.email;
@@ -1307,8 +1536,32 @@
       document.getElementById('userOrg').value = u.organisation_id || '';
       document.getElementById('userRole').value = u.role || 'user';
       document.getElementById('userEmail').disabled = true;
+      document.getElementById('userTempPwGroup').style.display = 'none';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
+
+      const { data: access, error: accessError } = await sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id);
+
+      // Is er ondertussen (terwijl dit verzoek liep) alweer op een andere
+      // gebruiker geklikt? Dan is dit resultaat verouderd — niet meer
+      // toepassen, anders overschrijft een traag, ouder verzoek de juiste
+      // gegevens van de gebruiker die nu daadwerkelijk open staat.
+      if (myToken !== editUserRequestToken) return;
+
+      if (accessError) {
+        // Bij een fout NIET doen alsof de gebruiker nergens toegang toe
+        // heeft — dat zou bij het opslaan de bestaande koppelingen kunnen
+        // wissen. In plaats daarvan de sectie blokkeren en duidelijk maken
+        // dat opslaan de ketentesttoegang niet zal aanpassen.
+        originalKetentestAccessIds = null;
+        document.getElementById('userKetentestAccessList').innerHTML =
+          `<p style="font-size:12px; color:var(--danger);">Kon huidige ketentesttoegang niet laden (${accessError.message}). Opslaan laat de toegang van deze gebruiker ongewijzigd.</p>`;
+      } else {
+        originalKetentestAccessIds = (access || []).map(a => a.ketentest_id);
+        renderUserKetentestAccessCheckboxes(originalKetentestAccessIds);
+      }
+
+      toggleUserKetentestAccessVisibility();
       openModal('modalUser');
     }
 
@@ -1318,47 +1571,89 @@
       const name = document.getElementById('userName').value.trim();
       const orgId = document.getElementById('userOrg').value;
       const role = document.getElementById('userRole').value;
+      const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
 
       if (!email) { showAlert('Vul een e-mailadres in.', 'error', 'alertUser'); return; }
+      if (!id && role !== 'admin' && !selectedKetentestIds.length) {
+        showAlert('Koppel minimaal 1 ketentest aan deze gebruiker (of kies de rol Beheerder, die ziet altijd alles).', 'error', 'alertUser');
+        return;
+      }
 
       const btn = document.getElementById('saveUserBtn');
       btn.disabled = true; btn.textContent = 'Bezig...';
+      let targetUserId = id;
 
       if (id) {
         // Update bestaand profiel
         await sb.from('users').update({ name, organisation_id: orgId || null, role }).eq('id', id);
-        document.getElementById('userId').value = '';
-        document.getElementById('userEmail').disabled = false;
-        document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
-        document.getElementById('saveUserBtn').textContent = 'Uitnodiging versturen';
       } else {
-        // Maak gebruiker aan via signUp (geen wachtwoord nodig, stuur reset link)
-        const siteUrl = window.location.origin + window.location.pathname.replace('admin.html','');
-        const tempPassword = crypto.randomUUID(); // tijdelijk wachtwoord
-        const { data: signUpData, error: signUpError } = await sb.auth.signUp({
-          email,
-          password: tempPassword,
-          options: { emailRedirectTo: siteUrl + 'invite.html' }
-        });
-
-        if (signUpError) {
-          showAlert('Fout bij aanmaken: ' + signUpError.message, 'error', 'alertUser');
-          btn.disabled = false; btn.textContent = 'Uitnodiging versturen';
+        const tempPassword = document.getElementById('userTempPassword').value;
+        if (!tempPassword || tempPassword.length < 8) {
+          showAlert('Kies een tijdelijk wachtwoord van minimaal 8 tekens (of klik op "Genereer").', 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Gebruiker aanmaken';
           return;
         }
 
-        const userId = signUpData?.user?.id;
-        if (userId) {
-          await sb.from('users').upsert({ id: userId, email, name, organisation_id: orgId || null, role, activated: false });
-          // Stuur wachtwoord-reset e-mail zodat gebruiker een eigen wachtwoord kan instellen
-          await sb.auth.resetPasswordForEmail(email, { redirectTo: siteUrl + 'invite.html' });
+        // Maak het account aan met het door de beheerder gekozen tijdelijke
+        // wachtwoord. must_change_password: true dwingt af dat de gebruiker
+        // bij de eerste keer inloggen direct een eigen wachtwoord kiest —
+        // zie invite.html en requireAuth() in supabase-config.js.
+        //
+        // Let op: sb.auth.signUp() logt de browser automatisch in als de
+        // NIEUWE gebruiker (omdat "Confirm email" uit staat voor deze
+        // flow). We bewaren daarom eerst de sessie van de beheerder, en
+        // zetten die er direct na het aanmaken weer terug.
+        const { data: { session: adminSession } } = await sb.auth.getSession();
+
+        const { data: signUpData, error: signUpError } = await sb.auth.signUp({ email, password: tempPassword });
+
+        if (adminSession) {
+          await sb.auth.setSession({
+            access_token: adminSession.access_token,
+            refresh_token: adminSession.refresh_token,
+          });
+        }
+
+        if (signUpError) {
+          showAlert('Fout bij aanmaken: ' + signUpError.message, 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Gebruiker aanmaken';
+          return;
+        }
+
+        targetUserId = signUpData?.user?.id;
+        if (targetUserId) {
+          await sb.from('users').upsert({
+            id: targetUserId, email, name, organisation_id: orgId || null, role,
+            activated: false, must_change_password: true,
+          });
+        }
+      }
+
+      // Ketentesttoegang bijwerken (niet relevant voor beheerders, die zien
+      // sowieso alles). We passen alleen het verschil toe t.o.v. de
+      // oorspronkelijk geladen toegang — nooit een blinde delete-en-
+      // opnieuw-invoegen — zodat een mislukte of lege lading nooit per
+      // ongeluk bestaande toegang wist. Kon de bestaande toegang niet
+      // geladen worden (originalKetentestAccessIds is null), dan raken we
+      // 'm hier bewust niet aan.
+      if (targetUserId && role !== 'admin' && originalKetentestAccessIds !== null) {
+        const toAdd = selectedKetentestIds.filter(kid => !originalKetentestAccessIds.includes(kid));
+        const toRemove = originalKetentestAccessIds.filter(kid => !selectedKetentestIds.includes(kid));
+
+        if (toRemove.length) {
+          await sb.from('user_ketentest_access').delete().eq('user_id', targetUserId).in('ketentest_id', toRemove);
+        }
+        if (toAdd.length) {
+          await sb.from('user_ketentest_access').insert(
+            toAdd.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
+          );
         }
       }
 
       closeModal('modalUser');
       btn.disabled = false;
       await loadUsers(); renderUsers();
-      showAlert('Gebruiker opgeslagen. Uitnodigingsmail verstuurd.', 'success');
+      showAlert(id ? 'Gebruiker opgeslagen.' : 'Gebruiker aangemaakt. Geef het tijdelijke wachtwoord door aan de gebruiker.', 'success');
     }
 
     function deleteUser(id, email) {
