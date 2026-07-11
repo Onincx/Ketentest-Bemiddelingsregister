@@ -121,7 +121,11 @@
     <!-- Totaal statistieken -->
     <div class="stats-grid" id="totalStats" style="margin-bottom:24px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
       <div class="stat-card"><div class="stat-label">Flows totaal</div><div class="stat-value" id="ds-flows">—</div></div>
-      <div class="stat-card"><div class="stat-label">Nog te beoordelen flows</div><div class="stat-value orange" id="ds-flows-wachten">—</div></div>
+      <div class="stat-card">
+        <div class="stat-label">Nog te beoordelen flows</div>
+        <div class="stat-value orange" id="ds-flows-wachten">—</div>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:2px;" id="ds-flows-wachten-sub"></div>
+      </div>
       <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
       <div class="stat-card"><div class="stat-label">Activiteiten totaal</div><div class="stat-value" id="ds-activities">—</div></div>
       <div class="stat-card"><div class="stat-label">Afgerond</div><div class="stat-value green" id="ds-done">—</div></div>
@@ -172,6 +176,12 @@
       <div class="dash-card">
         <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per flow</h3>
         <div id="flowProgress"><p class="empty-dash">Laden...</p></div>
+      </div>
+
+      <!-- Openstaande deelname-beoordelingen per partij -->
+      <div class="dash-card">
+        <h3><div class="dot" style="background:#d97706;"></div>Nog te beoordelen per partij</h3>
+        <div id="pendingParticipation"><p class="empty-dash">Laden...</p></div>
       </div>
 
       <!-- NOK overzicht -->
@@ -306,10 +316,19 @@
         return acts.length > 0 && acts.every(a => getResult(a.id) === 'ok');
       }).length;
 
-      const flowsWachten = flows.filter(f => getFlowStatus(f.id) === 'wachten').length;
+      let flowsWachten = 0, openstaandePartijen = 0;
+      flows.forEach(f => {
+        if (getFlowStatus(f.id) !== 'wachten') return;
+        flowsWachten++;
+        const involved = betrokkenOrgIdsForFlow(f.id);
+        const decided = involved.filter(oid => flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid)).length;
+        openstaandePartijen += (involved.length - decided);
+      });
 
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
+      document.getElementById('ds-flows-wachten-sub').textContent =
+        openstaandePartijen > 0 ? `${openstaandePartijen} partij${openstaandePartijen === 1 ? '' : 'en'} moet(en) nog beoordelen` : '';
       document.getElementById('ds-scenarios').textContent = includedScenarios.length;
       document.getElementById('ds-activities').textContent = totalActs;
       document.getElementById('ds-done').textContent = `${okScenarios} / ${includedScenarios.length}`;
@@ -321,6 +340,7 @@
 
       renderOrgProgress();
       renderFlowProgress();
+      renderPendingParticipation();
       renderNokOverview();
       renderCharts();
 
@@ -434,6 +454,43 @@
             ${nok > 0 ? 'NOK' : (ok === total && total > 0 ? 'OK' : 'Open')}
           </span>
         </div>`).join('') + `</div>`;
+    }
+
+    // Per flow die nog wacht op input (niet alle betrokken organisaties
+    // hebben al aangegeven of ze de flow gaan testen): welke partijen
+    // moeten dat nog doen.
+    function renderPendingParticipation() {
+      const el = document.getElementById('pendingParticipation');
+      if (!flows.length) { el.innerHTML = '<p class="empty-dash">Nog geen flows gevonden.</p>'; return; }
+
+      const rows = flows
+        .filter(f => getFlowStatus(f.id) === 'wachten')
+        .map(f => {
+          const involved = betrokkenOrgIdsForFlow(f.id);
+          const pendingOrgIds = involved.filter(oid => !flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid));
+          return { flow: f, total: involved.length, pendingOrgIds };
+        })
+        .sort((a, b) => b.pendingOrgIds.length - a.pendingOrgIds.length);
+
+      if (!rows.length) {
+        el.innerHTML = '<p class="empty-dash">Alle flows zijn door alle betrokken partijen beoordeeld. 🎉</p>';
+        return;
+      }
+
+      el.innerHTML = `<div style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:10px;">` +
+        rows.map(({ flow, total, pendingOrgIds }) => `
+          <div style="padding-bottom:10px; border-bottom:1px solid var(--border);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
+              <span style="font-size:13px; font-weight:600;" title="${flow.name}">${flow.name}</span>
+              <span style="font-size:11px; color:#9ca3af; white-space:nowrap;">${pendingOrgIds.length} van ${total} partijen open</span>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:5px;">
+              ${pendingOrgIds.map(oid => {
+                const org = orgs.find(o => o.id === oid);
+                return `<span style="background:#fef3c7; color:#92400e; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:600;">${org?.name || org?.code || 'Onbekend'}</span>`;
+              }).join('')}
+            </div>
+          </div>`).join('') + `</div>`;
     }
 
     function renderNokOverview() {
