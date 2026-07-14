@@ -880,6 +880,8 @@
       if (dbError) {
         if (dbError.message && dbError.message.includes('voorgaande activiteit')) {
           alert('De voorgaande activiteit moet eerst op OK gezet worden voordat deze activiteit beoordeeld kan worden.');
+        } else if (dbError.message && dbError.message.includes('start pas op')) {
+          alert(dbError.message);
         } else {
           alert('Fout bij opslaan: ' + dbError.message);
         }
