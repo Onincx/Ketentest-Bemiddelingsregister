@@ -311,29 +311,34 @@
       const body = activities.map(a => {
         const scenario = scenarios.find(s => s.id === a.scenario_id);
         const r = results.find(x => x.activity_id === a.id);
+        const invuller = r?.updated_by ? users.find(u => u.id === r.updated_by) : null;
         return [
           flowNameByScenario[a.scenario_id] || '(geen flow)',
           scenario?.code || '',
           scenario?.title || '',
+          a.sort_order ?? '',
           a.description || '',
+          a.expected_result || '',
           a.organisations?.name || '',
           a.acceptant_org?.name || '',
           (r?.result || 'open').toUpperCase(),
           r?.notes || '',
+          invuller?.name || invuller?.email || '',
+          r?.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '',
         ];
       });
 
       doc.autoTable({
         startY: 60,
-        head: [['Flow', 'Code', 'Scenario', 'Activiteit', 'Verantwoordelijke', 'Acceptant', 'Resultaat', 'Opmerking']],
+        head: [['Flow', 'Code', 'Scenario', 'Stap', 'Activiteit', 'Verwacht resultaat', 'Verantwoordelijke', 'Acceptant', 'Resultaat', 'Opmerking', 'Ingevuld door', 'Ingevuld op']],
         body,
-        styles: { fontSize: 7.5, cellPadding: 4, overflow: 'linebreak' },
-        headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold' },
+        styles: { fontSize: 6.5, cellPadding: 3, overflow: 'linebreak' },
+        headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold', fontSize: 7 },
         columnStyles: {
-          2: { cellWidth: 130 }, 3: { cellWidth: 150 }, 7: { cellWidth: 110 },
+          2: { cellWidth: 90 }, 4: { cellWidth: 110 }, 5: { cellWidth: 90 }, 9: { cellWidth: 90 }, 11: { cellWidth: 60 },
         },
         didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === 6) {
+          if (data.section === 'body' && data.column.index === 8) {
             if (data.cell.raw === 'OK') data.cell.styles.textColor = [22, 163, 74];
             if (data.cell.raw === 'NOK') { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
           }
