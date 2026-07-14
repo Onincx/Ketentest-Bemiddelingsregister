@@ -349,23 +349,63 @@
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
       addPdfHeader(doc, 'Samenvatting per flow');
 
+      // ── Verdeling activiteiten (OK/NOK/Open) ──────────────────
+      const totalActs = activities.length;
+      const okCount   = results.filter(r => r.result === 'ok').length;
+      const nokCount  = results.filter(r => r.result === 'nok').length;
+      const openCount = totalActs - okCount - nokCount;
+      const pct = v => totalActs > 0 ? Math.round((v / totalActs) * 100) : 0;
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(26, 26, 26);
+      doc.text('Verdeling activiteiten', 40, 66);
+
+      doc.autoTable({
+        startY: 72,
+        head: [['Status', 'Aantal', 'Percentage']],
+        body: [
+          ['OK', okCount, `${pct(okCount)}%`],
+          ['NOK', nokCount, `${pct(nokCount)}%`],
+          ['Open', openCount, `${pct(openCount)}%`],
+          ['Totaal', totalActs, '100%'],
+        ],
+        styles: { fontSize: 9, cellPadding: 5 },
+        headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold' },
+        columnStyles: { 0: { cellWidth: 100 } },
+        tableWidth: 260,
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 0) {
+            if (data.row.index === 0) data.cell.styles.textColor = [22, 163, 74];
+            if (data.row.index === 1) { data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold'; }
+          }
+        },
+      });
+
+      // ── Voortgang per flow ─────────────────────────────────────
+      const afterFirstTableY = doc.lastAutoTable.finalY + 26;
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(11);
+      doc.setTextColor(26, 26, 26);
+      doc.text('Voortgang per flow', 40, afterFirstTableY);
+
       const body = flows.map(f => {
         const scenarioIds = flowNodes.filter(n => n.flow_id === f.id).map(n => n.scenario_id);
         const acts = activities.filter(a => scenarioIds.includes(a.scenario_id));
         const total = acts.length;
         const done = acts.filter(a => getResult(a.id) !== 'open').length;
         const nok = acts.filter(a => getResult(a.id) === 'nok').length;
-        const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+        const flowPct = total > 0 ? Math.round((done / total) * 100) : 0;
 
         const involved = betrokkenOrgIdsForFlow(f.id);
         const decided = involved.filter(oid => flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid)).length;
         const status = { ja: 'Wordt uitgevoerd', nee: 'Wordt niet uitgevoerd', verdeeld: 'Verdeeld', wachten: 'Wachten op input', geen: 'Geen organisaties' }[getFlowStatus(f.id)];
 
-        return [f.name, scenarioIds.length, total, `${pct}%`, nok, status, `${decided} van ${involved.length}`];
+        return [f.name, scenarioIds.length, total, `${flowPct}%`, nok, status, `${decided} van ${involved.length}`];
       });
 
       doc.autoTable({
-        startY: 60,
+        startY: afterFirstTableY + 6,
         head: [['Flow', "Scenario's", 'Activiteiten', 'Afgerond', 'NOK', 'Deelname-status', 'Partijen beoordeeld']],
         body,
         styles: { fontSize: 9, cellPadding: 5 },
