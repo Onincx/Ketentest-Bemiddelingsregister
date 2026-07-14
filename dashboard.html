@@ -115,7 +115,7 @@
       <div style="display:flex; gap:8px;">
         <button class="btn btn-outline" onclick="exportSummaryPdf()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Exporteren (samenvatting, PDF)
+          Exporteren (dashboard, PDF)
         </button>
         <button class="btn btn-outline" onclick="exportDetailPdf()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -343,32 +343,71 @@
       doc.save(`ketentest-detail-${todayStamp()}.pdf`);
     }
 
-    // Eén rij per flow: samenvattingsniveau voor een snel overzicht.
+    // Bevat alles wat op het dashboard staat: kerncijfers, verdeling
+    // activiteiten, scenario's met NOK's, voortgang per organisatie, per
+    // flow, nog te beoordelen per partij, en openstaande NOK's.
     function exportSummaryPdf() {
       const { jsPDF } = window.jspdf;
       const doc = new jsPDF({ unit: 'pt', format: 'a4' });
-      addPdfHeader(doc, 'Samenvatting per flow');
+      addPdfHeader(doc, 'Dashboardoverzicht');
 
-      // ── Verdeling activiteiten (OK/NOK/Open) ──────────────────
-      const totalActs = activities.length;
-      const okCount   = results.filter(r => r.result === 'ok').length;
-      const nokCount  = results.filter(r => r.result === 'nok').length;
-      const openCount = totalActs - okCount - nokCount;
-      const pct = v => totalActs > 0 ? Math.round((v / totalActs) * 100) : 0;
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const margin = 40;
+      let y = 70;
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(26, 26, 26);
-      doc.text('Verdeling activiteiten', 40, 66);
+      function heading(title) {
+        if (y + 30 > pageHeight - margin) { doc.addPage(); y = margin; }
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(11);
+        doc.setTextColor(26, 26, 26);
+        doc.text(title, margin, y);
+        y += 8;
+      }
 
+      function afterTable() { y = doc.lastAutoTable.finalY + 22; }
+
+      function emptyLine(text) {
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(9);
+        doc.setTextColor(107, 114, 128);
+        doc.text(text, margin, y + 10);
+        y += 26;
+      }
+
+      const stats = computeDashboardStats();
+      const pctFn = v => stats.totalActs > 0 ? Math.round((v / stats.totalActs) * 100) : 0;
+      const okCount  = results.filter(r => r.result === 'ok').length;
+      const nokCount = results.filter(r => r.result === 'nok').length;
+
+      // ── 1. Kerncijfers ─────────────────────────────────────────
+      heading('Kerncijfers');
       doc.autoTable({
-        startY: 72,
+        startY: y,
+        head: [['Flows totaal', 'Nog te beoordelen flows', "Scenario's totaal", 'Activiteiten totaal', 'Afgerond', "NOK's", 'Totale voortgang']],
+        body: [[
+          flows.length,
+          `${stats.flowsWachten} (${stats.beoordeeldePartijen} van ${stats.totaalPartijen} partijen beoordeeld)`,
+          stats.includedScenarios.length,
+          stats.totalActs,
+          `${stats.okScenarios} / ${stats.includedScenarios.length}`,
+          stats.nokActs,
+          `${stats.pct}%`,
+        ]],
+        styles: { fontSize: 8, cellPadding: 6 },
+        headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold' },
+      });
+      afterTable();
+
+      // ── 2. Verdeling activiteiten ────────────────────────────────
+      heading('Verdeling activiteiten');
+      doc.autoTable({
+        startY: y,
         head: [['Status', 'Aantal', 'Percentage']],
         body: [
-          ['OK', okCount, `${pct(okCount)}%`],
-          ['NOK', nokCount, `${pct(nokCount)}%`],
-          ['Open', openCount, `${pct(openCount)}%`],
-          ['Totaal', totalActs, '100%'],
+          ['OK', okCount, `${pctFn(okCount)}%`],
+          ['NOK', nokCount, `${pctFn(nokCount)}%`],
+          ['Open', activities.length - okCount - nokCount, `${pctFn(activities.length - okCount - nokCount)}%`],
+          ['Totaal', activities.length, '100%'],
         ],
         styles: { fontSize: 9, cellPadding: 5 },
         headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold' },
@@ -381,44 +420,147 @@
           }
         },
       });
+      afterTable();
 
-      // ── Voortgang per flow ─────────────────────────────────────
-      const afterFirstTableY = doc.lastAutoTable.finalY + 26;
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(11);
-      doc.setTextColor(26, 26, 26);
-      doc.text('Voortgang per flow', 40, afterFirstTableY);
+      // ── 3. Scenario's met NOK's ──────────────────────────────────
+      heading("Scenario's met NOK's");
+      const nokScenarioRows = scenarios.map(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id);
+        const nokActs = acts.filter(a => getResult(a.id) === 'nok');
+        return { s, nok: nokActs.length, nokActs };
+      }).filter(r => r.nok > 0).sort((a, b) => b.nok - a.nok);
 
-      const body = flows.map(f => {
+      if (!nokScenarioRows.length) {
+        emptyLine('Geen NOK\'s gevonden. Alles loopt goed!');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Code', 'Scenario', 'Aantal NOK', 'Activiteiten met NOK']],
+          body: nokScenarioRows.map(({ s, nok, nokActs }) => [
+            s.code, s.title, nok,
+            nokActs.map(a => a.description).join('; '),
+          ]),
+          styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
+          headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 1: { cellWidth: 140 }, 3: { cellWidth: 220 } },
+        });
+        afterTable();
+      }
+
+      // ── 4. Voortgang per organisatie ─────────────────────────────
+      heading('Voortgang per organisatie');
+      const orgRows = orgs.map(org => {
+        const orgActs = activities.filter(a => a.organisation_id === org.id || a.acceptant_org?.id === org.id);
+        const total = orgActs.length;
+        if (!total) return null;
+        const ok  = orgActs.filter(a => getResult(a.id) === 'ok').length;
+        const nok = orgActs.filter(a => getResult(a.id) === 'nok').length;
+        const open = total - ok - nok;
+        return [org.name, total, ok, nok, open, `${Math.round(((ok + nok) / total) * 100)}%`];
+      }).filter(Boolean).sort((a, b) => b[5].localeCompare(a[5]));
+
+      if (!orgRows.length) {
+        emptyLine('Geen activiteiten gekoppeld aan organisaties.');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Organisatie', 'Activiteiten', 'OK', 'NOK', 'Open', 'Voortgang']],
+          body: orgRows,
+          styles: { fontSize: 8.5, cellPadding: 5 },
+          headStyles: { fillColor: [21, 66, 115], textColor: 255, fontStyle: 'bold' },
+          didParseCell: (data) => {
+            if (data.section === 'body') {
+              if (data.column.index === 2) data.cell.styles.textColor = [22, 163, 74];
+              if (data.column.index === 3 && Number(data.cell.raw) > 0) data.cell.styles.textColor = [220, 38, 38];
+            }
+          },
+        });
+        afterTable();
+      }
+
+      // ── 5. Voortgang per flow ─────────────────────────────────────
+      heading('Voortgang per flow');
+      const flowRows = flows.map(f => {
         const scenarioIds = flowNodes.filter(n => n.flow_id === f.id).map(n => n.scenario_id);
         const acts = activities.filter(a => scenarioIds.includes(a.scenario_id));
         const total = acts.length;
         const done = acts.filter(a => getResult(a.id) !== 'open').length;
         const nok = acts.filter(a => getResult(a.id) === 'nok').length;
         const flowPct = total > 0 ? Math.round((done / total) * 100) : 0;
-
         const involved = betrokkenOrgIdsForFlow(f.id);
         const decided = involved.filter(oid => flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid)).length;
         const status = { ja: 'Wordt uitgevoerd', nee: 'Wordt niet uitgevoerd', verdeeld: 'Verdeeld', wachten: 'Wachten op input', geen: 'Geen organisaties' }[getFlowStatus(f.id)];
-
         return [f.name, scenarioIds.length, total, `${flowPct}%`, nok, status, `${decided} van ${involved.length}`];
       });
 
-      doc.autoTable({
-        startY: afterFirstTableY + 6,
-        head: [['Flow', "Scenario's", 'Activiteiten', 'Afgerond', 'NOK', 'Deelname-status', 'Partijen beoordeeld']],
-        body,
-        styles: { fontSize: 9, cellPadding: 5 },
-        headStyles: { fillColor: [57, 135, 12], textColor: 255, fontStyle: 'bold' },
-        columnStyles: { 0: { cellWidth: 160 } },
-        didParseCell: (data) => {
-          if (data.section === 'body' && data.column.index === 4 && Number(data.cell.raw) > 0) {
-            data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold';
-          }
-        },
-      });
+      if (!flowRows.length) {
+        emptyLine('Nog geen flows gevonden.');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Flow', "Scenario's", 'Activiteiten', 'Afgerond', 'NOK', 'Deelname-status', 'Partijen beoordeeld']],
+          body: flowRows,
+          styles: { fontSize: 8.5, cellPadding: 5 },
+          headStyles: { fillColor: [139, 92, 246], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 0: { cellWidth: 140 } },
+          didParseCell: (data) => {
+            if (data.section === 'body' && data.column.index === 4 && Number(data.cell.raw) > 0) {
+              data.cell.styles.textColor = [220, 38, 38]; data.cell.styles.fontStyle = 'bold';
+            }
+          },
+        });
+        afterTable();
+      }
 
-      doc.save(`ketentest-samenvatting-${todayStamp()}.pdf`);
+      // ── 6. Nog te beoordelen per partij ──────────────────────────
+      heading('Nog te beoordelen per partij');
+      const pendingRows = flows
+        .filter(f => getFlowStatus(f.id) === 'wachten')
+        .map(f => {
+          const involved = betrokkenOrgIdsForFlow(f.id);
+          const pendingOrgIds = involved.filter(oid => !flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid));
+          const pendingNames = pendingOrgIds.map(oid => orgs.find(o => o.id === oid)?.name || 'Onbekend').join(', ');
+          return [f.name, `${pendingOrgIds.length} van ${involved.length}`, pendingNames];
+        })
+        .sort((a, b) => b[1].localeCompare(a[1]));
+
+      if (!pendingRows.length) {
+        emptyLine('Alle flows zijn door alle betrokken partijen beoordeeld.');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Flow', 'Partijen open', 'Welke partijen moeten nog beoordelen']],
+          body: pendingRows,
+          styles: { fontSize: 8.5, cellPadding: 5, overflow: 'linebreak' },
+          headStyles: { fillColor: [217, 119, 6], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 0: { cellWidth: 140 }, 2: { cellWidth: 260 } },
+        });
+        afterTable();
+      }
+
+      // ── 7. Openstaande NOK's ──────────────────────────────────────
+      heading("Openstaande NOK's");
+      const nokRows = results.filter(r => r.result === 'nok').map(r => {
+        const act = activities.find(a => a.id === r.activity_id);
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        if (!act || !scen) return null;
+        return [scen.code, act.description || '—', act.organisations?.name || '—', r.notes || ''];
+      }).filter(Boolean);
+
+      if (!nokRows.length) {
+        emptyLine('Geen NOK\'s gevonden. Alles loopt goed!');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Code', 'Activiteit', 'Organisatie', 'Opmerking']],
+          body: nokRows,
+          styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
+          headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 1: { cellWidth: 170 }, 3: { cellWidth: 170 } },
+        });
+      }
+
+      doc.save(`ketentest-dashboard-${todayStamp()}.pdf`);
     }
 
     function getResult(activityId) {
@@ -451,7 +593,10 @@
       return 'verdeeld';
     }
 
-    function renderDashboard() {
+    // Berekent alle kerncijfers zoals bovenaan het dashboard getoond worden.
+    // Herbruikt door zowel renderDashboard() als de PDF-export, zodat de
+    // cijfers altijd exact overeenkomen.
+    function computeDashboardStats() {
       // Scenario's die bij een volledig afgewezen flow horen ('nee' - alle
       // betrokken organisaties willen 'm niet testen) tellen niet mee als
       // "daadwerkelijk meegenomen". Scenario's zonder flow tellen altijd mee.
@@ -485,6 +630,19 @@
         beoordeeldePartijen += decided;
       });
 
+      const pct = totalActs > 0 ? Math.round((doneActs / totalActs) * 100) : 0;
+
+      return {
+        includedScenarios, includedActivities, includedResults,
+        totalActs, doneActs, nokActs, okScenarios,
+        flowsWachten, totaalPartijen, beoordeeldePartijen, pct,
+      };
+    }
+
+    function renderDashboard() {
+      const stats = computeDashboardStats();
+      const { includedScenarios, totalActs, nokActs, okScenarios, flowsWachten, totaalPartijen, beoordeeldePartijen, pct } = stats;
+
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
       document.getElementById('ds-flows-wachten-sub').textContent =
@@ -494,7 +652,6 @@
       document.getElementById('ds-done').textContent = `${okScenarios} / ${includedScenarios.length}`;
       document.getElementById('ds-nok').textContent = nokActs;
 
-      const pct = totalActs > 0 ? Math.round((doneActs / totalActs) * 100) : 0;
       document.getElementById('ds-pct').textContent = pct + '%';
       document.getElementById('ds-bar').style.width = pct + '%';
 
