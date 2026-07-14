@@ -669,15 +669,8 @@
       btn.textContent = origLabel;
       if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertDeelname'); btn.disabled = false; return; }
 
-      try {
-        const flow = flows.find(x => x.id === flowId);
-        await sb.from('activity_log').insert({
-          user_id: currentUser.id,
-          ketentest_id: activeKetentest?.id,
-          action: 'flow_participation',
-          details: { flow_name: flow?.name || '', wants_to_test: dnChoice, reason: dnChoice ? null : reason },
-        });
-      } catch (e) { console.error('Loggen mislukt:', e); }
+      // Deze handeling wordt automatisch gelogd door een databasetrigger
+      // (zie activity-log-trigger-setup.sql).
 
       closeModal('modalDeelname');
       await loadDeelname();
@@ -693,15 +686,8 @@
       btn.disabled = false; btn.textContent = '↺ Keuze wissen (terug naar "nog geen keuze")';
       if (error) { showAlert('Fout bij wissen: ' + error.message, 'error', 'alertDeelname'); return; }
 
-      try {
-        const flow = flows.find(x => x.id === flowId);
-        await sb.from('activity_log').insert({
-          user_id: currentUser.id,
-          ketentest_id: activeKetentest?.id,
-          action: 'flow_participation_clear',
-          details: { flow_name: flow?.name || '' },
-        });
-      } catch (e) { console.error('Loggen mislukt:', e); }
+      // Deze handeling wordt automatisch gelogd door een databasetrigger
+      // (zie activity-log-trigger-setup.sql).
 
       closeModal('modalDeelname');
       await loadDeelname();
@@ -914,14 +900,8 @@
       btn.textContent = origLabel;
       if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertFocus'); btn.disabled = false; return; }
 
-      try {
-        await sb.from('activity_log').insert({
-          user_id: currentUser.id,
-          ketentest_id: activeKetentest?.id,
-          action: 'flow_participation',
-          details: { flow_name: f.name, wants_to_test: dnFocusChoice, reason: dnFocusChoice ? null : reason },
-        });
-      } catch (e) { console.error('Loggen mislukt:', e); }
+      // Deze handeling wordt automatisch gelogd door een databasetrigger
+      // (zie activity-log-trigger-setup.sql).
 
       await reloadParticipationOnly();
       renderFocus();
@@ -936,14 +916,8 @@
       const { error } = await sb.from('flow_participation').delete().eq('id', p.id);
       if (error) { showAlert('Fout bij wissen: ' + error.message, 'error', 'alertFocus'); return; }
 
-      try {
-        await sb.from('activity_log').insert({
-          user_id: currentUser.id,
-          ketentest_id: activeKetentest?.id,
-          action: 'flow_participation_clear',
-          details: { flow_name: f.name },
-        });
-      } catch (e) { console.error('Loggen mislukt:', e); }
+      // Deze handeling wordt automatisch gelogd door een databasetrigger
+      // (zie activity-log-trigger-setup.sql).
 
       await reloadParticipationOnly();
       renderFocus();
