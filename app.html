@@ -216,7 +216,8 @@
         <button class="btn btn-outline btn-sm" id="f-open" onclick="setFilter('open', this)">Open</button>
         <button class="btn btn-outline btn-sm" id="f-ok" onclick="setFilter('ok', this)">Geslaagd</button>
         <button class="btn btn-outline btn-sm" id="f-nok" onclick="setFilter('nok', this)">Mislukt</button>
-        <button class="btn btn-outline btn-sm" id="f-mine" onclick="setFilter('mine', this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Mijn organisatie</button>
+        <button class="btn btn-outline btn-sm" id="f-mine" onclick="setFilter('mine', this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Mijn organisatie (Acceptant)</button>
+        <button class="btn btn-outline btn-sm" id="f-mine-verantwoordelijk" onclick="setFilter('mine-verantwoordelijk', this)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg> Mijn organisatie (Verantwoordelijk)</button>
         <div id="notifFilterIndicator" style="display:none;">
           <button class="btn btn-sm" id="notifFilterBtn" onclick="setNotifFilter(null)"
             style="font-weight:600; display:flex; align-items:center; gap:6px; border:2px solid currentColor;">
@@ -569,6 +570,9 @@
       else if (activeFilter === 'mine') {
         filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
       }
+      else if (activeFilter === 'mine-verantwoordelijk') {
+        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.organisation_id === myOrgId));
+      }
       // Filter op notificatie
       if (activeNotifFilter) {
         filtered = filtered.filter(s => getScenarioNotificaties(s.id).some(n => n.naam === activeNotifFilter));
@@ -890,24 +894,9 @@
 
       updateStats();
 
-      // Log deze handeling voor het beheerders-logboek (best effort — een
-      // eventuele fout hierbij mag het opslaan van het resultaat zelf niet
-      // verstoren).
-      try {
-        const scenario = scenarios.find(s => s.id === scenarioId);
-        const act = activities.find(a => a.id === activityId);
-        await sb.from('activity_log').insert({
-          user_id: currentUser.id,
-          ketentest_id: activeKetentest?.id,
-          action: 'activity_result',
-          details: {
-            scenario_code: scenario?.code || '',
-            activity_description: act?.description || '',
-            result,
-            notes: notes || null,
-          },
-        });
-      } catch (e) { console.error('Loggen mislukt:', e); }
+      // Deze handeling wordt vanaf nu automatisch gelogd door een
+      // databasetrigger (zie activity-log-trigger-setup.sql) — niet meer
+      // hier vanuit de browser, om dubbele logregels te voorkomen.
 
       // Herrender de volledige activiteitentabel van dit scenario, zodat de
       // blokkade-status van volgende activiteiten ook meteen wordt bijgewerkt.
