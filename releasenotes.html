@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Releasenotes — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css?v=27">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    .rn-item { display:flex; gap:20px; padding:16px 0; border-bottom:1px solid var(--border); }
+    .rn-item:last-child { border-bottom:none; }
+    .rn-date { flex-shrink:0; width:110px; font-size:12px; font-weight:700; color:var(--text-muted); padding-top:2px; }
+    .rn-desc { font-size:14px; color:var(--text); line-height:1.6; }
+  </style>
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+  <style>
+    .topnav { background: #39870c !important; }
+    .topnav-logo { color: #fff !important; }
+    .topnav a { color: rgba(255,255,255,0.85) !important; }
+    .topnav a:hover, .topnav a.active { color: #fff !important; }
+  </style>
+
+  <nav class="topnav">
+    <div class="topnav-logo">
+      <div class="logo-dot"></div>
+      Bemiddelingsregister
+    </div>
+    <a href="dashboard.html">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <div class="nav-dropdown">
+      <a href="app.html">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+        Ketentest <span class="nav-dropdown-caret">▾</span>
+      </a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">Testscenario's</a>
+        <a href="flow.html">Flow</a>
+        <a href="deelname.html">Deelname</a>
+      </div>
+    </div>
+    <div class="nav-dropdown" id="adminLink" style="display:none;">
+      <a href="admin.html">Beheer <span class="nav-dropdown-caret">▾</span></a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=organisations">Organisaties</a>
+        <a href="admin.html?tab=users">Gebruikers</a>
+        <a href="admin.html?tab=notifications">Notificaties</a>
+        <a href="admin.html?tab=ketentests">Ketentesten</a>
+        <a href="admin.html?tab=logboek">Logboek</a>
+      </div>
+    </div>
+    <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700; margin-left:16px;"></span>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7); display:none;" onclick="doLogout()" id="logoutBtn">
+        Uitloggen
+      </button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Releasenotes</h1>
+        <p>Overzicht van wijzigingen aan het ketentestplatform, meest recente eerst.</p>
+      </div>
+    </div>
+
+    <div class="card" style="padding:8px 24px;" id="releaseNotesList">
+      <!-- Nieuwste bovenaan. Elke regel: {datum, beschrijving} -->
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=25"></script>
+  <script>
+    // ============================================================
+    // RELEASENOTES
+    // Statische lijst — er wordt bewust geen database voor gebruikt.
+    // Nieuwe regels worden bovenaan toegevoegd zodra een wijziging is
+    // afgesproken om te loggen.
+    // ============================================================
+    const RELEASE_NOTES = [
+      { datum: '2026-07-14', beschrijving: 'Releasenotes-pagina toegevoegd, bereikbaar via de link "Releasenotes" onderaan de pagina.' },
+      { datum: '2026-07-14', beschrijving: "Testscenario's filteren: het filter 'Mijn organisatie' op de Ketentest-pagina is gesplitst in 'Mijn organisatie (Acceptant)' en 'Mijn organisatie (Verantwoordelijk)'." },
+      { datum: '2026-07-14', beschrijving: 'Flows filteren: dezelfde Acceptant/Verantwoordelijk-filtering toegevoegd aan de Flow-pagina, inclusief het filteren van de flowlijst zelf (met organisatiekeuze voor beheerders).' },
+      { datum: '2026-07-14', beschrijving: 'Deelname omgebouwd naar flow-niveau in plaats van scenarioniveau, met de mogelijkheid om een eerder gemaakte keuze weer te wissen.' },
+      { datum: '2026-07-14', beschrijving: 'Deelname omgebouwd naar een full-page overzicht per flow, met een gescheiden weergave van "nog te beoordelen" en "al beoordeeld".' },
+      { datum: '2026-07-14', beschrijving: 'Notificaties en berichten (automatisch herkende tags) zichtbaar gemaakt per scenario in de Deelname-pagina.' },
+      { datum: '2026-07-14', beschrijving: 'Dashboard-export omgebouwd van CSV naar PDF, en uitgebreid met alle onderdelen van het dashboard (kerncijfers, verdeling activiteiten, NOK-overzicht, voortgang per organisatie/flow, en meer).' },
+    ];
+
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
+    function formatDatum(iso) {
+      const d = new Date(iso + 'T00:00:00');
+      return d.toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+    }
+
+    function renderReleaseNotes() {
+      const el = document.getElementById('releaseNotesList');
+      if (!RELEASE_NOTES.length) {
+        el.innerHTML = '<p class="empty-dash" style="padding:20px 0;">Nog geen releasenotes.</p>';
+        return;
+      }
+      const sorted = [...RELEASE_NOTES].sort((a, b) => b.datum.localeCompare(a.datum));
+      el.innerHTML = sorted.map(r => `
+        <div class="rn-item">
+          <div class="rn-date">${esc(formatDatum(r.datum))}</div>
+          <div class="rn-desc">${esc(r.beschrijving)}</div>
+        </div>`).join('');
+    }
+
+    renderReleaseNotes();
+
+    // Als er een sessie is, tonen we naam/ketentest en het echte
+    // uitlogknopje — maar zonder in te loggen af te dwingen, want deze
+    // pagina is bewust ook zonder sessie te bekijken.
+    (async () => {
+      const user = await getCurrentUser();
+      if (!user) return;
+      const profile = await getUserProfile(user.id);
+      document.getElementById('navUser').textContent = profile?.name || user.email;
+      document.getElementById('logoutBtn').style.display = '';
+      if (profile?.role === 'admin') {
+        document.getElementById('adminLink').style.display = '';
+        const navScenariosLink = document.getElementById('navScenariosLink');
+        if (navScenariosLink) navScenariosLink.style.display = '';
+      }
+      await renderActiveKetentestLabel();
+    })();
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+
+  <!-- ZIN Footer -->
+  <footer style="background:#39870c; margin-top:48px; padding:40px 24px;">
+    <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr 1fr; gap:32px; align-items:start;">
+      <div>
+        <p style="font-size:20px; font-style:italic; color:#fff; font-weight:400; line-height:1.5;">Ketentest platform voor het<br>Bemiddelingsregister</p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Service</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Zorginstituut Nederland<br>
+          <a href="https://www.istandaarden.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">iStandaarden</a><br>
+          <a href="https://www.zinl.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">zinl.nl</a>
+        </p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Over deze tool</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Ketentest Bemiddelingsregister<br>
+          Versie 1.0<br>
+          <a href="releasenotes.html" style="color:rgba(255,255,255,0.85); text-decoration:none;">Releasenotes</a>
+        </p>
+      </div>
+    </div>
+    <div style="max-width:1100px; margin:24px auto 0; padding-top:16px; border-top:1px solid rgba(255,255,255,0.2);">
+      <p style="font-size:12px; color:rgba(255,255,255,0.6);">© Zorginstituut Nederland</p>
+    </div>
+  </footer>
+
+</body>
+</html>

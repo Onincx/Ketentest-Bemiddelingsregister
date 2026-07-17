@@ -66,8 +66,47 @@
         Inloggen
       </button>
 
-      <p style="font-size:13px; color:var(--text-muted); margin-top:20px; text-align:center;">
+      <p style="font-size:13px; text-align:center; margin-top:16px;">
+        <a href="#" onclick="showForgotPassword(); return false;" style="color:var(--brand); text-decoration:none; font-weight:500;">Wachtwoord vergeten?</a>
+      </p>
+
+      <p style="font-size:13px; color:var(--text-muted); margin-top:12px; text-align:center;">
         Geen account? Je ontvangt een uitnodiging van de beheerder.
+      </p>
+    </div>
+
+    <!-- Wachtwoord vergeten: zelf een reset-link aanvragen -->
+    <div class="login-card" id="forgotPasswordCard" style="display:none;">
+      <div class="login-logo">
+        <div class="login-logo-icon">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10 2L3 6V10C3 13.87 6.13 17.5 10 18.5C13.87 17.5 17 13.87 17 10V6L10 2Z" fill="white" fill-opacity="0.9"/>
+            <path d="M7 10L9 12L13 8" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <div class="login-logo-text">
+          <h2>Bemiddelingsregister</h2>
+          <p>Ketentest platform</p>
+        </div>
+      </div>
+
+      <h1 style="font-size:20px; margin-bottom:6px;">Wachtwoord vergeten</h1>
+      <p style="color:var(--text-muted); font-size:14px; margin-bottom:24px;">Vul je e-mailadres in. Is dit adres bij ons bekend, dan ontvang je een e-mail met een link om een nieuw wachtwoord in te stellen.</p>
+
+      <div id="forgotAlert" class="alert alert-error" style="display:none;"></div>
+      <div id="forgotSuccess" class="alert alert-success" style="display:none;"></div>
+
+      <div class="form-group" id="forgotEmailGroup">
+        <label for="forgotEmail">E-mailadres</label>
+        <input type="email" id="forgotEmail" placeholder="naam@organisatie.nl" autocomplete="email">
+      </div>
+
+      <button class="btn btn-primary" id="forgotBtn" onclick="sendResetLink()" style="width:100%; justify-content:center; padding:11px;">
+        Stuur resetlink
+      </button>
+
+      <p style="font-size:13px; text-align:center; margin-top:16px;">
+        <a href="#" onclick="showLogin(); return false;" style="color:var(--brand); text-decoration:none; font-weight:500;">← Terug naar inloggen</a>
       </p>
     </div>
 
@@ -190,6 +229,55 @@
       await sb.auth.signOut();
       window.location.reload();
     }
+
+    // ── Wachtwoord vergeten ─────────────────────────────────────
+    function showForgotPassword() {
+      document.getElementById('loginCard').style.display = 'none';
+      document.getElementById('forgotPasswordCard').style.display = '';
+      document.getElementById('forgotEmail').value = document.getElementById('email').value || '';
+      document.getElementById('forgotAlert').style.display = 'none';
+      document.getElementById('forgotSuccess').style.display = 'none';
+      document.getElementById('forgotEmailGroup').style.display = '';
+      document.getElementById('forgotBtn').style.display = '';
+    }
+
+    function showLogin() {
+      document.getElementById('forgotPasswordCard').style.display = 'none';
+      document.getElementById('loginCard').style.display = '';
+    }
+
+    async function sendResetLink() {
+      const email = document.getElementById('forgotEmail').value.trim();
+      document.getElementById('forgotAlert').style.display = 'none';
+
+      if (!email) {
+        showAlert('Vul je e-mailadres in.', 'error', 'forgotAlert');
+        return;
+      }
+
+      const btn = document.getElementById('forgotBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Bezig...';
+
+      const siteUrl = window.location.origin + window.location.pathname.replace('index.html', '');
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: siteUrl + 'invite.html' });
+
+      btn.disabled = false;
+      btn.textContent = 'Stuur resetlink';
+
+      // Bewust dezelfde melding tonen ongeacht of het e-mailadres bestaat
+      // (voorkomt dat iemand kan aftasten welke e-mailadressen geregistreerd
+      // staan). Alleen bij een echte verzendfout (bijv. geen verbinding)
+      // tonen we een foutmelding.
+      if (error && error.status && error.status >= 500) {
+        showAlert('Er ging iets mis bij het versturen. Probeer het later opnieuw.', 'error', 'forgotAlert');
+        return;
+      }
+
+      document.getElementById('forgotEmailGroup').style.display = 'none';
+      document.getElementById('forgotBtn').style.display = 'none';
+      showAlert('Als dit e-mailadres bij ons bekend is, ontvang je zo een e-mail met een link om een nieuw wachtwoord in te stellen.', 'success', 'forgotSuccess');
+    }
   </script>
 
   <!-- ZIN Footer -->
@@ -210,7 +298,8 @@
         <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Over deze tool</p>
         <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
           Ketentest Bemiddelingsregister<br>
-          Versie 1.0
+          Versie 1.0<br>
+          <a href="releasenotes.html" style="color:rgba(255,255,255,0.85); text-decoration:none;">Releasenotes</a>
         </p>
       </div>
     </div>

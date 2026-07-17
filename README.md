@@ -146,6 +146,16 @@ Beheerders kunnen nu bij het aanmaken van een gebruiker zelf een **tijdelijk wac
 
 **Belangrijk:** wil je dat gebruikers meteen met hun tijdelijke wachtwoord kunnen inloggen (zonder eerst een bevestigingsmail te hoeven openen), zorg dan dat in Supabase onder **Authentication → Providers → Email** de optie **"Confirm email"** staat **uitgeschakeld**. Staat die optie aan, dan moet de gebruiker eerst een bevestigingslink volgen voordat inloggen lukt — en die e-mail wordt in deze flow niet meer verstuurd.
 
+---
+
+## Wachtwoord vergeten (nieuw)
+
+Op het inlogscherm staat nu een link **"Wachtwoord vergeten?"**. Een gebruiker die zijn/haar eigen wachtwoord kwijt is, kan zelf een e-mailadres invullen en krijgt (als dat adres bekend is) een e-mail met een link om een nieuw wachtwoord in te stellen — zonder dat de beheerder hoeft in te grijpen. Dit hergebruikt dezelfde `invite.html`-pagina als de nieuwe-gebruiker-flow, en dezelfde melding wordt getoond ongeacht of het e-mailadres wel of niet bestaat (om te voorkomen dat iemand kan aftasten welke e-mailadressen geregistreerd staan). Geen SQL-wijziging nodig.
+
+**Let op:** dit gebruikt Supabase's ingebouwde `resetPasswordForEmail`, wat een e-mail verstuurt — controleer dus of e-mailverzending in je Supabase-project is ingesteld (SMTP), anders komt de link niet aan.
+
+---
+
 ## Ketentest kiezen bij het inloggen + toegang per gebruiker (nieuw)
 
 De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het **inlogscherm**, en beheerders kunnen nu per gebruiker bepalen welke ketentest(en) die gebruiker mag zien:
@@ -164,8 +174,54 @@ Drie aanvullingen om de ketentestmonitor gecontroleerd te kunnen vrijgeven:
 
 1. **Laatste login per gebruiker** — voer eenmalig `users-last-login-setup.sql` uit. Dit voegt een beveiligde functie toe die (alleen voor beheerders) het laatste inlogmoment per gebruiker ophaalt uit Supabase Auth. Zichtbaar als nieuwe kolom bij **Beheer → Gebruikers**.
 2. **Startmoment per ketentest** — voer eenmalig `ketentest-start-setup.sql` uit. Bij **Beheer → Ketentesten** kun je nu per ketentest een start-datum/tijd instellen. Zolang dat moment niet is bereikt, kunnen gewone gebruikers (en managers) geen activiteiten op OK/NOK zetten — ze zien in plaats daarvan wanneer de test start. Beheerders zijn hiervan altijd uitgezonderd, zodat je zelf kunt voorbereiden/testen. Laat je dit veld leeg, dan geldt (zoals voorheen) geen enkele beperking.
-   - **Let op:** dit is een gebruiksvriendelijkheids-maatregel aan de voorkant (client-side), geen harde beveiligingsgrens — een technisch onderlegde gebruiker die de pagina handmatig aanpast, zou de knoppen alsnog kunnen activeren. Wil je dit ook hard afdwingen in de database zelf (via een trigger), laat het weten.
+   - Voer daarnaast `ketentest-start-trigger-setup.sql` uit: dit maakt de beperking ook **databasezijdig** hard (via een trigger op `activity_results`), zodat ze niet meer te omzeilen is door de pagina te manipuleren. Zie de sectie hieronder voor details.
 3. **Logboek** — voer eenmalig `activity-log-setup.sql` uit. Onder **Beheer → Logboek** zie je de laatste 300 handelingen binnen de actieve ketentest: wie een resultaat (OK/NOK) heeft gezet, en wie een deelname-keuze heeft gemaakt of gewist, met tijdstip en details. Filterbaar per type handeling.
+
+---
+
+## Startmoment ook databasezijdig afgedwongen (nieuw)
+
+Bovenop de client-side blokkade in `app.html` (die blijft ongewijzigd bestaan voor een nette gebruikerservaring) voegt `ketentest-start-trigger-setup.sql` een **databasetrigger** toe op `activity_results`. Die weigert het aanmaken/wijzigen van een resultaat zolang `ketentests.start_op` nog niet bereikt is — ook als iemand de website zelf zou proberen te manipuleren. Beheerders zijn hiervan altijd uitgezonderd. De foutmelding van de trigger wordt in `app.html` netjes getoond (net zoals de bestaande "vorige activiteit moet eerst op OK"-regel dat al deed).
+
+Voer hiervoor eenmalig `ketentest-start-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `ketentest-start-setup.sql` al eerder is gedraaid).
+
+---
+
+## Logboek databasezijdig vastgelegd (nieuw)
+
+Het logboek (Beheer → Logboek) werd voorheen vanuit de browser zelf weggeschreven, in een try/catch — bij een verbindingsprobleem werd een handeling dan stilzwijgend niet gelogd. `activity-log-trigger-setup.sql` voegt triggers toe op `activity_results` en `flow_participation` die dit automatisch en betrouwbaar doen, ongeacht wat de browser doet. De client-side logging-code in `app.html` en `deelname.html` is verwijderd om dubbele logregels te voorkomen.
+
+Voer hiervoor eenmalig `activity-log-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `activity-log-setup.sql` al eerder is gedraaid). Het Logboek-scherm zelf blijft er identiek uitzien.
+
+---
+
+## Zoeken in de grote overzichten (nieuw)
+
+Bij **Beheer → Gebruikers**, **Beheer → Organisaties** en **Beheer → Testscenario's** staat nu een zoekveld bovenaan de lijst. Typen filtert direct (geen knop nodig):
+- Gebruikers: op naam, e-mail of organisatie
+- Organisaties: op naam of code
+- Testscenario's: op code of titel — dit doorzoekt alle tabbladen (prefixes) tegelijk, niet alleen het actieve tabblad
+
+Dit is puur client-side (geen database-wijziging nodig) en filtert de al geladen lijst.
+
+---
+
+## Voortgang exporteren als PDF (nieuw)
+
+Op het Dashboard staan nu twee exportknoppen, naast "Vernieuwen":
+
+- **Exporteren (dashboard, PDF)** — bevat alles wat op het dashboard staat, in dezelfde volgorde: kerncijfers (incl. totale voortgang), verdeling activiteiten (OK/NOK/Open), scenario's met NOK's, voortgang per organisatie, voortgang per flow, nog te beoordelen per partij, en openstaande NOK's. Geschikt voor een compleet management-overzicht in één document.
+- **Exporteren (detail, PDF)** — één rij per activiteit, met alle beschikbare context: flow, scenario (code + titel), stapnummer, activiteit, verwacht resultaat, verantwoordelijke organisatie, acceptant, resultaat, opmerking, en wie het resultaat wanneer heeft ingevuld. Geschikt als volledig audit-trail voor stakeholders.
+
+Beide genereren direct een opgemaakt `.pdf`-bestand (met datum in de bestandsnaam) via jsPDF + de autoTable-plugin — geen los installatiestap nodig, dit werkt gewoon in de browser. Lange overzichten (bijv. bij veel organisaties of NOK's) verdelen zich automatisch over meerdere pagina's. Geen SQL-wijziging nodig — dit gebruikt alleen de data die het dashboard toch al inlaadt.
+
+---
+
+## Releasenotes (nieuw)
+
+Onderaan elke pagina (in de groene voettekst, bij "Over deze tool") staat nu een link **"Releasenotes"** naar een nieuwe pagina `releasenotes.html` — een chronologisch overzicht (nieuwste eerst) van wijzigingen aan het platform, met datum en korte beschrijving per regel.
+
+Dit is bewust een **statische lijst** (geen database), rechtstreeks bijgehouden in `releasenotes.html` zelf. Vanaf nu wordt bij elke wijziging aan de tool expliciet gevraagd of die in de releasenotes moet worden opgenomen; bevestig je dat, dan komt er een nieuwe regel bovenaan de lijst bij. De pagina is ook te bekijken zonder ingelogd te zijn.
 
 ---
 
@@ -194,7 +250,9 @@ Drie aanvullingen om de ketentestmonitor gecontroleerd te kunnen vrijgeven:
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
+├── ketentest-start-trigger-setup.sql Database uitbreiding: startmoment ook hard afgedwongen (trigger)
 ├── activity-log-setup.sql     Database uitbreiding: logboek van gebruikershandelingen
+├── activity-log-trigger-setup.sql Database uitbreiding: logboek databasezijdig (triggers)
 └── README.md             Deze handleiding
 ```
 
