@@ -381,11 +381,12 @@
         sb.from('activity_results').select('*'),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('created_at'),
         sb.from('organisations').select('id,name,code'),
-        sb.from('flow_nodes').select('scenario_id').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
       ]);
       activities = a.data || [];
       const actIds = new Set(activities.map(x => x.id));
       results = (r.data || []).filter(x => actIds.has(x.activity_id));
+      allFlowNodesRaw = used.data || [];
       const flowsLoadFailed = !!fl.error;
       if (flowsLoadFailed) console.error('Kon flows niet laden:', fl.error);
       flows = fl.data || [];
@@ -507,17 +508,40 @@
     function saveActiveFlowId() { if (activeFlowId) localStorage.setItem(flowStorageKey(), activeFlowId); }
     function loadSavedFlowId() { return localStorage.getItem(flowStorageKey()); }
 
+    // Bepaalt of een flow minimaal 1 activiteit heeft die matcht met het
+    // actieve organisatiefilter (Acceptant/Verantwoordelijk).
+    function flowMatchesOrgFilter(flowId) {
+      if (orgFilterMode === 'all' || !orgFilterOrgId) return true;
+      const sids = flowScenarioIdsAll(flowId);
+      const acts = activities.filter(a => sids.includes(a.scenario_id));
+      return orgFilterMode === 'acceptant'
+        ? acts.some(a => a.acceptant_org_id === orgFilterOrgId)
+        : acts.some(a => a.organisation_id === orgFilterOrgId);
+    }
+
+    // Alle scenario-id's die bij een flow horen (ongeacht welke flow nu
+    // actief/geladen is op het canvas) — nodig om de flowlijst te filteren
+    // zonder eerst naar elke flow te hoeven wisselen.
+    let allFlowNodesRaw = [];
+    function flowScenarioIdsAll(flowId) {
+      return allFlowNodesRaw.filter(n => n.flow_id === flowId).map(n => n.scenario_id);
+    }
+
     function renderFlowList() {
       const el = document.getElementById('flowList');
       const label = document.getElementById('activeFlowLabel');
       const activeFlow = flows.find(f => f.id === activeFlowId);
       label.textContent = activeFlow ? activeFlow.name : (flows.length ? 'Kies een flow' : 'Geen flow');
 
+      const visibleFlows = flows.filter(f => flowMatchesOrgFilter(f.id));
+
       let html = '';
       if (!flows.length) {
         html += `<p class="flow-empty-hint">Nog geen flows voor deze ketentest.${window.isFlowAdmin ? ' Maak er hieronder één aan.' : ''}</p>`;
+      } else if (!visibleFlows.length) {
+        html += `<p class="flow-empty-hint">Geen flows gevonden voor dit organisatiefilter.</p>`;
       } else {
-        html += flows.map(f => `
+        html += visibleFlows.map(f => `
           <div class="flow-item ${f.id === activeFlowId ? 'active' : ''}" onclick="selectFlow('${f.id}')">
             <span class="flow-item-name" title="${esc(f.name)}">${esc(f.name)}</span>
             ${window.isFlowAdmin ? `
@@ -612,6 +636,7 @@
       await sb.from('flows').delete().eq('id', id);
 
       (nodesInFlow || []).forEach(n => allUsedScenarioIds.delete(n.scenario_id));
+      allFlowNodesRaw = allFlowNodesRaw.filter(n => n.flow_id !== id);
       flows = flows.filter(x => x.id !== id);
 
       if (activeFlowId === id) {
@@ -691,7 +716,7 @@
         select.style.display = '';
         select.innerHTML = '<option value="">Kies organisatie...</option>' +
           Object.entries(orgs).map(([id, naam]) => `<option value="${id}">${naam}</option>`).join('');
-        select.onchange = () => { orgFilterOrgId = select.value || null; renderNodes(); };
+        select.onchange = () => { orgFilterOrgId = select.value || null; renderNodes(); renderFlowList(); };
       } else {
         select.style.display = 'none';
         orgFilterOrgId = currentProfile?.organisation_id || null;
@@ -707,6 +732,7 @@
       btn.classList.remove('btn-outline');
       btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
       renderNodes();
+      renderFlowList();
     }
 
     // Geeft de extra classNames terug die het dim/markeer-effect regelen
@@ -975,7 +1001,9 @@
       if (error) { alert('Fout: '+error.message); return; }
       nodePositions[sid] = {x, y, dbId: data.id};
       allUsedScenarioIds.add(sid);
+      allFlowNodesRaw.push({ scenario_id: sid, flow_id: activeFlowId });
       renderNodes();
+      renderFlowList();
       refreshAddScenarioModalIfOpen();
     }
 
@@ -989,9 +1017,11 @@
       await sb.from('flow_nodes').delete().eq('id',n.dbId);
       delete nodePositions[sid];
       allUsedScenarioIds.delete(sid);
+      allFlowNodesRaw = allFlowNodesRaw.filter(r => r.scenario_id !== sid);
       document.getElementById('fn-'+sid)?.remove();
       if (selectedNodeId === sid) { selectedNodeId = null; renderDetails(); }
       renderEdges();
+      renderFlowList();
       refreshAddScenarioModalIfOpen();
     }
 
@@ -1008,10 +1038,11 @@
       await sb.from('flow_edges').delete().eq('flow_id', activeFlowId);
       await sb.from('flow_nodes').delete().eq('flow_id', activeFlowId);
       Object.keys(nodePositions).forEach(sid => allUsedScenarioIds.delete(sid));
+      allFlowNodesRaw = allFlowNodesRaw.filter(n => n.flow_id !== activeFlowId);
       nodePositions = {}; edges = [];
       selectedNodeId = null;
       document.getElementById('nodes').innerHTML = '';
-      renderEdges(); refreshAddScenarioModalIfOpen(); renderDetails();
+      renderEdges(); renderFlowList(); refreshAddScenarioModalIfOpen(); renderDetails();
     }
 
     // ── Details (onder het canvas, i.p.v. los popup-kaartje) ──
