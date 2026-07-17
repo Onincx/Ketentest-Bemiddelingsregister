@@ -80,6 +80,8 @@
     .flow-node:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.14), 0 0 0 2px #39870c; z-index: 6; }
     .flow-node.dragging { cursor: grabbing; box-shadow: 0 12px 32px rgba(0,0,0,0.18), 0 0 0 2px #39870c; z-index: 20; }
     .flow-node.selected { box-shadow: 0 6px 20px rgba(37,99,168,0.25), 0 0 0 3px #2563a8 !important; z-index: 7; }
+    .flow-node.org-filter-dim { opacity: 0.25; }
+    .flow-node.org-filter-match { box-shadow: 0 0 0 3px #2563a8, 0 4px 14px rgba(37,99,168,0.25) !important; z-index: 6; }
 
     /* Start node - alleen breder en iets prominenter, zelfde hoogte */
     .flow-node.start-node { width: 260px; box-shadow: 0 4px 16px rgba(57,135,12,0.20), 0 0 0 3px #39870c; }
@@ -209,6 +211,12 @@
     <span style="font-size:12px; color:#6b7280; margin-left:8px;" id="connectHintText">
       Klik op <strong>Verbinden</strong> op een kaartje om een pijl te tekenen naar een ander kaartje
     </span>
+    <div style="margin-left:auto; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+      <select id="orgFilterSelect" style="display:none; font-size:12px; padding:5px 8px; border:1px solid #e5e7eb; border-radius:6px; color:#374151;"></select>
+      <button class="btn btn-sm" id="of-all" onclick="setOrgFilterMode('all', this)" style="background:#2563a8; color:#fff; border-color:#2563a8;">Alle</button>
+      <button class="btn btn-sm btn-outline" id="of-acceptant" onclick="setOrgFilterMode('acceptant', this)">Acceptant</button>
+      <button class="btn btn-sm btn-outline" id="of-verantwoordelijk" onclick="setOrgFilterMode('verantwoordelijk', this)">Verantwoordelijk</button>
+    </div>
   </div>
 
   <!-- Canvas (compact, ca. 2 kaartjes hoog) -->
@@ -352,6 +360,7 @@
 
       await loadKetentestData();
       await loadFlowContent();
+      initOrgFilterUI();
       applyLayout();
       renderFlowList();
       renderAll();
@@ -669,6 +678,48 @@
       renderEdges();
     }
 
+    // ── Organisatiefilter: Acceptant / Verantwoordelijk ─────────
+    // Gewone gebruikers filteren automatisch op de eigen organisatie.
+    // Beheerders kiezen zelf een organisatie via het dropdown-menu, zodat
+    // zij hetzelfde kunnen zien namens elke organisatie.
+    let orgFilterMode = 'all'; // 'all' | 'acceptant' | 'verantwoordelijk'
+    let orgFilterOrgId = null;
+
+    function initOrgFilterUI() {
+      const select = document.getElementById('orgFilterSelect');
+      if (window.isFlowAdmin) {
+        select.style.display = '';
+        select.innerHTML = '<option value="">Kies organisatie...</option>' +
+          Object.entries(orgs).map(([id, naam]) => `<option value="${id}">${naam}</option>`).join('');
+        select.onchange = () => { orgFilterOrgId = select.value || null; renderNodes(); };
+      } else {
+        select.style.display = 'none';
+        orgFilterOrgId = currentProfile?.organisation_id || null;
+      }
+    }
+
+    function setOrgFilterMode(mode, btn) {
+      orgFilterMode = mode;
+      document.querySelectorAll('#of-all, #of-acceptant, #of-verantwoordelijk').forEach(b => {
+        b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+        b.classList.add('btn-outline');
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      renderNodes();
+    }
+
+    // Geeft de extra classNames terug die het dim/markeer-effect regelen
+    // voor een kaartje, op basis van het actieve organisatiefilter.
+    function getOrgFilterClass(sid) {
+      if (orgFilterMode === 'all' || !orgFilterOrgId) return '';
+      const acts = activities.filter(a => a.scenario_id === sid);
+      const isMatch = orgFilterMode === 'acceptant'
+        ? acts.some(a => a.acceptant_org_id === orgFilterOrgId)
+        : acts.some(a => a.organisation_id === orgFilterOrgId);
+      return isMatch ? ' org-filter-match' : ' org-filter-dim';
+    }
+
     function renderNodes() {
       const container = document.getElementById('nodes');
       // Verwijder niet meer aanwezige nodes (bijv. na wisselen van flow)
@@ -691,7 +742,8 @@
         const pct = getPct(sid);
         const acts = activities.filter(a => a.scenario_id === sid);
         const isStart = pos.isStart || false;
-        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}${sid === selectedNodeId ? ' selected' : ''}`;
+        const orgFilterClass = getOrgFilterClass(sid);
+        el.className = `flow-node s-${status}${isStart ? ' start-node' : ''}${sid === selectedNodeId ? ' selected' : ''}${orgFilterClass}`;
         el.dataset.id = sid;
         el.style.left = pos.x + 'px';
         el.style.top  = pos.y + 'px';
