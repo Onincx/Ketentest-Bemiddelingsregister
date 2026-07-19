@@ -1783,7 +1783,7 @@
               <span style="font-size:12px; font-weight:600; color:var(--text-muted); min-width:60px">${s.code}</span>
               <strong style="font-size:15px">${s.title}</strong>
               <span style="font-size:12px; color:var(--text-muted)">${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
-              ${scenarioFlowMap[s.id] ? `<span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;" title="Opgenomen in deze flow">🔗 ${flowLabel(scenarioFlowMap[s.id])}</span>` : ''}
+              ${scenarioFlowMap[s.id] ? `<span class="badge" style="background:#166534; color:#fff; font-size:11px; font-weight:700;" title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 ${scenarioFlowMap[s.id].nummer}</span>` : ''}
             </div>
             <div style="display:flex; gap:6px" onclick="event.stopPropagation()">
               <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Activiteit</button>
