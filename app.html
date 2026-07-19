@@ -105,6 +105,8 @@
     .sc-row-code { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; min-width: 76px; flex-shrink: 0; }
     .sc-row-title { font-size: 13px; font-weight: 600; color: var(--text); flex: 1 1 220px; min-width: 160px; line-height: 1.4; }
     .sc-row-bar-wrap { width: 90px; flex-shrink: 0; }
+    .sc-row-flow { width: 108px; flex-shrink: 0; text-align: center; }
+    .sc-row-flow span { display:inline-flex; align-items:center; gap:4px; background:#dcfce7; color:#166534; font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; white-space:nowrap; }
     .sc-row-pills { display: flex; flex-wrap: wrap; gap: 4px; flex-shrink: 0; max-width: 320px; justify-content: flex-end; }
     .tile-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; gap: 1px; }
     .tile-bar-ok { background: #16a34a; border-radius: 99px; transition: width 0.3s; }
@@ -618,7 +620,7 @@
           <span class="sc-row-code" style="color:${tileColor.bg};">${s.code}</span>
           <span class="sc-row-title">${s.title}</span>
           <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
-          ${scenarioFlowMap[s.id] ? `<span style="display:inline-flex; align-items:center; gap:5px; background:#166534; color:#fff; font-size:11px; font-weight:700; border-radius:6px; padding:5px 11px; white-space:nowrap; flex-shrink:0;" title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</span>` : ''}
+          <div class="sc-row-flow">${scenarioFlowMap[s.id] ? `<span title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</span>` : ''}</div>
           <div class="sc-row-bar-wrap">
             <div class="tile-bar">
               ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}
