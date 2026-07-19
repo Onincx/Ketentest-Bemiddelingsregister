@@ -277,7 +277,7 @@
         <input type="hidden" id="editFlowId">
         <div class="form-group">
           <label>Nummer <span style="color:var(--danger);">*</span> <span style="color:var(--text-muted); font-weight:400;">(verplicht, uniek binnen deze ketentest)</span></label>
-          <input type="number" id="editFlowNummer" min="1" step="1" placeholder="bijv. 1" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+          <input type="text" id="editFlowNummer" placeholder="bijv. 1, F1 of 3A" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
         </div>
         <div class="form-group" style="margin-top:12px;">
           <label>Naam</label>
@@ -544,9 +544,10 @@
       const leftover = allNodes.map(n => n.scenario_id).filter(sid => !assigned.has(sid));
       if (leftover.length) groups.push({ name: 'Overige kaartjes', ids: leftover });
 
-      let volgendNummer = flows.length ? Math.max(...flows.map(f => f.nummer || 0)) + 1 : 1;
+      const bestaandeNumeriek = flows.map(f => f.nummer).filter(n => n != null && /^\d+$/.test(n)).map(Number);
+      let volgendNummer = bestaandeNumeriek.length ? Math.max(...bestaandeNumeriek) + 1 : 1;
       for (const g of groups) {
-        const { data: flowRow, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: g.name, nummer: volgendNummer }).select().single();
+        const { data: flowRow, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: g.name, nummer: String(volgendNummer) }).select().single();
         if (error || !flowRow) { console.error('Migratie: aanmaken flow mislukt', error); continue; }
         volgendNummer++;
         const idSet = new Set(g.ids);
@@ -667,8 +668,23 @@
       if (!window.isFlowAdmin) return;
       const name = prompt('Naam van de nieuwe flow (bijv. "Aanvraagproces gemeente"):');
       if (!name || !name.trim()) return;
-      const nextNummer = flows.length ? Math.max(...flows.map(f => f.nummer || 0)) + 1 : 1;
-      const { data, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: name.trim(), nummer: nextNummer }).select().single();
+
+      // Suggestie: als alle bestaande nummers puur numeriek zijn, stel het
+      // volgende getal voor. Zijn er alfanumerieke nummers (of nog geen
+      // flows), dan laten we het veld leeg — de beheerder vult zelf iets in.
+      const bestaandeNummers = flows.map(f => f.nummer).filter(n => n != null);
+      const allemaalNumeriek = bestaandeNummers.length > 0 && bestaandeNummers.every(n => /^\d+$/.test(n));
+      const suggestie = allemaalNumeriek ? String(Math.max(...bestaandeNummers.map(Number)) + 1) : '';
+
+      const nummer = prompt('Nummer van de nieuwe flow (verplicht, uniek binnen deze ketentest — mag ook alfanumeriek zijn, bijv. "F1" of "3A"):', suggestie);
+      if (!nummer || !nummer.trim()) { alert('Een nummer is verplicht om een flow aan te maken.'); return; }
+      const trimmedNummer = nummer.trim();
+      if (flows.some(f => f.nummer === trimmedNummer)) {
+        alert(`Nummer "${trimmedNummer}" is al in gebruik bij een andere flow. Kies een uniek nummer.`);
+        return;
+      }
+
+      const { data, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: name.trim(), nummer: trimmedNummer }).select().single();
       if (error) { alert('Fout bij aanmaken flow: ' + error.message); return; }
       flows.push(data);
       await selectFlow(data.id);
@@ -688,19 +704,18 @@
 
     async function saveFlowEdit() {
       const id = document.getElementById('editFlowId').value;
-      const nummerRaw = document.getElementById('editFlowNummer').value;
+      const nummer = document.getElementById('editFlowNummer').value.trim();
       const name = document.getElementById('editFlowName').value.trim();
       const doel = document.getElementById('editFlowDoel').value.trim();
 
       if (!name) { showAlert('Geef de flow een naam.', 'error', 'alertEditFlow'); return; }
-      const nummer = parseInt(nummerRaw, 10);
-      if (!nummerRaw || isNaN(nummer) || nummer < 1) {
-        showAlert('Vul een geldig nummer in (verplicht, minimaal 1).', 'error', 'alertEditFlow');
+      if (!nummer) {
+        showAlert('Vul een nummer in (verplicht — mag ook alfanumeriek zijn, bijv. "F1" of "3A").', 'error', 'alertEditFlow');
         return;
       }
       const dubbel = flows.some(f => f.id !== id && f.nummer === nummer);
       if (dubbel) {
-        showAlert(`Nummer ${nummer} is al in gebruik bij een andere flow. Kies een uniek nummer.`, 'error', 'alertEditFlow');
+        showAlert(`Nummer "${nummer}" is al in gebruik bij een andere flow. Kies een uniek nummer.`, 'error', 'alertEditFlow');
         return;
       }
 
