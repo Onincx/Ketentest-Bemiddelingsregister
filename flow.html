@@ -296,6 +296,23 @@
     </div>
   </div>
 
+  <!-- Modal: scenario toevoegen aan de actieve flow -->
+  <div class="modal-overlay" id="modalAddScenario" style="display:none;" onclick="closeModalOverlay(event,'modalAddScenario')">
+    <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Scenario toevoegen aan <span id="addScenarioFlowName">deze flow</span></h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalAddScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="text" id="addScenarioSearch" placeholder="Zoek op code of titel..." oninput="renderAddScenarioList()" style="width:100%; margin-bottom:12px; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+        <div id="addScenarioList" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:5px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="closeModal('modalAddScenario')">Klaar</button>
+      </div>
+    </div>
+  </div>
+
 
   <!-- Connect hint -->
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>

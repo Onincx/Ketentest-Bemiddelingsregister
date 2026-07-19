@@ -230,8 +230,17 @@ Dit is bewust een **statische lijst** (geen database), rechtstreeks bijgehouden 
 Elke flow heeft nu een **verplicht, uniek nummer** (uniek binnen de ketentest — twee ketentesten mogen wel dezelfde nummers gebruiken), zodat flows voor alle testende partijen makkelijker te herkennen zijn.
 
 1. Voer eenmalig `flows-nummer-setup.sql` uit in de Supabase SQL Editor. Dit voegt de kolom `nummer` toe én nummert bestaande flows automatisch (op naam, per ketentest, beginnend bij 1) — er hoeft dus niets handmatig ingevuld te worden voordat het veld verplicht wordt.
+2. Voer daarna ook `flows-nummer-alfanumeriek-setup.sql` uit: dit maakt het nummer **alfanumeriek** (bijv. "F1" of "3A" mag ook, niet alleen een geheel getal).
 2. Bij **Ketentest → Flow** kan een beheerder het nummer aanpassen via het ✏️-icoon (met controle op uniekheid). Nieuwe flows krijgen automatisch het eerstvolgende beschikbare nummer.
 3. Het nummer staat voortaan vóór de naam, overal waar de flownaam wordt getoond: de Flow-pagina zelf, Deelname, het Dashboard (schermen én PDF-exports), en de gastweergave.
+
+---
+
+## Flow zichtbaar bij testscenario (nieuw) + bugfix Scenario toevoegen
+
+Bij **Beheer → Testscenario's** zie je nu, naast het aantal activiteiten, een badge 🔗 met de flow (nummer + naam) waarin het scenario is opgenomen — voor scenario's die nog bij geen enkele flow horen, wordt niets getoond. Geen SQL-wijziging nodig.
+
+Daarnaast is een bug uit een eerdere aanpassing hersteld: de modal "Scenario toevoegen" op de Flow-pagina was per ongeluk verwijderd toen de "Flow bewerken"-modal werd toegevoegd, waardoor de knop niets meer deed. Dit werkt nu weer.
 
 ---
 
@@ -257,6 +266,7 @@ Elke flow heeft nu een **verplicht, uniek nummer** (uniek binnen de ketentest �
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
 ├── flows-nummer-setup.sql Database uitbreiding: verplicht, uniek nummer per flow
+├── flows-nummer-alfanumeriek-setup.sql Database uitbreiding: flownummer alfanumeriek maken
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker

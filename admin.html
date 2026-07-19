@@ -712,6 +712,7 @@
   <script src="js/supabase-config.js?v=26"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
+    let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
     let ketentests = [], activeKetentest = null;
 
     // Notificaties worden niet meer hardgecodeerd, maar per ketentest beheerd
@@ -757,8 +758,22 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
+    }
+
+    async function loadScenarioFlowMap() {
+      scenarioFlowMap = {};
+      if (!activeKetentest) return;
+      const [{ data: flowsData }, { data: nodesData }] = await Promise.all([
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
+      ]);
+      const flowById = {};
+      (flowsData || []).forEach(f => flowById[f.id] = f);
+      (nodesData || []).forEach(n => {
+        if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id];
+      });
     }
 
     async function loadKetentestsList() {
@@ -1768,6 +1783,7 @@
               <span style="font-size:12px; font-weight:600; color:var(--text-muted); min-width:60px">${s.code}</span>
               <strong style="font-size:15px">${s.title}</strong>
               <span style="font-size:12px; color:var(--text-muted)">${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
+              ${scenarioFlowMap[s.id] ? `<span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;" title="Opgenomen in deze flow">🔗 ${flowLabel(scenarioFlowMap[s.id])}</span>` : ''}
             </div>
             <div style="display:flex; gap:6px" onclick="event.stopPropagation()">
               <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Activiteit</button>
