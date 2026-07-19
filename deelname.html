@@ -446,29 +446,21 @@
       return [...set];
     }
 
-    function flowStartScenarioCode(flowId) {
-      const startNode = flowNodes.find(n => n.flow_id === flowId && n.is_start);
-      if (!startNode) return null;
-      const s = scenarios.find(x => x.id === startNode.scenario_id);
-      return s?.code || null;
-    }
-
     // Flows die deze gebruiker mag zien: beheerders zien alles, gewone
     // gebruikers alleen de flows waar hun organisatie bij betrokken is.
-    // Gesorteerd op de code van het scenario dat als start is gemarkeerd
-    // (flows zonder gemarkeerde start komen achteraan).
+    // Gesorteerd op het (alfanumerieke) flownummer, alfabetisch — dus
+    // "F01-05" komt vóór "F01-10".
     function visibleFlows() {
       const list = isCurrentAdmin
         ? flows
         : flows.filter(f => betrokkenOrgIdsForFlow(f.id).includes(myOrgId));
 
       return list.slice().sort((a, b) => {
-        const ca = flowStartScenarioCode(a.id);
-        const cb = flowStartScenarioCode(b.id);
-        if (ca && cb) return ca.localeCompare(cb, undefined, { numeric: true });
-        if (ca && !cb) return -1;
-        if (!ca && cb) return 1;
-        return a.name.localeCompare(b.name, undefined, { numeric: true });
+        const na = a.nummer, nb = b.nummer;
+        if (na != null && nb != null) return String(na).localeCompare(String(nb));
+        if (na != null && nb == null) return -1;
+        if (na == null && nb != null) return 1;
+        return a.name.localeCompare(b.name);
       });
     }
 

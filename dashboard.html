@@ -257,7 +257,7 @@
         sb.from('activity_results').select('*'),
         sb.from('users').select('*, organisations(name)'),
         sb.from('organisations').select('*').order('name'),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('nummer'),
         sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id),
         sb.from('flow_participation').select('*'),
       ]);

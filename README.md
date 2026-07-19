@@ -233,6 +233,7 @@ Elke flow heeft nu een **verplicht, uniek nummer** (uniek binnen de ketentest �
 2. Voer daarna ook `flows-nummer-alfanumeriek-setup.sql` uit: dit maakt het nummer **alfanumeriek** (bijv. "F1" of "3A" mag ook, niet alleen een geheel getal).
 2. Bij **Ketentest → Flow** kan een beheerder het nummer aanpassen via het ✏️-icoon (met controle op uniekheid). Nieuwe flows krijgen automatisch het eerstvolgende beschikbare nummer.
 3. Het nummer staat voortaan vóór de naam, overal waar de flownaam wordt getoond: de Flow-pagina zelf, Deelname, het Dashboard (schermen én PDF-exports), en de gastweergave.
+4. Flows worden overal **dynamisch gesorteerd op dit nummer** (alfabetisch, dus "F01-05" komt vóór "F01-10") — op de Flow-pagina, bij Deelname, en op het Dashboard.
 
 ---
 
