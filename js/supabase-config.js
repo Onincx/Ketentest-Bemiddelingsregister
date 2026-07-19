@@ -137,3 +137,11 @@ async function renderActiveKetentestLabel() {
 // verwijderd (was overbodig sinds de keuze op het inlogscherm gebeurt).
 // ensureActiveKetentest() hierboven blijft wél gebruikt om te bepalen
 // welke ketentest actief is.
+
+// Geeft de weergavenaam van een flow terug, met het (verplichte) nummer
+// ervoor — bijv. "3. Toewijzen Menzis (BR)". Gebruikt op elke pagina waar
+// een flownaam wordt getoond, zodat dit overal consistent is.
+function flowLabel(flow) {
+  if (!flow) return '';
+  return flow.nummer != null ? `${flow.nummer}. ${flow.name}` : flow.name;
+}
