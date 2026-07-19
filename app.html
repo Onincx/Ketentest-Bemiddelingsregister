@@ -280,7 +280,7 @@
       renderAll();
     })();
 
-    let flowNodes = [], flowEdges = [];
+    let flowNodes = [], flowEdges = [], scenarioFlowMap = {};
 
     async function loadData() {
       if (!activeKetentest) return;
@@ -296,18 +296,23 @@
       await loadNotificationDefs();
 
       if (!scenarioIds.length) {
-        activities = []; results = {}; flowNodes = []; flowEdges = [];
+        activities = []; results = {}; flowNodes = []; flowEdges = []; scenarioFlowMap = {};
         return;
       }
 
-      const [a, r, fn, fe] = await Promise.all([
+      const [a, r, fn, fe, fl] = await Promise.all([
         sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order'),
         sb.from('activity_results').select('*'),
         sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
       ]);
       flowNodes = fn.data || [];
       flowEdges = fe.data || [];
+      scenarioFlowMap = {};
+      const flowById = {};
+      (fl.data || []).forEach(f => flowById[f.id] = f);
+      flowNodes.forEach(n => { if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id]; });
       // Resolve acceptant_org manually to avoid Supabase alias issues
       activities = (a.data || []).map(act => ({
         ...act,
@@ -613,6 +618,7 @@
           <span class="sc-row-code" style="color:${tileColor.bg};">${s.code}</span>
           <span class="sc-row-title">${s.title}</span>
           <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
+          ${scenarioFlowMap[s.id] ? `<span style="display:inline-flex; align-items:center; gap:5px; background:#166534; color:#fff; font-size:11px; font-weight:700; border-radius:6px; padding:5px 11px; white-space:nowrap; flex-shrink:0;" title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</span>` : ''}
           <div class="sc-row-bar-wrap">
             <div class="tile-bar">
               ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}

@@ -242,6 +242,8 @@ Bij **Beheer → Testscenario's** zie je nu, naast het aantal activiteiten, een 
 
 Daarnaast is een bug uit een eerdere aanpassing hersteld: de modal "Scenario toevoegen" op de Flow-pagina was per ongeluk verwijderd toen de "Flow bewerken"-modal werd toegevoegd, waardoor de knop niets meer deed. Dit werkt nu weer.
 
+Dezelfde flow-badge (🔗 Flow + nummer) is ook toegevoegd aan **Ketentest → Testscenario's** (de pagina die gewone gebruikers zien), in dezelfde stijl als bij Beheer.
+
 ---
 
 ## Bestandsstructuur
