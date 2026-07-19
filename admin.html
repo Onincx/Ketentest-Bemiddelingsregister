@@ -1779,13 +1779,14 @@
         const hasActs = acts.length > 0;
       return `<div class="section-card ${hasActs ? 'has-activities' : 'no-activities'}">
           <div class="section-card-header" onclick="toggleSection('sc-${s.id}')">
-            <div style="display:flex; align-items:center; gap:12px; flex:1">
-              <span style="font-size:12px; font-weight:600; color:var(--text-muted); min-width:60px">${s.code}</span>
+            <div style="display:flex; align-items:center; gap:12px; flex:1; min-width:0;">
+              <span style="font-size:12px; font-weight:600; color:var(--text-muted); min-width:60px; flex-shrink:0;">${s.code}</span>
               <strong style="font-size:15px">${s.title}</strong>
-              <span style="font-size:12px; color:var(--text-muted)">${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
-              ${scenarioFlowMap[s.id] ? `<span class="badge" style="background:#166534; color:#fff; font-size:11px; font-weight:700;" title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 ${scenarioFlowMap[s.id].nummer}</span>` : ''}
+              <span style="font-size:12px; color:var(--text-muted); flex-shrink:0; white-space:nowrap;">${acts.length} activiteit${acts.length !== 1 ? 'en' : ''}</span>
             </div>
-            <div style="display:flex; gap:6px" onclick="event.stopPropagation()">
+            <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;" onclick="event.stopPropagation()">
+              ${scenarioFlowMap[s.id] ? `<span style="display:inline-flex; align-items:center; gap:5px; background:#166534; color:#fff; font-size:11px; font-weight:700; border-radius:6px; padding:5px 11px; white-space:nowrap;" title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</span>` : ''}
+              <div style="display:flex; gap:6px">
               <button class="btn btn-outline btn-sm" onclick="openAddActivity('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Activiteit</button>
               <button class="btn btn-outline btn-sm" onclick="openActivityImportModal('${s.id}')">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -1794,6 +1795,7 @@
               <button class="btn btn-outline btn-sm" onclick="openCopyModal('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Kopieer van</button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="editScenario('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteScenario('${s.id}','${s.title}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+              </div>
             </div>
           </div>
           <div class="section-card-body" id="sc-${s.id}" style="display:none;">
