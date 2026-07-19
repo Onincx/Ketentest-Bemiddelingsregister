@@ -526,8 +526,7 @@
           const pendingOrgIds = involved.filter(oid => !flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid));
           const pendingNames = pendingOrgIds.map(oid => orgs.find(o => o.id === oid)?.name || 'Onbekend').join(', ');
           return [flowLabel(f), `${pendingOrgIds.length} van ${involved.length}`, pendingNames];
-        })
-        .sort((a, b) => b[1].localeCompare(a[1]));
+        });
 
       if (!pendingRows.length) {
         emptyLine('Alle flows zijn door alle betrokken partijen beoordeeld.');
@@ -792,7 +791,7 @@
           const pendingOrgIds = involved.filter(oid => !flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid));
           return { flow: f, total: involved.length, pendingOrgIds };
         })
-        .sort((a, b) => b.pendingOrgIds.length - a.pendingOrgIds.length);
+        .sort((a, b) => String(a.flow.nummer ?? '').localeCompare(String(b.flow.nummer ?? '')));
 
       if (!rows.length) {
         el.innerHTML = '<p class="empty-dash">Alle flows zijn door alle betrokken partijen beoordeeld. 🎉</p>';
