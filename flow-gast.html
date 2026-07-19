@@ -129,7 +129,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=26"></script>
   <script>
     let scenarios = [], activities = [], results = [], orgs = {};
     let nodePositions = {};
@@ -205,7 +205,7 @@
       const sel = document.getElementById('flowSelect');
       if (!flows.length) { sel.style.display = 'none'; return; }
       activeFlowId = flows[0].id;
-      sel.innerHTML = flows.map(f => `<option value="${escHtml(f.id)}">${escHtml(f.name)}</option>`).join('');
+      sel.innerHTML = flows.map(f => `<option value="${escHtml(f.id)}">${escHtml(flowLabel(f))}</option>`).join('');
       sel.style.display = '';
     }
 

@@ -211,7 +211,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=26"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [];
@@ -305,7 +305,7 @@
       const flowNameByScenario = {};
       flowNodes.forEach(n => {
         const flow = flows.find(f => f.id === n.flow_id);
-        if (flow) flowNameByScenario[n.scenario_id] = flow.name;
+        if (flow) flowNameByScenario[n.scenario_id] = flowLabel(flow);
       });
 
       const body = activities.map(a => {
@@ -495,7 +495,7 @@
         const involved = betrokkenOrgIdsForFlow(f.id);
         const decided = involved.filter(oid => flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid)).length;
         const status = { ja: 'Wordt uitgevoerd', nee: 'Wordt niet uitgevoerd', verdeeld: 'Verdeeld', wachten: 'Wachten op input', geen: 'Geen organisaties' }[getFlowStatus(f.id)];
-        return [f.name, scenarioIds.length, total, `${flowPct}%`, nok, status, `${decided} van ${involved.length}`];
+        return [flowLabel(f), scenarioIds.length, total, `${flowPct}%`, nok, status, `${decided} van ${involved.length}`];
       });
 
       if (!flowRows.length) {
@@ -525,7 +525,7 @@
           const involved = betrokkenOrgIdsForFlow(f.id);
           const pendingOrgIds = involved.filter(oid => !flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid));
           const pendingNames = pendingOrgIds.map(oid => orgs.find(o => o.id === oid)?.name || 'Onbekend').join(', ');
-          return [f.name, `${pendingOrgIds.length} van ${involved.length}`, pendingNames];
+          return [flowLabel(f), `${pendingOrgIds.length} van ${involved.length}`, pendingNames];
         })
         .sort((a, b) => b[1].localeCompare(a[1]));
 
@@ -765,7 +765,7 @@
 
       el.innerHTML = `<div style="max-height:360px; overflow-y:auto;">` + rows.map(({ flow, scenarioCount, total, ok, nok, pct }) => `
         <div class="scenario-row">
-          <span class="scenario-title" title="${flow.name}" style="flex:1; font-weight:600;">${flow.name}</span>
+          <span class="scenario-title" title="${flowLabel(flow)}" style="flex:1; font-weight:600;">${flowLabel(flow)}</span>
           <span style="font-size:11px; color:#9ca3af; flex-shrink:0; white-space:nowrap;">${scenarioCount} scenario${scenarioCount!==1?"'s":''}</span>
           <div class="org-bar-wrap" style="min-width:80px; max-width:80px;">
             ${ok  > 0 ? `<div class="org-bar-ok" style="width:${total>0?Math.round(ok/total*100):0}%"></div>` : ''}
@@ -803,7 +803,7 @@
         rows.map(({ flow, total, pendingOrgIds }) => `
           <div style="padding-bottom:10px; border-bottom:1px solid var(--border);">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px;">
-              <span style="font-size:13px; font-weight:600;" title="${flow.name}">${flow.name}</span>
+              <span style="font-size:13px; font-weight:600;" title="${flowLabel(flow)}">${flowLabel(flow)}</span>
               <span style="font-size:11px; color:#9ca3af; white-space:nowrap;">${pendingOrgIds.length} van ${total} partijen open</span>
             </div>
             <div style="display:flex; flex-wrap:wrap; gap:5px;">

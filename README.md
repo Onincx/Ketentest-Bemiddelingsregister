@@ -225,6 +225,16 @@ Dit is bewust een **statische lijst** (geen database), rechtstreeks bijgehouden 
 
 ---
 
+## Uniek nummer per flow (nieuw)
+
+Elke flow heeft nu een **verplicht, uniek nummer** (uniek binnen de ketentest — twee ketentesten mogen wel dezelfde nummers gebruiken), zodat flows voor alle testende partijen makkelijker te herkennen zijn.
+
+1. Voer eenmalig `flows-nummer-setup.sql` uit in de Supabase SQL Editor. Dit voegt de kolom `nummer` toe én nummert bestaande flows automatisch (op naam, per ketentest, beginnend bij 1) — er hoeft dus niets handmatig ingevuld te worden voordat het veld verplicht wordt.
+2. Bij **Ketentest → Flow** kan een beheerder het nummer aanpassen via het ✏️-icoon (met controle op uniekheid). Nieuwe flows krijgen automatisch het eerstvolgende beschikbare nummer.
+3. Het nummer staat voortaan vóór de naam, overal waar de flownaam wordt getoond: de Flow-pagina zelf, Deelname, het Dashboard (schermen én PDF-exports), en de gastweergave.
+
+---
+
 ## Bestandsstructuur
 
 ```
@@ -246,6 +256,7 @@ Dit is bewust een **statische lijst** (geen database), rechtstreeks bijgehouden 
 ├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
 ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
 ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
+├── flows-nummer-setup.sql Database uitbreiding: verplicht, uniek nummer per flow
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker

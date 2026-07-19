@@ -285,7 +285,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=26"></script>
   <script>
     let currentUser = null, currentProfile = null, myOrgId = null, isCurrentAdmin = false;
     let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
@@ -569,7 +569,7 @@
         html += `<tr>
           <td class="dn-flow-cell" style="border-left:3px solid ${borderColor};">
             <div class="dn-flow-meta">${flowScenarios.length} scenario${flowScenarios.length === 1 ? '' : "'s"}</div>
-            <div class="dn-flow-name">${esc(f.name)}</div>
+            <div class="dn-flow-name">${esc(flowLabel(f))}</div>
             ${f.doel ? `<p class="dn-flow-doel">${esc(f.doel)}</p>` : ''}
             ${statusBadge(st.status, st.decided, st.total)}
             ${flowScenarios.length ? `<div class="dn-flow-scenarios">${flowScenarios.map(s => `<span class="dn-scn-chip" title="${esc(s.title)}">${esc(s.code)}</span>`).join('')}</div>` : ''}
@@ -619,7 +619,7 @@
 
       document.getElementById('dnFlowId').value = flowId;
       document.getElementById('dnOrgId').value = orgId;
-      document.getElementById('deelnameModalTitle').textContent = flow.name;
+      document.getElementById('deelnameModalTitle').textContent = flowLabel(flow);
       document.getElementById('deelnameModalSub').textContent = `Je past dit in namens ${org.name} (als beheerder).`;
 
       const existing = getParticipation(flowId, orgId);
@@ -749,7 +749,7 @@
       const doelPreview = f.doel ? esc(f.doel.length > 90 ? f.doel.slice(0,90) + '…' : f.doel) : '';
       return `<div class="dn-flow-list-item" onclick="enterFocus(${idx})">
         <div style="flex:1; min-width:0;">
-          <p class="dn-flli-name">${esc(f.name)}</p>
+          <p class="dn-flli-name">${esc(flowLabel(f))}</p>
           <p class="dn-flli-meta">${sids.length} scenario${sids.length===1?'':"'s"}${doelPreview ? ' · ' + doelPreview : ''}</p>
         </div>
         ${badge}
@@ -797,7 +797,7 @@
 
       document.getElementById('dnFocusCard').innerHTML = `
         <div class="dn-focus-header">
-          <h2>${esc(f.name)}</h2>
+          <h2>${esc(flowLabel(f))}</h2>
         </div>
         ${f.doel ? `<p class="dn-focus-doel">${esc(f.doel)}</p>` : ''}
 

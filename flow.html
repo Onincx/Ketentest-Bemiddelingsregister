@@ -276,6 +276,10 @@
       <div class="modal-body">
         <input type="hidden" id="editFlowId">
         <div class="form-group">
+          <label>Nummer <span style="color:var(--danger);">*</span> <span style="color:var(--text-muted); font-weight:400;">(verplicht, uniek binnen deze ketentest)</span></label>
+          <input type="number" id="editFlowNummer" min="1" step="1" placeholder="bijv. 1" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
+        </div>
+        <div class="form-group" style="margin-top:12px;">
           <label>Naam</label>
           <input type="text" id="editFlowName" placeholder="Naam van de flow" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
         </div>
@@ -283,6 +287,7 @@
           <label>Doel <span style="color:var(--text-muted); font-weight:400;">(optioneel — wordt automatisch getoond bij Deelname)</span></label>
           <textarea id="editFlowDoel" placeholder="Waar dient deze flow voor? Bijv. &quot;Testen van de aanvraagketen voor nieuwe cliënten bij gemeente X.&quot;"></textarea>
         </div>
+        <div id="alertEditFlow" class="alert" style="display:none;"></div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalEditFlow')">Annuleren</button>
@@ -296,7 +301,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=25"></script>
+  <script src="js/supabase-config.js?v=26"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -444,7 +449,7 @@
       const [a, r, fl, o, used] = await Promise.all([
         scenarioIds.length ? sb.from('activities').select('*').in('scenario_id', scenarioIds) : Promise.resolve({ data: [] }),
         sb.from('activity_results').select('*'),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('created_at'),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('nummer'),
         sb.from('organisations').select('id,name,code'),
         sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
       ]);
@@ -539,9 +544,11 @@
       const leftover = allNodes.map(n => n.scenario_id).filter(sid => !assigned.has(sid));
       if (leftover.length) groups.push({ name: 'Overige kaartjes', ids: leftover });
 
+      let volgendNummer = flows.length ? Math.max(...flows.map(f => f.nummer || 0)) + 1 : 1;
       for (const g of groups) {
-        const { data: flowRow, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: g.name }).select().single();
+        const { data: flowRow, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: g.name, nummer: volgendNummer }).select().single();
         if (error || !flowRow) { console.error('Migratie: aanmaken flow mislukt', error); continue; }
+        volgendNummer++;
         const idSet = new Set(g.ids);
         for (const sid of g.ids) {
           await sb.from('flow_nodes').update({ flow_id: flowRow.id }).eq('id', nodeBySid[sid].id);
@@ -598,7 +605,7 @@
       const el = document.getElementById('flowList');
       const label = document.getElementById('activeFlowLabel');
       const activeFlow = flows.find(f => f.id === activeFlowId);
-      label.textContent = activeFlow ? activeFlow.name : (flows.length ? 'Kies een flow' : 'Geen flow');
+      label.textContent = activeFlow ? flowLabel(activeFlow) : (flows.length ? 'Kies een flow' : 'Geen flow');
 
       const visibleFlows = flows.filter(f => flowMatchesOrgFilter(f.id));
 
@@ -610,7 +617,7 @@
       } else {
         html += visibleFlows.map(f => `
           <div class="flow-item ${f.id === activeFlowId ? 'active' : ''}" onclick="selectFlow('${f.id}')">
-            <span class="flow-item-name" title="${esc(f.name)}">${esc(f.name)}</span>
+            <span class="flow-item-name" title="${esc(flowLabel(f))}">${esc(flowLabel(f))}</span>
             ${window.isFlowAdmin ? `
             <span class="flow-item-actions">
               <button class="flow-item-btn" onclick="event.stopPropagation(); openEditFlowModal('${f.id}')" title="Naam/doel bewerken">✏️</button>
@@ -660,7 +667,8 @@
       if (!window.isFlowAdmin) return;
       const name = prompt('Naam van de nieuwe flow (bijv. "Aanvraagproces gemeente"):');
       if (!name || !name.trim()) return;
-      const { data, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: name.trim() }).select().single();
+      const nextNummer = flows.length ? Math.max(...flows.map(f => f.nummer || 0)) + 1 : 1;
+      const { data, error } = await sb.from('flows').insert({ ketentest_id: activeKetentest.id, name: name.trim(), nummer: nextNummer }).select().single();
       if (error) { alert('Fout bij aanmaken flow: ' + error.message); return; }
       flows.push(data);
       await selectFlow(data.id);
@@ -671,31 +679,46 @@
       const f = flows.find(x => x.id === id);
       if (!f) return;
       document.getElementById('editFlowId').value = id;
+      document.getElementById('editFlowNummer').value = f.nummer ?? '';
       document.getElementById('editFlowName').value = f.name;
       document.getElementById('editFlowDoel').value = f.doel || '';
+      document.getElementById('alertEditFlow').style.display = 'none';
       openModal('modalEditFlow');
     }
 
     async function saveFlowEdit() {
       const id = document.getElementById('editFlowId').value;
+      const nummerRaw = document.getElementById('editFlowNummer').value;
       const name = document.getElementById('editFlowName').value.trim();
       const doel = document.getElementById('editFlowDoel').value.trim();
-      if (!name) { alert('Geef de flow een naam.'); return; }
 
-      const { error } = await sb.from('flows').update({ name, doel: doel || null }).eq('id', id);
-      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      if (!name) { showAlert('Geef de flow een naam.', 'error', 'alertEditFlow'); return; }
+      const nummer = parseInt(nummerRaw, 10);
+      if (!nummerRaw || isNaN(nummer) || nummer < 1) {
+        showAlert('Vul een geldig nummer in (verplicht, minimaal 1).', 'error', 'alertEditFlow');
+        return;
+      }
+      const dubbel = flows.some(f => f.id !== id && f.nummer === nummer);
+      if (dubbel) {
+        showAlert(`Nummer ${nummer} is al in gebruik bij een andere flow. Kies een uniek nummer.`, 'error', 'alertEditFlow');
+        return;
+      }
+
+      const { error } = await sb.from('flows').update({ name, doel: doel || null, nummer }).eq('id', id);
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertEditFlow'); return; }
 
       const f = flows.find(x => x.id === id);
-      if (f) { f.name = name; f.doel = doel || null; }
+      if (f) { f.name = name; f.doel = doel || null; f.nummer = nummer; }
       closeModal('modalEditFlow');
       renderFlowList();
+      renderFlowDoelBanner();
     }
 
     async function deleteFlow(id) {
       if (!window.isFlowAdmin) return;
       const f = flows.find(x => x.id === id);
       if (!f) return;
-      if (!confirm(`Flow "${f.name}" verwijderen? Alle kaartjes en verbindingen in deze flow gaan verloren (de testscenario's zelf blijven bestaan).`)) return;
+      if (!confirm(`Flow "${flowLabel(f)}" verwijderen? Alle kaartjes en verbindingen in deze flow gaan verloren (de testscenario's zelf blijven bestaan).`)) return;
 
       await sb.from('flow_edges').delete().eq('flow_id', id);
       const { data: nodesInFlow } = await sb.from('flow_nodes').select('scenario_id').eq('flow_id', id);
@@ -724,7 +747,7 @@
       if (!window.isFlowAdmin) return;
       if (!activeFlowId) { alert('Maak of selecteer eerst een flow in de linkerkolom.'); return; }
       const f = flows.find(x => x.id === activeFlowId);
-      document.getElementById('addScenarioFlowName').textContent = f ? `"${f.name}"` : 'deze flow';
+      document.getElementById('addScenarioFlowName').textContent = f ? `"${flowLabel(f)}"` : 'deze flow';
       document.getElementById('addScenarioSearch').value = '';
       renderAddScenarioList();
       openModal('modalAddScenario');
