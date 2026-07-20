@@ -45,6 +45,7 @@
         <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">Testscenario's</a>
         <a href="flow.html">Flow</a>
         <a href="deelname.html">Deelname</a>
+        <a href="admin.html?tab=notifications">Notificaties</a>
       </div>
     </div>
     <div class="nav-dropdown" id="adminLink" style="display:none;">
@@ -101,6 +102,7 @@
       { datum: '2026-07-18', beschrijving: "Bij Beheer → Testscenario's is nu per scenario zichtbaar in welke flow (nummer + naam) het is opgenomen, als dat van toepassing is." },
       { datum: '2026-07-18', beschrijving: "Flownummer ook zichtbaar bij Ketentest → Testscenario's (voor gebruikers), in dezelfde stijl als bij Beheer." },
       { datum: '2026-07-18', beschrijving: 'Beheer → Notificaties: vaste volgorde (Nieuw, Gewijzigd, Verwijderd, Informatief) op beide subtabbladen, aparte tabs Zorgaanbieder/Zorgkantoor, "Gebruik in scenario\'s" hernoemd naar "Gebruikt in scenario\'s", en scenario-codes daar zijn nu klikbare links naar het scenario. De flow-badge bij Ketentest → Testscenario\'s is ook klikbaar geworden en opent de bijbehorende flow.' },
+      { datum: '2026-07-18', beschrijving: 'Gebruikers hebben nu ook (alleen-lezen) toegang tot Notificaties, bereikbaar via een nieuwe link in het Ketentest-menu.' },
     ];
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }

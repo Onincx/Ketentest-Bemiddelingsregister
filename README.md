@@ -252,12 +252,22 @@ Dezelfde flow-badge (🔗 Flow + nummer) is ook toegevoegd aan **Ketentest → T
 Bij **Beheer → Notificaties** (beide subtabbladen, "Beheren" en het hernoemde "Gebruikt in scenario's"):
 
 1. Voer eenmalig `notificaties-doelgroep-setup.sql` uit in de Supabase SQL Editor. Dit voegt een doelgroep toe (Zorgaanbieder/Zorgkantoor) aan elke notificatie; bestaande notificaties krijgen automatisch "Zorgaanbieder" — pas dit zo nodig aan.
+2. Voer daarna ook `notificaties-doelgroep-herstel.sql` uit: dit herstelt de doelgroep van bestaande notificaties automatisch op basis van de naam (bevat de naam "zorgkantoor" → doelgroep Zorgkantoor, bevat de naam "zorgaanbieder" → doelgroep Zorgaanbieder). Het script toont aan het eind ook een lijst van notificaties waarvan de naam geen van beide bevat, zodat je die handmatig kunt nalopen.
 2. Notificaties worden nu overal getoond in een vaste volgorde: **Nieuw → Gewijzigd → Verwijderd → Informatief**.
 3. Beide subtabbladen hebben nu aparte tabbladen **Zorgaanbieder / Zorgkantoor** om te filteren.
 4. "Gebruik in scenario's" heet nu **"Gebruikt in scenario's"**.
 5. De scenario-codes die bij een notificatie in "Gebruikt in scenario's" getoond worden, zijn nu **klikbare links** die het betreffende scenario in `app.html` openen (in een nieuw tabblad).
 
 Daarnaast is de **flow-badge bij Ketentest → Testscenario's** (`app.html`) nu ook een **klikbare link**, die de bijbehorende flow in `flow.html` opent (in een nieuw tabblad).
+
+---
+
+## Notificaties ook toegankelijk voor gewone gebruikers (nieuw, alleen-lezen)
+
+Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (beide subtabbladen, inclusief de scan en de klikbare scenario-links) — bereikbaar via een nieuwe link "Notificaties" in het **Ketentest**-menu, op elke pagina. Dit is **alleen-lezen**: de knop "Notificatie toevoegen" en de bewerk-/verwijderknoppen zijn voor hen niet zichtbaar, en de onderliggende functies weigeren ook actief als iemand dit zou proberen te omzeilen.
+
+1. Voer eenmalig `notificaties-rls-setup.sql` uit in de Supabase SQL Editor. Dit legt databasezijdig vast dat iedereen notificaties mag lezen, maar alleen beheerders ze mogen aanmaken/wijzigen/verwijderen — een harde grens, los van de verborgen knoppen in het scherm.
+2. Gewone gebruikers zien op deze pagina **alleen** de Notificaties-tab; andere tabbladen (Organisaties, Gebruikers, Ketentesten, Logboek) blijven voor hen ontoegankelijk.
 
 ---
 
@@ -285,6 +295,8 @@ Daarnaast is de **flow-badge bij Ketentest → Testscenario's** (`app.html`) nu 
 ├── flows-nummer-setup.sql Database uitbreiding: verplicht, uniek nummer per flow
 ├── flows-nummer-alfanumeriek-setup.sql Database uitbreiding: flownummer alfanumeriek maken
 ├── notificaties-doelgroep-setup.sql Database uitbreiding: doelgroep per notificatie
+├── notificaties-doelgroep-herstel.sql Database data-fix: doelgroep herstellen op basis van naam
+├── notificaties-rls-setup.sql Database beveiliging: notificaties lezen voor iedereen, muteren alleen beheerders
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
