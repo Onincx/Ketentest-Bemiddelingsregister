@@ -446,6 +446,15 @@
       activeKetentest = result.active;
 
       await loadKetentestData();
+
+      // Direct een specifieke flow openen als de URL ernaar verwijst
+      // (bijv. vanuit Ketentest → Testscenario's of Beheer → Notificaties).
+      const flowParam = new URLSearchParams(window.location.search).get('flow');
+      if (flowParam && flows.some(f => f.id === flowParam)) {
+        activeFlowId = flowParam;
+        saveActiveFlowId();
+      }
+
       await loadFlowContent();
       initOrgFilterUI();
       applyLayout();

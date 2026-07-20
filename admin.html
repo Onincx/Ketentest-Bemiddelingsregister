@@ -211,7 +211,7 @@
         </button>
         <button class="tab-btn" id="notifsub-btn-usage" onclick="showNotifSubTab('usage')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          Gebruik in scenario's
+          Gebruikt in scenario's
         </button>
       </div>
 
@@ -224,6 +224,10 @@
             Notificatie toevoegen
           </button>
         </div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <button class="btn btn-sm" id="notifdg-manage-zorgaanbieder" onclick="setNotifDoelgroep('manage','zorgaanbieder',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Zorgaanbieder</button>
+          <button class="btn btn-sm btn-outline" id="notifdg-manage-zorgkantoor" onclick="setNotifDoelgroep('manage','zorgkantoor',this)">Zorgkantoor</button>
+        </div>
         <div class="card" style="padding:0;">
           <div class="table-wrap">
             <table>
@@ -234,7 +238,7 @@
         </div>
       </div>
 
-      <!-- SUBTAB: Gebruik in scenario's -->
+      <!-- SUBTAB: Gebruikt in scenario's -->
       <div id="notifsub-usage" style="display:none;">
         <div class="page-header" style="margin-bottom:16px;">
           <div class="page-header-left">
@@ -244,6 +248,10 @@
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             Scan activiteiten
           </button>
+        </div>
+        <div style="display:flex; gap:8px; margin-bottom:16px;">
+          <button class="btn btn-sm" id="notifdg-usage-zorgaanbieder" onclick="setNotifDoelgroep('usage','zorgaanbieder',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Zorgaanbieder</button>
+          <button class="btn btn-sm btn-outline" id="notifdg-usage-zorgkantoor" onclick="setNotifDoelgroep('usage','zorgkantoor',this)">Zorgkantoor</button>
         </div>
         <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
         <div id="notificationsOverview"></div>
@@ -269,8 +277,15 @@
             <select id="notificationDefType">
               <option value="nieuw">Nieuw</option>
               <option value="gewijzigd">Gewijzigd</option>
-              <option value="informatief">Informatief</option>
               <option value="verwijderd">Verwijderd</option>
+              <option value="informatief">Informatief</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Doelgroep</label>
+            <select id="notificationDefDoelgroep">
+              <option value="zorgaanbieder">Zorgaanbieder</option>
+              <option value="zorgkantoor">Zorgkantoor</option>
             </select>
           </div>
           <div id="alertNotificationDef" class="alert" style="display:none;"></div>
@@ -728,6 +743,17 @@
     let adminActiveTab = null;
     const openSections = new Set(); // bijhoudt welke scenario's open zijn
     let activeTab = 'ketentests';
+    let notifDoelgroep = { manage: 'zorgaanbieder', usage: 'zorgaanbieder' };
+
+    function setNotifDoelgroep(sub, doelgroep, btn) {
+      notifDoelgroep[sub] = doelgroep;
+      document.querySelectorAll(`#notifdg-${sub}-zorgaanbieder, #notifdg-${sub}-zorgkantoor`).forEach(b => {
+        b.classList.add('btn-outline'); b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      if (sub === 'manage') renderNotificationDefTable(); else renderNotifications();
+    }
 
     (async () => {
       const user = await requireAdmin();
@@ -940,14 +966,20 @@
         return;
       }
 
-      // Groepeer per type
-      const types = ['nieuw', 'gewijzigd', 'informatief', 'verwijderd'];
+      // Groepeer per type, in de vaste volgorde Nieuw/Gewijzigd/Verwijderd/Informatief
+      const types = NOTIF_TYPE_ORDER;
       const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
+      const notifsVoorDoelgroep = NOTIFICATIES.filter(n => (n.doelgroep || 'zorgaanbieder') === notifDoelgroep.usage);
+
+      if (!notifsVoorDoelgroep.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Geen notificaties voor deze doelgroep.</p></div>';
+        return;
+      }
 
       let html = '';
 
       types.forEach(type => {
-        const notifs = NOTIFICATIES.filter(n => n.type === type);
+        const notifs = notifsVoorDoelgroep.filter(n => n.type === type);
         if (!notifs.length) return;
         const c = NOTIF_COLORS[type];
 
@@ -994,7 +1026,7 @@
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
                       ${inUse
                         ? `<div style="display:flex; flex-wrap:wrap; gap:4px;">
-                            ${matchingScenarios.map(s => `<span style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--text);">${s.code}</span>`).join('')}
+                            ${matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('')}
                            </div>`
                         : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">Nog niet gebruikt</span>`}
                     </td>
@@ -1017,15 +1049,22 @@
       NOTIFICATIES = data || [];
     }
 
+    const NOTIF_TYPE_ORDER = ['nieuw', 'gewijzigd', 'verwijderd', 'informatief'];
+
     function renderNotificationDefTable() {
       const tb = document.getElementById('notificationDefTable');
       if (!tb) return;
-      if (!NOTIFICATIES.length) {
-        tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen notificaties toegevoegd.</p></div></td></tr>';
+      const filtered = NOTIFICATIES.filter(n => (n.doelgroep || 'zorgaanbieder') === notifDoelgroep.manage);
+      if (!filtered.length) {
+        tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen notificaties voor deze doelgroep toegevoegd.</p></div></td></tr>';
         return;
       }
       const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
-      tb.innerHTML = [...NOTIFICATIES].sort((a,b) => a.naam.localeCompare(b.naam)).map(n => {
+      tb.innerHTML = [...filtered].sort((a, b) => {
+        const ta = NOTIF_TYPE_ORDER.indexOf(a.type), tb2 = NOTIF_TYPE_ORDER.indexOf(b.type);
+        if (ta !== tb2) return ta - tb2;
+        return a.naam.localeCompare(b.naam);
+      }).map(n => {
         const c = NOTIF_COLORS[n.type];
         return `<tr>
           <td><strong>${n.naam}</strong></td>
@@ -1042,6 +1081,7 @@
       document.getElementById('notificationDefId').value = '';
       document.getElementById('notificationDefNaam').value = '';
       document.getElementById('notificationDefType').value = 'nieuw';
+      document.getElementById('notificationDefDoelgroep').value = notifDoelgroep.manage;
       document.getElementById('modalNotificationTitle').textContent = 'Notificatie toevoegen';
       document.getElementById('alertNotificationDef').style.display = 'none';
       openModal('modalNotification');
@@ -1053,6 +1093,7 @@
       document.getElementById('notificationDefId').value = n.id;
       document.getElementById('notificationDefNaam').value = n.naam;
       document.getElementById('notificationDefType').value = n.type;
+      document.getElementById('notificationDefDoelgroep').value = n.doelgroep || 'zorgaanbieder';
       document.getElementById('modalNotificationTitle').textContent = 'Notificatie bewerken';
       document.getElementById('alertNotificationDef').style.display = 'none';
       openModal('modalNotification');
@@ -1062,14 +1103,15 @@
       const id = document.getElementById('notificationDefId').value;
       const naam = document.getElementById('notificationDefNaam').value.trim();
       const type = document.getElementById('notificationDefType').value;
+      const doelgroep = document.getElementById('notificationDefDoelgroep').value;
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertNotificationDef'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('notification_definitions').update({ naam, type }).eq('id', id);
+        const res = await sb.from('notification_definitions').update({ naam, type, doelgroep }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type });
+        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type, doelgroep });
         dbError = res.error;
       }
 

@@ -108,7 +108,8 @@
     .sc-row-title { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.4; }
     .sc-row-bar-wrap { width: 100%; }
     .sc-row-flow { text-align: center; }
-    .sc-row-flow span { display:inline-flex; align-items:center; gap:4px; background:#dcfce7; color:#166534; font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; white-space:nowrap; }
+    .sc-row-flow a { display:inline-flex; align-items:center; gap:4px; background:#dcfce7; color:#166534; font-size:11px; font-weight:700; border-radius:6px; padding:4px 10px; white-space:nowrap; text-decoration:none; }
+    .sc-row-flow a:hover { background:#bbf7d0; }
     .sc-row-pills { display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; }
     .tile-bar { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; display: flex; gap: 1px; }
     .tile-bar-ok { background: #16a34a; border-radius: 99px; transition: width 0.3s; }
@@ -283,7 +284,23 @@
       await loadData();
       document.getElementById('statsGrid').style.display = '';
       document.getElementById('filterBar').style.display = '';
+
+      // Automatisch een scenario openen als er via de URL naar verwezen wordt
+      // (bijv. vanuit Beheer → Notificaties → Gebruikt in scenario's).
+      const openParam = new URLSearchParams(window.location.search).get('scenario');
+      if (openParam) {
+        const target = scenarios.find(s => s.id === openParam);
+        if (target) activeTabPrefix = getScenarioPrefix(target.code);
+      }
+
       renderAll();
+
+      if (openParam && scenarios.some(s => s.id === openParam)) {
+        toggleScenario(openParam);
+        setTimeout(() => {
+          document.getElementById('detail-panel-' + openParam)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      }
     })();
 
     let flowNodes = [], flowEdges = [], scenarioFlowMap = {};
@@ -624,7 +641,7 @@
           <span class="sc-row-code" style="color:${tileColor.bg};">${s.code}</span>
           <span class="sc-row-title">${s.title}</span>
           <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
-          <div class="sc-row-flow">${scenarioFlowMap[s.id] ? `<span title="Opgenomen in flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</span>` : ''}</div>
+          <div class="sc-row-flow">${scenarioFlowMap[s.id] ? `<a href="flow.html?flow=${scenarioFlowMap[s.id].id}" target="_blank" onclick="event.stopPropagation()" title="Open flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</a>` : ''}</div>
           <div class="sc-row-bar-wrap">
             <div class="tile-bar">
               ${nOk  > 0 ? `<div class="tile-bar-ok" style="width:${Math.round(nOk/nTotal*100)}%"></div>` : ''}
