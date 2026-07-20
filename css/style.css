@@ -21,13 +21,18 @@
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+html { height: 100%; }
 body {
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   font-size: 15px;
   line-height: 1.6;
   color: var(--text);
   background: var(--surface);
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
 }
+.page-wrap { flex: 1 0 auto; }
 
 a { color: var(--brand-mid); text-decoration: none; }
 a:hover { text-decoration: underline; }
