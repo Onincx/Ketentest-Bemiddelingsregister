@@ -81,7 +81,7 @@
 
     <!-- TAB: Organisaties -->
     <!-- TAB: Ketentesten -->
-    <div id="tab-ketentests">
+    <div id="tab-ketentests" style="display:none;">
       <div class="page-header">
         <div class="page-header-left">
           <h1>Ketentesten</h1>
@@ -775,7 +775,7 @@
         if (!window.isPageAdmin) { window.location.href = 'app.html'; return; }
         // Geen ketentests bestaan nog — toon alleen het ketentest-tabblad
         activeKetentest = null;
-        renderKetentestTable();
+        showTab('ketentests');
         return;
       }
       activeKetentest = result.active;
@@ -801,9 +801,8 @@
         return;
       }
 
-      if (requestedTab && validTabs.includes(requestedTab) && requestedTab !== 'ketentests') {
-        showTab(requestedTab);
-      }
+      const validTab = requestedTab && validTabs.includes(requestedTab) ? requestedTab : 'ketentests';
+      showTab(validTab);
     })();
 
     async function loadAll() {
