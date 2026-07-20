@@ -210,10 +210,16 @@ Dit is puur client-side (geen database-wijziging nodig) en filtert de al geladen
 
 Op het Dashboard staan nu twee exportknoppen, naast "Vernieuwen":
 
-- **Exporteren (dashboard, PDF)** — bevat alles wat op het dashboard staat, in dezelfde volgorde: kerncijfers (incl. totale voortgang), verdeling activiteiten (OK/NOK/Open), scenario's met NOK's, voortgang per organisatie, voortgang per flow, nog te beoordelen per partij, en openstaande NOK's. Geschikt voor een compleet management-overzicht in één document.
+- **Exporteren (dashboard, PDF)** — bevat alles wat op het dashboard staat, in dezelfde volgorde: kerncijfers (incl. totale voortgang), verdeling activiteiten (OK/NOK/Open), scenario's met NOK's, voortgang per organisatie, voortgang per flow, nog te beoordelen per partij, **flows met afwijzingen**, en openstaande NOK's. Geschikt voor een compleet management-overzicht in één document.
 - **Exporteren (detail, PDF)** — één rij per activiteit, met alle beschikbare context: flow, scenario (code + titel), stapnummer, activiteit, verwacht resultaat, verantwoordelijke organisatie, acceptant, resultaat, opmerking, en wie het resultaat wanneer heeft ingevuld. Geschikt als volledig audit-trail voor stakeholders.
 
 Beide genereren direct een opgemaakt `.pdf`-bestand (met datum in de bestandsnaam) via jsPDF + de autoTable-plugin — geen los installatiestap nodig, dit werkt gewoon in de browser. Lange overzichten (bijv. bij veel organisaties of NOK's) verdelen zich automatisch over meerdere pagina's. Geen SQL-wijziging nodig — dit gebruikt alleen de data die het dashboard toch al inlaadt.
+
+---
+
+## Flows met afwijzingen (nieuw)
+
+Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.
 
 ---
 
