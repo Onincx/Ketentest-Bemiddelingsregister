@@ -277,6 +277,14 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 
 ---
 
+## Notificaties uitgebreid met Documentatie en Trigger (nieuw)
+
+1. Voer eenmalig `notificaties-documentatie-trigger-setup.sql` uit in de Supabase SQL Editor. Dit voegt twee optionele tekstvelden toe aan elke notificatie: **Documentatie** en **Trigger**.
+2. Beheerders vullen deze in via de bewerk-modal bij Beheer → Notificaties; beide velden zijn zichtbaar voor iedereen (beheerder én gebruiker) als extra kolommen in het overzicht.
+3. Het subtabblad "Beheren" heet nu **"Overzicht"**.
+
+---
+
 ## Bestandsstructuur
 
 ```
@@ -303,6 +311,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── notificaties-doelgroep-setup.sql Database uitbreiding: doelgroep per notificatie
 ├── notificaties-doelgroep-herstel.sql Database data-fix: doelgroep herstellen op basis van naam
 ├── notificaties-rls-setup.sql Database beveiliging: notificaties lezen voor iedereen, muteren alleen beheerders
+├── notificaties-documentatie-trigger-setup.sql Database uitbreiding: documentatie- en trigger-veld per notificatie
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
