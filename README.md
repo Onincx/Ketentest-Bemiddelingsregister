@@ -189,7 +189,17 @@ Elke ketentest heeft nu een verplicht **model**: **Netwerkmodel** of **Estafette
 - **Estafettemodel** → "Berichten" in het Ketentest-menu (nieuw, zie hieronder) — "Notificaties" is dan niet zichtbaar.
 
 1. Voer eenmalig `ketentest-model-setup.sql` uit in de Supabase SQL Editor. Bestaande ketentesten krijgen automatisch **Netwerkmodel** (de enige soort tot nu toe) — loop ze na en zet de juiste ketentesten handmatig op Estafettemodel via Beheer → Ketentesten.
-2. Nieuwe pagina `berichten.html`: een eenvoudig, alleen-lezen overzicht (geen beheerfunctionaliteit nodig, want berichten worden toch al automatisch herkend) van alle gevonden berichtcodes in de actieve ketentest, met per code de scenario's waarin die voorkomt als klikbare links.
+2. Nieuwe pagina `berichten.html`: een alleen-lezen overzicht van alle gevonden berichtcodes in de actieve ketentest, met per code de scenario's waarin die voorkomt als klikbare links (zie hieronder voor de bijbehorende beheerfunctionaliteit).
+
+---
+
+## Berichten documenteren (nieuw)
+
+Naast Notificaties staat er nu ook een **Berichten**-tab onder Beheer, specifiek voor Estafettemodel-ketentesten. In tegenstelling tot notificaties (die je met een vrije naam aanmaakt) zijn berichten altijd al automatisch herkende codes — deze tab laat je per gevonden code **documentatie en een trigger toevoegen**, zichtbaar voor iedereen bij Ketentest → Berichten via een "Details"-knop.
+
+1. Voer eenmalig `bericht-definities-setup.sql` uit in de Supabase SQL Editor.
+2. Beheer → Berichten toont bovenaan een lijst met **nog niet-gedocumenteerde** berichtcodes die al wél in de activiteiten voorkomen — één klik erop opent direct het toevoegformulier met de code al ingevuld.
+3. Net als bij Notificaties: lezen mag iedereen, aanmaken/wijzigen/verwijderen alleen beheerders (afgedwongen via RLS, niet alleen verborgen knoppen).
 
 ---
 
@@ -341,6 +351,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
 ├── user-ketentest-access-admins-setup.sql Database data-fix: bestaande beheerders koppelen aan alle ketentesten
 ├── ketentest-model-setup.sql Database uitbreiding: model (Netwerkmodel/Estafettemodel) per ketentest
+├── bericht-definities-setup.sql Database uitbreiding: documentatie/trigger per berichtcode
 ├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
