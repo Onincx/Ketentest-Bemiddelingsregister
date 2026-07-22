@@ -50,7 +50,8 @@
         <a href="admin.html?tab=scenarios" id="navScenariosLink" onclick="return navTab('scenarios', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</a>
         <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
         <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
-        <a href="admin.html?tab=notifications" onclick="return navTab('notifications', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</a>
+        <a href="admin.html?tab=notifications" id="navNotifLink" style="display:none;" onclick="return navTab('notifications', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</a>
+        <a href="berichten.html" id="navBerichtenLink" style="display:none;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Berichten</a>
       </div>
     </div>
     <div class="nav-dropdown" id="beheerDropdown" style="display:none;">
@@ -391,6 +392,14 @@
         <div class="form-group">
           <label>Naam van de ketentest</label>
           <input type="text" id="ketentestNaam" placeholder="bijv. Bemiddelingsregister, iWlz Aanvraag...">
+        </div>
+        <div class="form-group">
+          <label>Model <span style="color:var(--danger);">*</span></label>
+          <select id="ketentestModel">
+            <option value="netwerkmodel">Netwerkmodel</option>
+            <option value="estafettemodel">Estafettemodel</option>
+          </select>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Bepaalt of gebruikers "Notificaties" (Netwerkmodel) of "Berichten" (Estafettemodel) in het menu zien.</p>
         </div>
         <div class="form-group">
           <label>Start (optioneel)</label>
@@ -756,7 +765,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=27"></script>
+  <script src="js/supabase-config.js?v=28"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
@@ -1251,6 +1260,7 @@
           <td>
             <strong>${k.naam}</strong>
             ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; margin-left:8px; font-size:11px;">Actief</span>' : ''}
+            <span class="badge" style="background:${k.model === 'estafettemodel' ? '#ede9fe' : '#dbeafe'}; color:${k.model === 'estafettemodel' ? '#5b21b6' : '#1e40af'}; margin-left:8px; font-size:11px;">${k.model === 'estafettemodel' ? 'Estafettemodel' : 'Netwerkmodel'}</span>
             ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; margin-left:8px; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
           </td>
           <td id="ktScenCount-${k.id}" style="color:var(--text-muted)">…</td>
@@ -1349,6 +1359,7 @@
     function openNewKetentestModal() {
       document.getElementById('ketentestId').value = '';
       document.getElementById('ketentestNaam').value = '';
+      document.getElementById('ketentestModel').value = 'netwerkmodel';
       document.getElementById('ketentestStartOp').value = '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest toevoegen';
       document.getElementById('alertKetentest').style.display = 'none';
@@ -1360,6 +1371,7 @@
       if (!k) return;
       document.getElementById('ketentestId').value = k.id;
       document.getElementById('ketentestNaam').value = k.naam;
+      document.getElementById('ketentestModel').value = k.model || 'netwerkmodel';
       document.getElementById('ketentestStartOp').value = k.start_op ? toDatetimeLocalValue(k.start_op) : '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
       document.getElementById('alertKetentest').style.display = 'none';
@@ -1378,16 +1390,17 @@
     async function saveKetentest() {
       const id = document.getElementById('ketentestId').value;
       const naam = document.getElementById('ketentestNaam').value.trim();
+      const model = document.getElementById('ketentestModel').value;
       const startOpRaw = document.getElementById('ketentestStartOp').value;
       const start_op = startOpRaw ? new Date(startOpRaw).toISOString() : null;
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKetentest'); return; }
 
       let dbError, newKetentestId = null;
       if (id) {
-        const res = await sb.from('ketentests').update({ naam, start_op }).eq('id', id);
+        const res = await sb.from('ketentests').update({ naam, model, start_op }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('ketentests').insert({ naam, start_op }).select().single();
+        const res = await sb.from('ketentests').insert({ naam, model, start_op }).select().single();
         dbError = res.error;
         newKetentestId = res.data?.id || null;
       }
