@@ -161,12 +161,23 @@ Op het inlogscherm staat nu een link **"Wachtwoord vergeten?"**. Een gebruiker d
 De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het **inlogscherm**, en beheerders kunnen nu per gebruiker bepalen welke ketentest(en) die gebruiker mag zien:
 
 1. Voer eenmalig `user-ketentest-access-setup.sql` uit in de Supabase SQL Editor. Dit voegt de koppeltabel `user_ketentest_access` toe.
-2. Bij **Beheer → Gebruikers** kun je per gebruiker (rol "Gebruiker" of "Manager") aanvinken tot welke ketentesten die toegang heeft. Beheerders zijn hiervan uitgezonderd — die zien altijd alle ketentesten.
+2. Bij **Beheer → Gebruikers** kun je per gebruiker (elke rol, óók Beheerder — zie de aparte sectie hieronder) aanvinken tot welke ketentesten die toegang heeft.
 3. Na het inloggen:
    - Heeft een gebruiker toegang tot **precies 1** ketentest, dan komt die er automatisch in terecht (geen extra stap).
    - Heeft een gebruiker toegang tot **meerdere** ketentesten, dan verschijnt een keuzescherm met de ketentesten **alfabetisch gesorteerd**.
    - Heeft een gebruiker **geen enkele** ketentest toegewezen gekregen, dan verschijnt een melding om contact op te nemen met de beheerder.
 4. In de navigatiebalk staat nu alleen nog een label met de actieve ketentest, met een link terug naar het keuzescherm om te wisselen (in plaats van de oude dropdown die de pagina liet verversen).
+
+---
+
+## Beheerders moeten ook expliciet gekoppeld worden aan een ketentest (nieuw)
+
+Tot nu toe zagen beheerders automatisch **alle** ketentesten, zonder koppeling. Dat is veranderd: **ook beheerders** moeten nu, net als gewone gebruikers, expliciet aan minimaal 1 ketentest gekoppeld worden via Beheer → Gebruikers.
+
+1. Voer eenmalig `user-ketentest-access-admins-setup.sql` uit in de Supabase SQL Editor. **Dit is een belangrijke stap** — dit script koppelt alle bestaande beheerders eenmalig aan alle bestaande ketentesten, zodat niemand zichzelf per ongeluk buitensluit door deze wijziging. Sla deze stap niet over.
+2. Vanaf nu geldt bij het aanmaken van een nieuwe gebruiker de eis van minimaal 1 gekoppelde ketentest voor **elke rol**, dus ook bij het aanmaken van een nieuwe beheerder.
+3. Maakt een beheerder zelf een **nieuwe ketentest** aan (Beheer → Ketentesten), dan krijgt die persoon daar automatisch toegang toe — anders zou je een ketentest aanmaken waar je zelf nog niet in kunt werken.
+4. Voor overige beheerders die toegang tot een nieuwe ketentest nodig hebben, moet dat nog los ingesteld worden via Beheer → Gebruikers (dit gebeurt niet automatisch voor iedereen).
 
 ## Voorbereiding op vrijgave: laatste login, startmoment en logboek (nieuw)
 
@@ -314,6 +325,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── notificaties-documentatie-trigger-setup.sql Database uitbreiding: documentatie- en trigger-veld per notificatie
 ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
 ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
+├── user-ketentest-access-admins-setup.sql Database data-fix: bestaande beheerders koppelen aan alle ketentesten
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
 ├── ketentest-start-trigger-setup.sql Database uitbreiding: startmoment ook hard afgedwongen (trigger)
