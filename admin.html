@@ -1441,15 +1441,17 @@
         const date = new Date(k.created_at).toLocaleDateString('nl-NL');
         const startInFuture = k.start_op && new Date(k.start_op) > new Date();
         return `<tr style="${isActive ? 'background:#eaf3e0;' : ''}">
-          <td>
-            <strong>${k.naam}</strong>
-            ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; margin-left:8px; font-size:11px;">Actief</span>' : ''}
-            <span class="badge" style="background:${k.model === 'estafettemodel' ? '#ede9fe' : '#dbeafe'}; color:${k.model === 'estafettemodel' ? '#5b21b6' : '#1e40af'}; margin-left:8px; font-size:11px;">${k.model === 'estafettemodel' ? 'Estafettemodel' : 'Netwerkmodel'}</span>
-            ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; margin-left:8px; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
+          <td style="vertical-align:top;">
+            <div><strong>${k.naam}</strong></div>
+            <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
+              ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; font-size:11px;">Actief</span>' : ''}
+              <span class="badge" style="background:${k.model === 'estafettemodel' ? '#ede9fe' : '#dbeafe'}; color:${k.model === 'estafettemodel' ? '#5b21b6' : '#1e40af'}; font-size:11px;">${k.model === 'estafettemodel' ? 'Estafettemodel' : 'Netwerkmodel'}</span>
+              ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
+            </div>
           </td>
-          <td id="ktScenCount-${k.id}" style="color:var(--text-muted)">…</td>
-          <td style="color:var(--text-muted)">${date}</td>
-          <td style="text-align:right;">
+          <td id="ktScenCount-${k.id}" style="color:var(--text-muted); vertical-align:top; padding-top:14px;">…</td>
+          <td style="color:var(--text-muted); vertical-align:top; padding-top:14px;">${date}</td>
+          <td style="text-align:right; vertical-align:top; padding-top:10px;">
             ${!isActive ? `<button class="btn btn-outline btn-sm" onclick="selectKetentestFromAdmin('${k.id}')" style="margin-right:6px;">Openen</button>` : ''}
             <button class="btn btn-outline btn-sm" onclick="openGuestLinkModal('${k.id}','${k.naam.replace(/'/g,"\\'")}')" style="margin-right:6px;" title="Deellink beheren">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
