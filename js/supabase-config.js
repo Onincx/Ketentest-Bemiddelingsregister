@@ -122,6 +122,18 @@ async function ensureActiveKetentest() {
 // wisselen. Verwacht een element met id="ketentestSwitcher".
 // Toont de naam van de actieve ketentest als niet-klikbaar label in de
 // navigatiebalk. Verwacht een element met id="ketentestLabel".
+// Geeft de HTML voor precies ÉÉN link terug — "Berichten" bij een
+// Estafettemodel-ketentest, anders "Notificaties". Er wordt dus nooit
+// een verkeerde/overbodige link ergens verborgen achtergelaten; de
+// andere bestaat simpelweg niet in de pagina.
+function notifBerichtenLinkHtml(model, isAdminPage) {
+  if (model === 'estafettemodel') {
+    return `<a href="berichten.html" id="navBerichtenLink"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Berichten</a>`;
+  }
+  const onclick = isAdminPage ? ` onclick="return navTab('notifications', event)"` : '';
+  return `<a href="admin.html?tab=notifications" id="navNotifLink"${onclick}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</a>`;
+}
+
 async function renderActiveKetentestLabel() {
   const el = document.getElementById('ketentestLabel');
   const result = await ensureActiveKetentest();
@@ -136,13 +148,11 @@ async function renderActiveKetentestLabel() {
     el.style.display = '';
   }
 
-  // Toon "Notificaties" bij een Netwerkmodel-ketentest, "Berichten" bij
-  // een Estafettemodel-ketentest — nooit allebei tegelijk.
-  const notifLink = document.getElementById('navNotifLink');
-  const berichtenLink = document.getElementById('navBerichtenLink');
-  const isEstafette = result.active.model === 'estafettemodel';
-  if (notifLink) notifLink.style.display = isEstafette ? 'none' : '';
-  if (berichtenLink) berichtenLink.style.display = isEstafette ? '' : 'none';
+  // Bouw exact één van de twee links op in de daarvoor bestemde plek —
+  // typeof navTab === 'function' is alleen waar op admin.html zelf,
+  // waar de link via navTab() zonder paginaherlaad moet schakelen.
+  const slot = document.getElementById('navNotifBerichtenSlot');
+  if (slot) slot.innerHTML = notifBerichtenLinkHtml(result.active.model, typeof navTab === 'function');
 
   return result.active;
 }
