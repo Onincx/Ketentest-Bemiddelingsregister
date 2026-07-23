@@ -252,6 +252,17 @@ Beide genereren direct een opgemaakt `.pdf`-bestand (met datum in de bestandsnaa
 
 ---
 
+## Dashboard opgesplitst in twee tabs (nieuw)
+
+Het Dashboard is nu opgedeeld in twee tabbladen, elk met eigen kengetallen bovenaan:
+
+- **Voorbereiding** — alles rondom de deelname-beoordeling (vóór de eigenlijke ketentest): "Flows totaal", "Nog te beoordelen flows", "Nog te beoordelen per partij" en "Flows met afwijzingen".
+- **Ketentest** — alles rondom de daadwerkelijke testvoortgang: "Scenario's totaal", "Activiteiten totaal", "Afgerond", "NOK's", de totale voortgangsbalk, verdeling activiteiten, scenario's met NOK's, voortgang per organisatie/flow, en openstaande NOK's.
+
+De PDF-exports blijven ongewijzigd: die bevatten nog steeds alle onderdelen in één document, ongeacht welk tabblad actief is. Geen SQL-wijziging nodig.
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.
