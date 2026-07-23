@@ -180,7 +180,7 @@
 
   <nav class="topnav" id="mainNav" style="background:#39870c !important; top:121px;">
     
-    <a href="dashboard.html">Dashboard</a>
+    <a href="dashboard.html" id="navDashboardLink" style="display:none;">Dashboard</a>
     <div class="nav-dropdown">
       <a href="app.html" class="active">Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
@@ -432,6 +432,8 @@
         const navScenariosLink = document.getElementById('navScenariosLink');
         if (navScenariosLink) navScenariosLink.style.display = '';
       }
+      const navDashboardLink = document.getElementById('navDashboardLink');
+      if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
       window.isFlowAdmin = currentProfile?.role === 'admin';
       if (!window.isFlowAdmin) {
         const clearBtn = document.getElementById('clearAllBtn');

@@ -170,6 +170,12 @@ De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het *
 
 ---
 
+## Navigatiebalk: "Dashboard"-link nu ook rolafhankelijk
+
+De **"Dashboard"-link** in de navigatiebalk stond op alle pagina's altijd zichtbaar, voor iedereen — ook voor gewone gebruikers die na een klik toch werden teruggestuurd naar Ketentest, omdat het Dashboard alleen voor Beheerder en Manager bedoeld is. Deze link is nu, net als "Beheer" en "Testscenario's" (beheerversie), standaard verborgen en alleen zichtbaar voor **Beheerder en Manager** — ongewijzigd blijft dat Manager verder overal precies hetzelfde ziet als een gewone Gebruiker (en, net als Gebruiker, nergens beheerdersfunctionaliteit kan muteren). Geen SQL-wijziging nodig.
+
+---
+
 ## Beheerders moeten ook expliciet gekoppeld worden aan een ketentest (nieuw)
 
 Tot nu toe zagen beheerders automatisch **alle** ketentesten, zonder koppeling. Dat is veranderd: **ook beheerders** moeten nu, net als gewone gebruikers, expliciet aan minimaal 1 ketentest gekoppeld worden via Beheer → Gebruikers.

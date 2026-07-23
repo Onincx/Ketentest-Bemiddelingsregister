@@ -257,7 +257,8 @@
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
 
-      // Alleen admin en manager mogen dashboard zien
+      // Admin en Manager mogen het dashboard zien; Manager alleen-lezen
+      // (mag verder net als een gewone gebruiker niets muteren).
       if (!['admin','manager'].includes(currentProfile?.role)) {
         window.location.href = 'app.html'; return;
       }
