@@ -196,6 +196,7 @@ Elke ketentest heeft nu een verplicht **model**: **Netwerkmodel** of **Estafette
 
 1. Voer eenmalig `ketentest-model-setup.sql` uit in de Supabase SQL Editor. Bestaande ketentesten krijgen automatisch **Netwerkmodel** (de enige soort tot nu toe) — loop ze na en zet de juiste ketentesten handmatig op Estafettemodel via Beheer → Ketentesten.
 2. Nieuwe pagina `berichten.html`: een alleen-lezen overzicht van alle gevonden berichtcodes in de actieve ketentest, met per code de scenario's waarin die voorkomt als klikbare links (zie hieronder voor de bijbehorende beheerfunctionaliteit).
+3. **Structurele fix**: dit werkte eerder via twee links die er allebei al stonden en met JavaScript getoond/verborgen werden — kwetsbaar voor precies dit soort weergaveproblemen. Nu bouwt de pagina altijd maar **één** van de twee links dynamisch op in een lege plek (`#navNotifBerichtenSlot`); de andere bestaat dan simpelweg niet in de pagina, in plaats van "verborgen" te zijn.
 
 ---
 

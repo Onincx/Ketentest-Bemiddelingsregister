@@ -187,8 +187,7 @@
         <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">Testscenario's</a>
         <a href="flow.html" class="active">Flow</a>
         <a href="deelname.html">Deelname</a>
-        <a href="admin.html?tab=notifications" id="navNotifLink" style="display:none;">Notificaties</a>
-        <a href="berichten.html" id="navBerichtenLink" style="display:none;">Berichten</a>
+        <span id="navNotifBerichtenSlot"></span>
       </div>
     </div>
     <div class="nav-dropdown" id="adminLink" style="display:none;">
@@ -320,7 +319,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=28"></script>
+  <script src="js/supabase-config.js?v=29"></script>
   <script>
     let currentUser, currentProfile;
     let scenarios = [], activities = [], results = [], orgs = {};
