@@ -103,6 +103,7 @@
       { datum: '2026-07-18', beschrijving: 'Notificaties uitgebreid met Documentatie en Trigger (beide vrije tekstvelden, zichtbaar voor iedereen), en het subtabblad "Beheren" is hernoemd naar "Overzicht".' },
       { datum: '2026-07-18', beschrijving: 'Berichten beheren (Beheer → Berichten): per automatisch herkende berichtcode kan nu documentatie en een trigger worden vastgelegd, zichtbaar voor iedereen bij Ketentest → Berichten via een detailknop.' },
       { datum: '2026-07-18', beschrijving: 'Berichten: naam-veld toegevoegd (de beheerder vult zelf een naam in — de code diende voorheen ten onrechte als weergavenaam) en het trigger-veld verwijderd, want dat kenmerk is niet van toepassing op berichten.' },
+      { datum: '2026-07-18', beschrijving: "Bugfix: de link 'Testscenario's' stond onterecht zichtbaar voor gewone gebruikers op admin.html, waardoor zij per ongeluk op de Notificaties-tab konden belanden in plaats van bij Ketentest → Testscenario's." },
     ];
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }

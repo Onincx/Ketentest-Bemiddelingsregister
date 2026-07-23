@@ -47,7 +47,7 @@
     <div class="nav-dropdown">
       <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
-        <a href="admin.html?tab=scenarios" id="navScenariosLink" onclick="return navTab('scenarios', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</a>
+        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;" onclick="return navTab('scenarios', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Testscenario's</a>
         <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
         <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
         <a href="admin.html?tab=notifications" id="navNotifLink" style="display:none;" onclick="return navTab('notifications', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</a>
@@ -994,6 +994,10 @@
     // fallback (bijv. voor "openen in nieuw tabblad").
     function navTab(tab, e) {
       if (e) e.preventDefault();
+      // Gewone gebruikers mogen op deze pagina alleen Notificaties
+      // bekijken (Berichten-beheer is alleen voor beheerders; gewone
+      // gebruikers gebruiken daarvoor de aparte pagina berichten.html).
+      if (!window.isPageAdmin && tab !== 'notifications') return false;
       showTab(tab);
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
