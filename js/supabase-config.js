@@ -134,6 +134,20 @@ function notifBerichtenLinkHtml(model, isAdminPage) {
   return `<a href="admin.html?tab=notifications" id="navNotifLink"${onclick}><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg> Notificaties</a>`;
 }
 
+// Zelfde aanpak als notifBerichtenLinkHtml hierboven: bouwt exact één
+// werkende "Testscenario's"-link op — naar app.html voor gewone
+// gebruikers/managers, naar de beheerversie (admin.html) voor
+// beheerders. Voorkomt dat een niet-werkende link voor de verkeerde
+// rol per ongeluk zichtbaar blijft.
+function scenariosLinkHtml(role, isAdminPage) {
+  const icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>';
+  if (role === 'admin') {
+    const onclick = isAdminPage ? ` onclick="return navTab('scenarios', event)"` : '';
+    return `<a href="admin.html?tab=scenarios" id="navScenariosLink"${onclick}>${icon} Testscenario's</a>`;
+  }
+  return `<a href="app.html" id="navScenariosLink">${icon} Testscenario's</a>`;
+}
+
 async function renderActiveKetentestLabel() {
   const el = document.getElementById('ketentestLabel');
   const result = await ensureActiveKetentest();
