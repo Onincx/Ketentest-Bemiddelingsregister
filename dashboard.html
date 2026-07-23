@@ -401,7 +401,7 @@
         head: [['Flows totaal', 'Nog te beoordelen flows', "Scenario's totaal", 'Activiteiten totaal', 'Afgerond', "NOK's", 'Totale voortgang']],
         body: [[
           flows.length,
-          `${stats.flowsWachten} (${stats.beoordeeldePartijen} van ${stats.totaalPartijen} partijen beoordeeld)`,
+          `${stats.flowsWachten} (${stats.beoordeeldePartijen} van ${stats.totaalPartijen} organisaties hebben al hun flows beoordeeld)`,
           stats.includedScenarios.length,
           stats.totalActs,
           `${stats.okScenarios} / ${stats.includedScenarios.length}`,
@@ -659,15 +659,23 @@
         return acts.length > 0 && acts.every(a => getResult(a.id) === 'ok');
       }).length;
 
-      let flowsWachten = 0, totaalPartijen = 0, beoordeeldePartijen = 0;
+      // Per organisatie die bij minimaal 1 flow betrokken is: heeft die
+      // organisatie al ZIJN flows beoordeeld (ongeacht ja/nee, als er
+      // maar een keuze is gemaakt)? Dit telt organisaties, niet losse
+      // deelname-beslissingen.
+      let flowsWachten = 0;
+      const orgFlowMap = {}; // org_id -> Set van flow_id's waarbij betrokken
       flows.forEach(f => {
-        if (getFlowStatus(f.id) !== 'wachten') return;
-        flowsWachten++;
-        const involved = betrokkenOrgIdsForFlow(f.id);
-        const decided = involved.filter(oid => flowParticipation.some(p => p.flow_id === f.id && p.organisation_id === oid)).length;
-        totaalPartijen += involved.length;
-        beoordeeldePartijen += decided;
+        if (getFlowStatus(f.id) === 'wachten') flowsWachten++;
+        betrokkenOrgIdsForFlow(f.id).forEach(oid => {
+          if (!orgFlowMap[oid]) orgFlowMap[oid] = new Set();
+          orgFlowMap[oid].add(f.id);
+        });
       });
+      const totaalPartijen = Object.keys(orgFlowMap).length;
+      const beoordeeldePartijen = Object.entries(orgFlowMap).filter(([oid, flowIds]) =>
+        [...flowIds].every(fid => flowParticipation.some(p => p.flow_id === fid && p.organisation_id === oid))
+      ).length;
 
       const pct = totalActs > 0 ? Math.round((doneActs / totalActs) * 100) : 0;
 
@@ -685,7 +693,7 @@
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
       document.getElementById('ds-flows-wachten-sub').textContent =
-        totaalPartijen > 0 ? `${beoordeeldePartijen} van ${totaalPartijen} partijen beoordeeld` : '';
+        totaalPartijen > 0 ? `${beoordeeldePartijen} van ${totaalPartijen} organisaties hebben al hun flows beoordeeld` : '';
       document.getElementById('ds-scenarios').textContent = includedScenarios.length;
       document.getElementById('ds-activities').textContent = totalActs;
       document.getElementById('ds-done').textContent = `${okScenarios} / ${includedScenarios.length}`;
