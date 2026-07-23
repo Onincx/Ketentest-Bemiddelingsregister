@@ -172,7 +172,7 @@
         });
       });
 
-      const codes = Object.keys(berichtScenarios).sort();
+      const codes = Object.keys(berichtScenarios).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
 
       if (!codes.length) {
         el.innerHTML = '<div class="empty-state"><p>Nog geen berichtcodes gevonden in de activiteiten van deze ketentest.</p></div>';

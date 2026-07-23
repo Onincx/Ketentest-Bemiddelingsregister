@@ -1324,7 +1324,7 @@
         const matches = (a.description || '').match(BERICHT_PATTERN) || [];
         matches.forEach(m => codes.add(m.toUpperCase()));
       });
-      return [...codes].sort();
+      return [...codes].sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     }
 
     function renderOndocumenteerdeBerichten() {
@@ -1351,7 +1351,7 @@
         tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen berichten gedocumenteerd.</p></div></td></tr>';
         return;
       }
-      tb.innerHTML = [...BERICHTDEFINITIES].sort((a, b) => a.naam.localeCompare(b.naam)).map(b => `
+      tb.innerHTML = [...BERICHTDEFINITIES].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true })).map(b => `
         <tr>
           <td><strong>${b.naam}</strong></td>
           <td><span style="font-family:monospace; font-weight:700; background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; border-radius:6px; padding:3px 10px;">📨 ${b.code}</span></td>
