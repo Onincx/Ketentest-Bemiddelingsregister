@@ -198,7 +198,7 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Notificaties</h1>
-          <p>Beheer de notificaties van deze ketentest en bekijk waar ze worden gebruikt in de testscenario's.</p>
+          <p>Overzicht van de notificaties van deze ketentest en bekijk waar ze worden gebruikt in de testscenario's.</p>
         </div>
       </div>
 
@@ -398,8 +398,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Code</th><th></th></tr></thead>
-            <tbody id="berichtDefTable"><tr><td colspan="2" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Naam</th><th>Code</th><th></th></tr></thead>
+            <tbody id="berichtDefTable"><tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -416,16 +416,16 @@
       <div class="modal-body">
         <input type="hidden" id="berichtDefId">
         <div class="form-group">
+          <label>Naam <span style="color:var(--danger);">*</span></label>
+          <input type="text" id="berichtDefNaam" placeholder="bijv. Wijziging aanvraag doorgeven">
+        </div>
+        <div class="form-group">
           <label>Code <span style="color:var(--danger);">*</span></label>
           <input type="text" id="berichtDefCode" placeholder="bijv. AB123" style="font-family:monospace; text-transform:uppercase;">
         </div>
         <div class="form-group">
           <label>Documentatie <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
           <textarea id="berichtDefDocumentatie" placeholder="Uitleg/documentatie over dit bericht..."></textarea>
-        </div>
-        <div class="form-group">
-          <label>Trigger <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
-          <textarea id="berichtDefTrigger" placeholder="Wat veroorzaakt/triggert dit bericht..."></textarea>
         </div>
         <div id="alertBerichtDef" class="alert" style="display:none;"></div>
       </div>
@@ -1348,11 +1348,12 @@
     function renderBerichtDefTable() {
       const tb = document.getElementById('berichtDefTable');
       if (!BERICHTDEFINITIES.length) {
-        tb.innerHTML = '<tr><td colspan="2"><div class="empty-state"><p>Nog geen berichten gedocumenteerd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen berichten gedocumenteerd.</p></div></td></tr>';
         return;
       }
-      tb.innerHTML = BERICHTDEFINITIES.map(b => `
+      tb.innerHTML = [...BERICHTDEFINITIES].sort((a, b) => a.naam.localeCompare(b.naam)).map(b => `
         <tr>
+          <td><strong>${b.naam}</strong></td>
           <td><span style="font-family:monospace; font-weight:700; background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; border-radius:6px; padding:3px 10px;">📨 ${b.code}</span></td>
           <td style="text-align:right;">
             <button class="btn btn-ghost btn-sm btn-icon" onclick="editBerichtDef('${b.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
@@ -1364,9 +1365,9 @@
     function openNewBerichtModal(prefillCode) {
       if (!window.isPageAdmin) return;
       document.getElementById('berichtDefId').value = '';
+      document.getElementById('berichtDefNaam').value = '';
       document.getElementById('berichtDefCode').value = prefillCode || '';
       document.getElementById('berichtDefDocumentatie').value = '';
-      document.getElementById('berichtDefTrigger').value = '';
       document.getElementById('modalBerichtTitle').textContent = 'Bericht toevoegen';
       document.getElementById('alertBerichtDef').style.display = 'none';
       openModal('modalBericht');
@@ -1377,9 +1378,9 @@
       const b = BERICHTDEFINITIES.find(x => x.id === id);
       if (!b) return;
       document.getElementById('berichtDefId').value = b.id;
+      document.getElementById('berichtDefNaam').value = b.naam;
       document.getElementById('berichtDefCode').value = b.code;
       document.getElementById('berichtDefDocumentatie').value = b.documentatie || '';
-      document.getElementById('berichtDefTrigger').value = b.trigger || '';
       document.getElementById('modalBerichtTitle').textContent = 'Bericht bewerken';
       document.getElementById('alertBerichtDef').style.display = 'none';
       openModal('modalBericht');
@@ -1388,17 +1389,18 @@
     async function saveBerichtDef() {
       if (!window.isPageAdmin) return;
       const id = document.getElementById('berichtDefId').value;
+      const naam = document.getElementById('berichtDefNaam').value.trim();
       const code = document.getElementById('berichtDefCode').value.trim().toUpperCase();
       const documentatie = document.getElementById('berichtDefDocumentatie').value.trim();
-      const trigger = document.getElementById('berichtDefTrigger').value.trim();
+      if (!naam) { showAlert('Vul een naam in.', 'error', 'alertBerichtDef'); return; }
       if (!code) { showAlert('Vul een code in.', 'error', 'alertBerichtDef'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('bericht_definities').update({ code, documentatie: documentatie || null, trigger: trigger || null }).eq('id', id);
+        const res = await sb.from('bericht_definities').update({ naam, code, documentatie: documentatie || null }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('bericht_definities').insert({ ketentest_id: activeKetentest.id, code, documentatie: documentatie || null, trigger: trigger || null });
+        const res = await sb.from('bericht_definities').insert({ ketentest_id: activeKetentest.id, naam, code, documentatie: documentatie || null });
         dbError = res.error;
       }
 
