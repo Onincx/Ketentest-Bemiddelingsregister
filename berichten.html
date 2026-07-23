@@ -36,7 +36,7 @@
         Ketentest <span class="nav-dropdown-caret">▾</span>
       </a>
       <div class="nav-dropdown-menu">
-        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">Testscenario's</a>
+        <span id="navScenariosSlot"></span>
         <a href="flow.html">Flow</a>
         <a href="deelname.html">Deelname</a>
         <span id="navNotifBerichtenSlot"></span>
@@ -101,7 +101,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=29"></script>
+  <script src="js/supabase-config.js?v=30"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null;
     let scenarios = [], activities = [], berichtDefinities = [];
@@ -122,9 +122,9 @@
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
-        const navScenariosLink = document.getElementById('navScenariosLink');
-        if (navScenariosLink) navScenariosLink.style.display = '';
       }
+      const scenariosSlot = document.getElementById('navScenariosSlot');
+      if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
       if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
 

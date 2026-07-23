@@ -150,10 +150,7 @@
         Ketentest <span class="nav-dropdown-caret">▾</span>
       </a>
       <div class="nav-dropdown-menu">
-        <a href="admin.html?tab=scenarios" id="navScenariosLink" style="display:none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
-          Testscenario's
-        </a>
+        <span id="navScenariosSlot"></span>
         <a href="flow.html">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
           Flow
@@ -247,7 +244,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=29"></script>
+  <script src="js/supabase-config.js?v=30"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {};
@@ -266,9 +263,9 @@
       }
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
-        const navScenariosLink = document.getElementById('navScenariosLink');
-        if (navScenariosLink) navScenariosLink.style.display = '';
       }
+      const scenariosSlot = document.getElementById('navScenariosSlot');
+      if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
       if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
 
