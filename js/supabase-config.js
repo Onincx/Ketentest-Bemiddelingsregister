@@ -82,15 +82,14 @@ async function loadAllKetentests() {
   return data || [];
 }
 
-// Geeft de ketentesten terug die de huidige gebruiker mag zien: alle
-// ketentesten voor beheerders ('admin'), anders alleen de ketentesten
-// waarvoor expliciet toegang is verleend (user_ketentest_access).
-// Altijd alfabetisch gesorteerd op naam.
+// Geeft de ketentesten terug die de huidige gebruiker mag zien: alleen
+// de ketentesten waarvoor expliciet toegang is verleend
+// (user_ketentest_access) — dit geldt sinds kort ook voor beheerders,
+// die niet langer automatisch overal toegang toe hebben. Altijd
+// alfabetisch gesorteerd op naam.
 async function getAccessibleKetentests() {
   const user = await getCurrentUser();
   if (!user) return [];
-  const profile = await getUserProfile(user.id);
-  if (profile?.role === 'admin') return await loadAllKetentests();
 
   const { data } = await sb.from('user_ketentest_access').select('ketentest_id, ketentests(*)').eq('user_id', user.id);
   const list = (data || []).map(r => r.ketentests).filter(Boolean);
@@ -125,11 +124,26 @@ async function ensureActiveKetentest() {
 // navigatiebalk. Verwacht een element met id="ketentestLabel".
 async function renderActiveKetentestLabel() {
   const el = document.getElementById('ketentestLabel');
-  if (!el) return null;
   const result = await ensureActiveKetentest();
-  if (!result) { el.style.display = 'none'; return null; }
-  el.textContent = result.active.naam;
-  el.style.display = '';
+
+  if (!result) {
+    if (el) el.style.display = 'none';
+    return null;
+  }
+
+  if (el) {
+    el.textContent = result.active.naam;
+    el.style.display = '';
+  }
+
+  // Toon "Notificaties" bij een Netwerkmodel-ketentest, "Berichten" bij
+  // een Estafettemodel-ketentest — nooit allebei tegelijk.
+  const notifLink = document.getElementById('navNotifLink');
+  const berichtenLink = document.getElementById('navBerichtenLink');
+  const isEstafette = result.active.model === 'estafettemodel';
+  if (notifLink) notifLink.style.display = isEstafette ? 'none' : '';
+  if (berichtenLink) berichtenLink.style.display = isEstafette ? '' : 'none';
+
   return result.active;
 }
 
