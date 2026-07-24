@@ -54,6 +54,7 @@
       </div>
     </div>
     <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700; margin-left:16px;"></span>
+      <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
@@ -102,7 +103,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=30"></script>
+  <script src="js/supabase-config.js?v=31"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null;
     let scenarios = [], activities = [], berichtDefinities = [];
@@ -119,6 +120,7 @@
       currentUser = await requireAuth();
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
+      refreshGlobalNokBadge(currentProfile?.organisation_id);
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.role === 'admin') {

@@ -322,6 +322,12 @@ Dit is een fundamentele uitbreiding: in plaats van 1 NOK-status per activiteit k
 
 ---
 
+## Signaleringsbadge nu overal zichtbaar (bugfix)
+
+De rode waarschuwingsbadge ("⚠ X openstaande NOK's") stond tot nu toe alleen in de navigatiebalk van Ketentest → Testscenario's (`app.html`) — klikte je erop om naar NOK-opvolging te gaan, dan verdween de badge, want die pagina had 'm niet. Dit is opgelost: de badge staat nu op **elke** pagina met dezelfde navigatiebalk, haalt de stand altijd rechtstreeks en actueel op uit de database (niet uit al geladen paginagegevens), en blijft dus zichtbaar zolang er minimaal 1 openstaande bevinding aan de organisatie is toegewezen — ook op Beheer → NOK-opvolging zelf. Geen SQL-wijziging nodig.
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.

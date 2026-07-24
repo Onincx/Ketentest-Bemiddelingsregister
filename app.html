@@ -246,7 +246,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=30"></script>
+  <script src="js/supabase-config.js?v=31"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
@@ -913,26 +913,12 @@
       });
     }
 
-    // Signalering: hoeveel NOK's zijn aan mijn organisatie toegewezen om
-    // op te lossen, en zijn nog niet via een hertest opgelost?
-    function computeOpenNokCountForMyOrg() {
-      const myOrgId = currentProfile?.organisation_id;
-      if (!myOrgId) return 0;
-      return Object.values(results).filter(r =>
-        r.result === 'nok' && r.nok_owner_org_id === myOrgId && r.nok_status !== 'hertest_ok'
-      ).length;
-    }
-
+    // Signalering: hoeveel bevindingen zijn aan mijn organisatie
+    // toegewezen om op te lossen? Gebruikt de gedeelde functie
+    // (supabase-config.js) zodat dit overal in de navigatiebalk
+    // hetzelfde, altijd-actuele aantal toont — ook op andere pagina's.
     function refreshNokBadge() {
-      const badge = document.getElementById('nokBadge');
-      if (!badge) return;
-      const count = computeOpenNokCountForMyOrg();
-      if (count > 0) {
-        badge.textContent = `⚠ ${count} openstaande NOK${count === 1 ? '' : "'s"}`;
-        badge.style.display = '';
-      } else {
-        badge.style.display = 'none';
-      }
+      refreshGlobalNokBadge(currentProfile?.organisation_id);
     }
 
     async function submitNokModal(activityId, scenarioId) {
