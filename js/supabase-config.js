@@ -148,6 +148,33 @@ function scenariosLinkHtml(role, isAdminPage) {
   return `<a href="app.html" id="navScenariosLink">${icon} Testscenario's</a>`;
 }
 
+// Toont in de navigatiebalk (element met id="nokBadge") hoeveel
+// openstaande bevindingen aan de organisatie van de huidige gebruiker
+// zijn toegewezen om op te lossen. Werkt op elke pagina die dit
+// element heeft, en haalt de stand altijd rechtstreeks en actueel op
+// (niet uit eventueel al geladen/verouderde paginagegevens) — de
+// badge blijft daardoor overal zichtbaar, ook op Beheer → NOK-opvolging
+// zelf, en verandert nooit door alleen maar te navigeren.
+async function refreshGlobalNokBadge(orgId) {
+  const badge = document.getElementById('nokBadge');
+  if (!badge) return;
+  if (!orgId) { badge.style.display = 'none'; return; }
+
+  const result = await ensureActiveKetentest();
+  if (!result) { badge.style.display = 'none'; return; }
+
+  const { data, error } = await sb.from('bevindingen').select('id')
+    .eq('ketentest_id', result.active.id)
+    .eq('owner_org_id', orgId)
+    .neq('status', 'hertest_ok');
+
+  if (error || !data || !data.length) { badge.style.display = 'none'; return; }
+
+  const count = data.length;
+  badge.textContent = `⚠ ${count} openstaande NOK${count === 1 ? '' : "'s"}`;
+  badge.style.display = '';
+}
+
 async function renderActiveKetentestLabel() {
   const el = document.getElementById('ketentestLabel');
   const result = await ensureActiveKetentest();
