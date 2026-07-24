@@ -625,11 +625,21 @@
 
       // ── 7. Openstaande NOK's ──────────────────────────────────────
       heading("Openstaande NOK's");
-      const nokRows = results.filter(r => r.result === 'nok').map(r => {
-        const act = activities.find(a => a.id === r.activity_id);
+      const openGroepen = {};
+      allBevindingen.filter(b => b.status !== 'hertest_ok').forEach(b => {
+        const rootId = findBevindingRootDash(b).id;
+        (openGroepen[rootId] = openGroepen[rootId] || []).push(b);
+      });
+      const nokRows = Object.values(openGroepen).map(groep => {
+        const sorted = [...groep].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const eerste = sorted[0];
+        const vervolgen = sorted.slice(1);
+        const act = activities.find(a => a.id === eerste.activity_id);
         const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
         if (!act || !scen) return null;
-        return [scen.code, act.description || '—', act.organisations?.name || '—', r.notes || ''];
+        const eigenaarOrg = orgs.find(o => o.id === eerste.owner_org_id);
+        const vervolgTekst = vervolgen.length ? ` (vervolg: ${vervolgen.map(v => 'B' + v.bevinding_nummer).join(', ')})` : '';
+        return [`B${eerste.bevinding_nummer}${vervolgTekst}`, scen.code, act.description || '—', eigenaarOrg?.name || '—', eerste.toelichting || ''];
       }).filter(Boolean);
 
       if (!nokRows.length) {
@@ -637,11 +647,11 @@
       } else {
         doc.autoTable({
           startY: y,
-          head: [['Code', 'Activiteit', 'Organisatie', 'Opmerking']],
+          head: [['Nummer', 'Code', 'Activiteit', 'Eigenaar', 'Melding']],
           body: nokRows,
           styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
           headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
-          columnStyles: { 1: { cellWidth: 170 }, 3: { cellWidth: 170 } },
+          columnStyles: { 2: { cellWidth: 150 }, 4: { cellWidth: 150 } },
         });
         afterTable();
       }
@@ -974,30 +984,59 @@
           </div>`).join('') + `</div>`;
     }
 
+    // Vindt de "root" (oorspronkelijke) bevinding van een keten door
+    // gerelateerde_bevinding_id terug te volgen — gebruikt om
+    // vervolgbevindingen te groeperen.
+    function findBevindingRootDash(bevinding) {
+      let current = bevinding;
+      let guard = 0;
+      while (current.gerelateerde_bevinding_id && guard < 20) {
+        const parent = allBevindingen.find(b => b.id === current.gerelateerde_bevinding_id);
+        if (!parent) break;
+        current = parent;
+        guard++;
+      }
+      return current;
+    }
+
     function renderNokOverview() {
       const el = document.getElementById('nokOverview');
-      const nokResults = results.filter(r => r.result === 'nok');
-      if (!nokResults.length) {
+      const openBevindingen = allBevindingen.filter(b => b.status !== 'hertest_ok');
+      if (!openBevindingen.length) {
         el.innerHTML = '<p class="empty-dash">Geen NOK\'s gevonden. Alles loopt goed!</p>';
         return;
       }
 
-      const rows = nokResults.map(r => {
-        const act = activities.find(a => a.id === r.activity_id);
-        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
-        const org = act?.organisations?.name || '—';
-        return { r, act, scen, org };
-      }).filter(x => x.act && x.scen);
+      // Groepeer op keten, zodat een openstaande bevinding en haar
+      // (eveneens nog openstaande) vervolgbevindingen samen op 1 regel
+      // getoond worden.
+      const groups = {};
+      openBevindingen.forEach(b => {
+        const rootId = findBevindingRootDash(b).id;
+        (groups[rootId] = groups[rootId] || []).push(b);
+      });
 
-      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ r, act, scen, org }) => `
+      const rows = Object.values(groups).map(groepBevindingen => {
+        const sorted = [...groepBevindingen].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        const eerste = sorted[0];
+        const vervolgen = sorted.slice(1);
+        const act = activities.find(a => a.id === eerste.activity_id);
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        const eigenaarOrg = orgs.find(o => o.id === eerste.owner_org_id);
+        return { eerste, vervolgen, act, scen, eigenaarOrg };
+      }).filter(x => x.act && x.scen)
+        .sort((a, b) => new Date(b.eerste.created_at) - new Date(a.eerste.created_at));
+
+      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ eerste, vervolgen, act, scen, eigenaarOrg }) => `
         <div class="nok-row">
-          <span class="nok-badge">NOK</span>
+          <span class="nok-badge">B${eerste.bevinding_nummer}</span>
           <div>
             <div class="nok-desc">${act.description || '—'}</div>
             <div class="nok-meta">
               ${scen.code} — ${scen.title}
-              ${org !== '—' ? ` · <strong>${org}</strong>` : ''}
-              ${r.notes ? ` · <em>"${r.notes.substring(0,80)}${r.notes.length>80?'...':''}"</em>` : ''}
+              ${eigenaarOrg ? ` · Eigenaar: <strong>${eigenaarOrg.name}</strong>` : ''}
+              ${eerste.toelichting ? ` · <em>"${eerste.toelichting.substring(0,80)}${eerste.toelichting.length>80?'...':''}"</em>` : ''}
+              ${vervolgen.length ? ` · <span style="color:#7c3aed; font-weight:600;">🔗 Vervolg: ${vervolgen.map(v => 'B' + v.bevinding_nummer).join(', ')}</span>` : ''}
             </div>
           </div>
         </div>`).join('') + `</div>`;

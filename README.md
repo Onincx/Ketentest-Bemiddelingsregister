@@ -324,7 +324,8 @@ Dit is een fundamentele uitbreiding: in plaats van 1 NOK-status per activiteit k
 
 ## Dashboard: Afgehandelde NOK's + nettere statusbadge (nieuw)
 
-- **Nieuwe kaart "Afgehandelde NOK's"** op het Dashboard (tab Ketentest), direct onder "Openstaande NOK's": toont alle bevindingen die zijn afgerond (status Hertest OK), met bevindingsnummer, eigenaar en doorlooptijd. Ook meegenomen in de volledige dashboard-PDF-export, als aparte sectie na "Openstaande NOK's".
+- **Nieuwe kaart "Afgehandelde NOK's"** op het Dashboard (tab Ketentest), direct onder "Openstaande NOK's": toont alle bevindingen die zijn afgerond (status Hertest OK), met bevindingsnummer, eigenaar en doorlooptijd. Ook meegenomen in de volledige dashboard-PDF-export, als aparte sectie na "Openstaande NOK's". Toont ook bevindingen die inmiddels een nieuwere, gekoppelde vervolgbevinding hebben — die blijven hier gewoon zichtbaar als afgehandeld.
+- **"Openstaande NOK's" uitgebreid**: toont nu ook het bevindingsnummer, de eigenaar-organisatie en de melding (toelichting) van de partij die de NOK heeft aangemaakt. Bevindingen die tot dezelfde keten horen (een openstaande bevinding met 1 of meerdere vervolgbevindingen) staan samen op 1 regel, met de vervolgnummers duidelijk gemarkeerd.
 - **Statusbadge bij NOK-opvolging** (Beheer/Ketentest → NOK-opvolging) is nettere weergegeven: een rechthoekige tag met icoon (🔒 vergrendeld / ✓ afgerond) in plaats van een volledig ronde pil, die bij langere teksten zoals "Opgelost, wacht op hertest" een rare bolvorm kreeg.
 
 Geen SQL-wijziging nodig voor beide.
