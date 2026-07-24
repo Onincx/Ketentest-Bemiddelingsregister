@@ -246,7 +246,7 @@
   <script src="js/supabase-config.js?v=31"></script>
   <script>
     let currentUser = null, currentProfile = null;
-    let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {};
+    let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [];
     let flows = [], flowNodes = [], flowParticipation = [];
     let activeKetentest = null;
 
@@ -314,10 +314,15 @@
       flowParticipation = fp.data || [];
 
       // Laatste (huidige) bevinding per activiteit — bepaalt wie
-      // daadwerkelijk eigenaar is van het oplossen van een NOK.
+      // daadwerkelijk eigenaar is van het oplossen van een openstaande NOK.
       latestBevindingByActivity = {};
-      (bv.data || []).forEach(b => {
-        if (actIds.has(b.activity_id) && !latestBevindingByActivity[b.activity_id]) {
+      // Alle bevindingen (ook oudere, afgehandelde, die inmiddels een
+      // nieuwere vervolgbevinding hebben) — nodig voor "Afgehandelde NOK's",
+      // want een afgeronde bevinding moet zichtbaar blijven ook als er
+      // later een vervolg-NOK aan gekoppeld is.
+      allBevindingen = (bv.data || []).filter(b => actIds.has(b.activity_id));
+      allBevindingen.forEach(b => {
+        if (!latestBevindingByActivity[b.activity_id]) {
           latestBevindingByActivity[b.activity_id] = b;
         }
       });
@@ -643,7 +648,7 @@
 
       // ── 8. Afgehandelde NOK's ─────────────────────────────────────
       heading("Afgehandelde NOK's");
-      const afgehandeldeRows = Object.values(latestBevindingByActivity)
+      const afgehandeldeRows = allBevindingen
         .filter(b => b.status === 'hertest_ok')
         .map(b => {
           const act = activities.find(a => a.id === b.activity_id);
@@ -1005,7 +1010,7 @@
     // (vervolg-)bevinding heeft — dit overzicht is puur historisch.
     function renderAfgehandeldeNokOverview() {
       const el = document.getElementById('afgehandeldeNokOverview');
-      const afgehandeld = Object.values(latestBevindingByActivity).filter(b => b.status === 'hertest_ok');
+      const afgehandeld = allBevindingen.filter(b => b.status === 'hertest_ok');
 
       if (!afgehandeld.length) {
         el.innerHTML = '<p class="empty-dash">Nog geen bevindingen afgehandeld.</p>';
