@@ -249,7 +249,7 @@
   <script src="js/supabase-config.js?v=30"></script>
   <script>
     let currentUser = null, currentProfile = null;
-    let scenarios = [], activities = [], results = {}, allOrgs = [];
+    let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let activeFilter = 'all';
     let activeKetentest = null;
     const autosaveTimers = {};
@@ -318,16 +318,17 @@
       await loadNotificationDefs();
 
       if (!scenarioIds.length) {
-        activities = []; results = {}; flowNodes = []; flowEdges = []; scenarioFlowMap = {};
+        activities = []; results = {}; flowNodes = []; flowEdges = []; scenarioFlowMap = {}; latestBevindingByActivity = {};
         return;
       }
 
-      const [a, r, fn, fe, fl] = await Promise.all([
+      const [a, r, fn, fe, fl, bv] = await Promise.all([
         sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order'),
         sb.from('activity_results').select('*'),
         sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }),
       ]);
       flowNodes = fn.data || [];
       flowEdges = fe.data || [];
@@ -343,6 +344,15 @@
       results = {};
       const actIds = new Set(activities.map(a => a.id));
       (r.data || []).forEach(x => { if (actIds.has(x.activity_id)) results[x.activity_id] = x; });
+
+      // Laatste bevinding per activiteit (eerste in de lijst, want al
+      // gesorteerd op created_at aflopend) — bepaalt de knop-status.
+      latestBevindingByActivity = {};
+      (bv.data || []).forEach(b => {
+        if (actIds.has(b.activity_id) && !latestBevindingByActivity[b.activity_id]) {
+          latestBevindingByActivity[b.activity_id] = b;
+        }
+      });
     }
 
     // Clientnaam = code van het scenario dat in dezelfde flow als "start"
@@ -673,6 +683,7 @@
         </div>
         ${sorted.map((a, idx) => {
           const r = results[a.id] || {};
+          const bevinding = latestBevindingByActivity[a.id] || null;
           const isAcceptant = a.acceptant_org?.id === myOrgId;
           const canEdit = isAcceptant || currentProfile?.role === 'admin';
           const orgName = a.organisations?.name || '';
@@ -704,18 +715,31 @@
                 </div>
               ` : `
               <div class="result-toggle">
-                ${canEdit ? `
-                  <button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
-                    onclick="setResult('${a.id}','${a.scenario_id}','ok')"
-                    title="Markeer als OK">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
-                  </button>
-                  <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}"
-                    ${r.result === 'nok' ? 'disabled style="cursor:not-allowed; opacity:0.7;"' : `onclick="openNokModal('${a.id}','${a.scenario_id}')"`}
-                    title="${r.result === 'nok' ? 'Een geregistreerde NOK kan niet meer worden uitgezet — zet de activiteit na een hertest op OK' : 'Markeer als NOK'}">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
-                  </button>
-                ` : `
+                ${canEdit ? (() => {
+                  const isNok = r.result === 'nok';
+                  const readyForRetest = isNok && bevinding?.status === 'opgelost_wacht_hertest';
+                  const okBtn = (!isNok || readyForRetest)
+                    ? `<button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
+                        onclick="${readyForRetest ? `retestOkClick('${a.id}','${a.scenario_id}')` : `setResult('${a.id}','${a.scenario_id}','ok')`}"
+                        title="Markeer als OK">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
+                      </button>`
+                    : `<button class="rtbtn rtbtn-ok" disabled style="cursor:not-allowed; opacity:0.5;" title="Deze bevinding moet eerst op 'Opgelost, wacht op hertest' gezet worden bij NOK-opvolging voordat een hertest mogelijk is">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
+                      </button>`;
+                  const nokBtn = !isNok
+                    ? `<button class="rtbtn rtbtn-nok" onclick="openNokModal('${a.id}','${a.scenario_id}')" title="Markeer als NOK">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
+                      </button>`
+                    : readyForRetest
+                      ? `<button class="rtbtn rtbtn-nok active" onclick="retestNokClick('${a.id}','${a.scenario_id}')" title="Nog steeds NOK na hertest">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
+                        </button>`
+                      : `<button class="rtbtn rtbtn-nok active" disabled style="cursor:not-allowed; opacity:0.7;" title="Een geregistreerde NOK kan niet meer worden uitgezet — deze wordt pas weer actief zodra de bevinding bij NOK-opvolging op 'Opgelost, wacht op hertest' is gezet">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
+                        </button>`;
+                  return okBtn + nokBtn;
+                })() : `
                   <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</span>
                   <span class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" style="cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK</span>
                 `}
@@ -800,21 +824,17 @@
     }
 
     // Pop-up bij het markeren van een activiteit als NOK: verplichte
-    // reden + eigenaar van de oplossing (NOK-opvolgingsproces).
-    function openNokModal(activityId, scenarioId) {
-      const existing = results[activityId];
-      if (existing?.result === 'nok') {
-        // Al NOK: nogmaals klikken zet 'm uit — geen pop-up nodig voor het
-        // uitzetten, alleen voor het (opnieuw) instellen van een NOK.
-        setResult(activityId, scenarioId, 'nok');
-        return;
-      }
+    // reden + eigenaar van de oplossing. Maakt een nieuwe bevinding aan,
+    // eventueel gekoppeld aan een eerdere (als een hertest opnieuw NOK
+    // opleverde).
+    function openNokModal(activityId, scenarioId, gerelateerdeBevindingId = null) {
       const act = activities.find(a => a.id === activityId);
       if (!act) return;
       const defaultOwnerId = act.organisation_id || '';
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.id = 'nokModalOverlay';
+      modal.dataset.gerelateerdeBevindingId = gerelateerdeBevindingId || '';
       modal.style.display = 'flex';
       modal.innerHTML = `
         <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
@@ -823,6 +843,7 @@
             <button class="btn btn-ghost btn-icon" onclick="document.getElementById('nokModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
           </div>
           <div class="modal-body">
+            ${gerelateerdeBevindingId ? `<div class="alert" style="display:block; background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; margin-bottom:14px;">Dit wordt vastgelegd als vervolgbevinding, gekoppeld aan de vorige.</div>` : ''}
             <div class="form-group">
               <label>Reden <span style="color:var(--danger);">*</span></label>
               <textarea id="nokModalReden" placeholder="Wat gaat er mis? Wees zo concreet mogelijk, dit helpt bij het oplossen..." style="min-height:100px;"></textarea>
@@ -843,6 +864,53 @@
         </div>`;
       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
       document.body.appendChild(modal);
+    }
+
+    // Eenvoudige Ja/Nee-bevestiging voor de hertest-vragen.
+    function showRetestConfirm(message, onJa) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'retestConfirmOverlay';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:440px;" onclick="event.stopPropagation()">
+          <div class="modal-header"><h3>Hertest bevestigen</h3></div>
+          <div class="modal-body"><p style="font-size:14px;">${message}</p></div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" id="retestConfirmNee">Nee</button>
+            <button class="btn btn-primary" id="retestConfirmJa">Ja</button>
+          </div>
+        </div>`;
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      document.body.appendChild(modal);
+      document.getElementById('retestConfirmNee').onclick = () => modal.remove();
+      document.getElementById('retestConfirmJa').onclick = async () => {
+        modal.remove();
+        await onJa();
+      };
+    }
+
+    // Klik op OK bij een activiteit die klaarstaat voor hertest.
+    function retestOkClick(activityId, scenarioId) {
+      showRetestConfirm('Klopt het dat de bevinding definitief is opgelost?', async () => {
+        const bevinding = latestBevindingByActivity[activityId];
+        if (bevinding) {
+          const resolved_at = new Date().toISOString();
+          await sb.from('bevindingen').update({ status: 'hertest_ok', resolved_at }).eq('id', bevinding.id);
+          bevinding.status = 'hertest_ok';
+          bevinding.resolved_at = resolved_at;
+        }
+        await setResult(activityId, scenarioId, 'ok');
+      });
+    }
+
+    // Klik op NOK bij een activiteit die klaarstaat voor hertest: de
+    // hertest is mislukt, dit wordt een nieuwe, gekoppelde bevinding.
+    function retestNokClick(activityId, scenarioId) {
+      showRetestConfirm('Klopt het dat de bevinding nog niet is opgelost of er een andere fout is opgetreden?', () => {
+        const bevinding = latestBevindingByActivity[activityId];
+        openNokModal(activityId, scenarioId, bevinding?.id || null);
+      });
     }
 
     // Signalering: hoeveel NOK's zijn aan mijn organisatie toegewezen om
@@ -877,7 +945,17 @@
         al.style.display = '';
         return;
       }
-      document.getElementById('nokModalOverlay').remove();
+      const modalEl = document.getElementById('nokModalOverlay');
+      const gerelateerdeBevindingId = modalEl?.dataset.gerelateerdeBevindingId || null;
+      modalEl.remove();
+
+      const { data: bevinding, error: bevindingError } = await sb.from('bevindingen').insert({
+        ketentest_id: activeKetentest.id, activity_id: activityId, toelichting: reden,
+        owner_org_id: eigenaar, status: 'nieuw', gerelateerde_bevinding_id: gerelateerdeBevindingId || null,
+      }).select().single();
+      if (bevindingError) { alert('Fout bij opslaan: ' + bevindingError.message); return; }
+      latestBevindingByActivity[activityId] = bevinding;
+
       await setResult(activityId, scenarioId, 'nok', { notes: reden, nok_owner_org_id: eigenaar });
     }
 
@@ -975,8 +1053,11 @@
     }
 
     async function setResult(activityId, scenarioId, result, extra = {}) {
-      // Toggle: klikken op al-actieve knop zet hem uit
-      if (results[activityId]?.result === result) result = 'open';
+      // Toggle: klikken op al-actieve knop zet hem uit — behalve als dit
+      // een (vervolg-)NOK is die via de pop-up wordt vastgelegd, want dan
+      // is 'nok' altijd de bedoelde, definitieve keuze.
+      const isNieuweNokRegistratie = result === 'nok' && !!extra.nok_owner_org_id;
+      if (results[activityId]?.result === result && !isNieuweNokRegistratie) result = 'open';
       const notes = extra.notes !== undefined ? extra.notes : (document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '');
       const existing = results[activityId];
 

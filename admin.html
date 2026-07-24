@@ -400,8 +400,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Scenario / activiteit</th><th>Verantw.</th><th>Acceptant</th><th>Status</th><th>Eigenaar</th><th>Ingesteld</th><th>Doorlooptijd</th><th>Opmerkingen</th></tr></thead>
-            <tbody id="nokTable"><tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Nummer</th><th>Scenario / activiteit</th><th>Verantw.</th><th>Acceptant</th><th>Status</th><th>Eigenaar</th><th>Ingesteld</th><th>Doorlooptijd</th><th>Opmerkingen</th></tr></thead>
+            <tbody id="nokTable"><tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1513,41 +1513,38 @@
       openModal('modalConfirm');
     }
 
-    // ---- NOK-OPVOLGING ----
-    let nokResults = [];
-    let nokNotitiesMap = {}; // activity_result_id -> [notities], nieuwste eerst
+    // ---- NOK-OPVOLGING (nu gebaseerd op de tabel 'bevindingen') ----
+    let bevindingen = [];
+    let nokNotitiesMap = {}; // bevinding_id -> aantal opmerkingen
     let nokFilter = 'open';
     const NOK_STATUS_LABELS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK' };
 
-    // Mag deze gebruiker de status/eigenaar van dit NOK-resultaat wijzigen,
+    // Mag deze gebruiker de status/eigenaar van deze bevinding wijzigen,
     // en mag die opmerkingen toevoegen/bewerken/verwijderen? Alleen de
     // eigenaar-organisatie (of een beheerder) — iedereen mag altijd lezen.
-    function canMutateNok(nokRow) {
+    function canMutateNok(bevinding) {
       if (window.isPageAdmin) return true;
       const myOrgId = currentProfile?.organisation_id;
-      return !!myOrgId && !!nokRow.nok_owner_org_id && myOrgId === nokRow.nok_owner_org_id;
+      return !!myOrgId && !!bevinding.owner_org_id && myOrgId === bevinding.owner_org_id;
     }
 
     async function loadNokOverview() {
       const tb = document.getElementById('nokTable');
-      tb.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
-      if (!activeKetentest) { nokResults = []; renderNokTable(); return; }
+      tb.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      if (!activeKetentest) { bevindingen = []; renderNokTable(); return; }
 
-      const scenarioIds = scenarios.map(s => s.id);
-      const activityIds = activities.filter(a => scenarioIds.includes(a.scenario_id)).map(a => a.id);
-      if (!activityIds.length) { nokResults = []; renderNokTable(); return; }
+      const { data, error } = await sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id);
+      if (error) { console.error('loadNokOverview error:', error); bevindingen = []; renderNokTable(); return; }
+      bevindingen = data || [];
 
-      const { data, error } = await sb.from('activity_results').select('*').eq('result', 'nok').in('activity_id', activityIds);
-      if (error) { console.error('loadNokOverview error:', error); nokResults = []; renderNokTable(); return; }
-      nokResults = data || [];
-
-      // Aantal opmerkingen per NOK in één keer ophalen (voor het label op
-      // de knop) — de volledige inhoud laden we pas als de modal opent.
+      // Aantal opmerkingen per bevinding in één keer ophalen (voor het
+      // label op de knop) — de volledige inhoud laden we pas als de
+      // modal opent.
       nokNotitiesMap = {};
-      if (nokResults.length) {
-        const { data: notitiesData } = await sb.from('nok_notities').select('activity_result_id').in('activity_result_id', nokResults.map(r => r.id));
+      if (bevindingen.length) {
+        const { data: notitiesData } = await sb.from('nok_notities').select('bevinding_id').in('bevinding_id', bevindingen.map(b => b.id));
         (notitiesData || []).forEach(n => {
-          nokNotitiesMap[n.activity_result_id] = (nokNotitiesMap[n.activity_result_id] || 0) + 1;
+          nokNotitiesMap[n.bevinding_id] = (nokNotitiesMap[n.bevinding_id] || 0) + 1;
         });
       }
 
@@ -1564,54 +1561,96 @@
       renderNokTable();
     }
 
+    // Vindt de "root" (oorspronkelijke) bevinding van een keten door
+    // gerelateerde_bevinding_id terug te volgen.
+    function findBevindingRoot(bevinding) {
+      let current = bevinding;
+      let guard = 0;
+      while (current.gerelateerde_bevinding_id && guard < 20) {
+        const parent = bevindingen.find(b => b.id === current.gerelateerde_bevinding_id);
+        if (!parent) break;
+        current = parent;
+        guard++;
+      }
+      return current;
+    }
+
     function renderNokTable() {
       const tb = document.getElementById('nokTable');
-      let rows = nokResults;
-      if (nokFilter === 'open') rows = rows.filter(r => r.nok_status !== 'hertest_ok');
+      let rows = bevindingen;
+      if (nokFilter === 'open') rows = rows.filter(b => b.status !== 'hertest_ok');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="9"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
         return;
       }
-      rows = [...rows].sort((a, b) => new Date(b.nok_set_at || b.updated_at || 0) - new Date(a.nok_set_at || a.updated_at || 0));
-      tb.innerHTML = rows.map(r => {
-        const act = activities.find(a => a.id === r.activity_id);
+
+      // Groepeer op keten (root-bevinding), sorteer groepen op de datum
+      // van de root (nieuwste eerst), en binnen een keten chronologisch
+      // (origineel bovenaan, vervolgbevindingen eronder).
+      const rootOf = {};
+      rows.forEach(b => { rootOf[b.id] = findBevindingRoot(b).id; });
+      const groups = {};
+      rows.forEach(b => { (groups[rootOf[b.id]] = groups[rootOf[b.id]] || []).push(b); });
+      const groupKeys = Object.keys(groups).sort((a, b) => {
+        const da = bevindingen.find(x => x.id === a)?.created_at || 0;
+        const db = bevindingen.find(x => x.id === b)?.created_at || 0;
+        return new Date(db) - new Date(da);
+      });
+      const orderedRows = [];
+      groupKeys.forEach(key => {
+        const groepRijen = groups[key].sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        orderedRows.push(...groepRijen);
+      });
+
+      tb.innerHTML = orderedRows.map(b => {
+        const act = activities.find(a => a.id === b.activity_id);
         const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
         const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : null;
         const acceptantOrg = act ? orgs.find(o => o.id === act.acceptant_org_id) : null;
-        const setDate = r.nok_set_at ? new Date(r.nok_set_at) : (r.updated_at ? new Date(r.updated_at) : null);
-        const isResolved = r.nok_status === 'hertest_ok';
-        const doorlooptijdDagen = setDate ? Math.round(((r.nok_resolved_at ? new Date(r.nok_resolved_at) : new Date()) - setDate) / (1000 * 60 * 60 * 24)) : null;
+        const setDate = b.created_at ? new Date(b.created_at) : null;
+        const isResolved = b.status === 'hertest_ok';
+        const isLocked = b.status === 'opgelost_wacht_hertest' || isResolved;
+        const doorlooptijdDagen = setDate ? Math.round(((b.resolved_at ? new Date(b.resolved_at) : new Date()) - setDate) / (1000 * 60 * 60 * 24)) : null;
         const doorlooptijd = doorlooptijdDagen == null ? '—' : `${doorlooptijdDagen} dagen${isResolved ? '' : ' (loopt nog)'}`;
-        const magMuteren = canMutateNok(r);
-        const notitieCount = nokNotitiesMap[r.id] || 0;
-        return `<tr>
+        const magMuteren = canMutateNok(b);
+        const notitieCount = nokNotitiesMap[b.id] || 0;
+        const gekoppeldAan = b.gerelateerde_bevinding_id ? bevindingen.find(x => x.id === b.gerelateerde_bevinding_id) : null;
+        const isVervolg = !!gekoppeldAan;
+
+        return `<tr style="${isVervolg ? 'background:#faf5ff;' : ''}">
+          <td style="${isVervolg ? 'border-left:3px solid #c4b5fd;' : ''}">
+            <span style="font-family:monospace; font-weight:700; font-size:13px;">B${b.bevinding_nummer}</span>
+            ${isVervolg ? `<div style="font-size:11px; color:#7c3aed; margin-top:2px;">🔗 vervolg van B${gekoppeldAan.bevinding_nummer}</div>` : ''}
+          </td>
           <td>
-            <div style="font-weight:600; font-size:13px;">${scen ? scen.code : '?'} — ${scen ? scen.title : ''}</div>
+            <div style="font-weight:600; font-size:13px;">
+              ${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" style="color:var(--brand); text-decoration:none;" title="Open scenario">${scen.code} — ${scen.title}</a>` : '?'}
+            </div>
             <div style="font-size:12px; color:var(--text-muted);">${act ? (act.description || '') : ''}</div>
-            ${r.notes ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px; font-style:italic;">"${r.notes.replace(/</g, '&lt;')}"</div>` : ''}
+            ${b.toelichting ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px; font-style:italic;">"${b.toelichting.replace(/</g, '&lt;')}"</div>` : ''}
           </td>
           <td><span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;">${verantwOrg?.name || '—'}</span></td>
           <td><span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span></td>
           <td>
-            ${isResolved
-              ? `<span class="badge" style="background:#d1fae5; color:#065f46; font-size:11px;">Hertest OK</span>`
+            ${isLocked
+              ? `<span class="badge" style="background:${isResolved ? '#d1fae5' : '#ede9fe'}; color:${isResolved ? '#065f46' : '#5b21b6'}; font-size:11px;" title="${isResolved ? '' : 'Status kan niet meer aangepast worden — alleen opmerkingen blijven mogelijk'}">${NOK_STATUS_LABELS[b.status]}</span>`
               : magMuteren
-                ? `<select onchange="handleNokStatusChange(this,'${r.id}')" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
-                    ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${r.nok_status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                ? `<select onchange="handleNokStatusChange(this,'${b.id}')" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                    ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${b.status === v ? 'selected' : ''}>${l}</option>`).join('')}
                   </select>`
-                : `<span style="font-size:12px;">${NOK_STATUS_LABELS[r.nok_status] || '—'}</span>`}
+                : `<span style="font-size:12px;">${NOK_STATUS_LABELS[b.status] || '—'}</span>`}
           </td>
           <td>
-            ${magMuteren
-              ? `<select onchange="updateNokField('${r.id}','nok_owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
-                  ${orgs.map(o => `<option value="${o.id}" ${r.nok_owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+            ${magMuteren && !isLocked
+              ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                  ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                 </select>`
-              : `<span style="font-size:12px;">${orgs.find(o => o.id === r.nok_owner_org_id)?.name || '—'}</span>`}
+              : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`}
           </td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${doorlooptijd}</td>
           <td>
-            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${r.id}')">
+            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               ${notitieCount}
             </button>
@@ -1620,31 +1659,33 @@
       }).join('');
     }
 
-    async function updateNokField(resultId, field, value) {
-      const { error } = await sb.from('activity_results').update({ [field]: value }).eq('id', resultId);
+    async function updateNokField(bevindingId, field, value) {
+      const { error } = await sb.from('bevindingen').update({ [field]: value }).eq('id', bevindingId);
       if (error) { alert('Fout bij opslaan: ' + error.message); return; }
-      const r = nokResults.find(x => x.id === resultId);
-      if (r) r[field] = value;
+      const b = bevindingen.find(x => x.id === bevindingId);
+      if (b) b[field] = value;
       renderNokTable();
     }
 
     // Kiest de gebruiker "Opgelost, wacht op hertest", dan eerst een
     // pop-up met verplichte toelichting en een waarschuwing, vóórdat er
-    // daadwerkelijk iets wijzigt.
+    // daadwerkelijk iets wijzigt. Eenmaal op deze status gezet, is die
+    // niet meer aan te passen (behalve de automatische afronding door
+    // het systeem zelf na een geslaagde hertest).
     let nokOpgelostContext = null;
 
-    function handleNokStatusChange(selectEl, resultId) {
+    function handleNokStatusChange(selectEl, bevindingId) {
       const newValue = selectEl.value;
       if (newValue === 'opgelost_wacht_hertest') {
-        const r = nokResults.find(x => x.id === resultId);
-        openNokOpgelostModal(resultId, r?.nok_status, selectEl);
+        const b = bevindingen.find(x => x.id === bevindingId);
+        openNokOpgelostModal(bevindingId, b?.status, selectEl);
       } else {
-        updateNokField(resultId, 'nok_status', newValue);
+        updateNokField(bevindingId, 'status', newValue);
       }
     }
 
-    function openNokOpgelostModal(resultId, previousValue, selectEl) {
-      nokOpgelostContext = { resultId, previousValue, selectEl };
+    function openNokOpgelostModal(bevindingId, previousValue, selectEl) {
+      nokOpgelostContext = { bevindingId, previousValue, selectEl };
       document.getElementById('nokOpgelostToelichting').value = '';
       document.getElementById('alertNokOpgelost').style.display = 'none';
       openModal('modalNokOpgelost');
@@ -1669,50 +1710,49 @@
         return;
       }
       if (!nokOpgelostContext) return;
-      const { resultId } = nokOpgelostContext;
-      const r = nokResults.find(x => x.id === resultId);
+      const { bevindingId } = nokOpgelostContext;
+      const b = bevindingen.find(x => x.id === bevindingId);
 
-      // Leg de toelichting vast als nieuwe opmerking, vóórdat de NOK
-      // verdwijnt uit dit overzicht.
-      const orgId = window.isPageAdmin ? r?.nok_owner_org_id : currentProfile?.organisation_id;
+      // Leg de toelichting vast als nieuwe opmerking.
+      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
       await sb.from('nok_notities').insert({
-        activity_result_id: resultId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
+        bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
 
-      // De NOK wordt "verwijderd" bij het testscenario: de activiteit gaat
-      // terug naar Open, zodat een hertest kan plaatsvinden. Daarmee
-      // verdwijnt deze rij ook uit dit NOK-overzicht (dat alleen NOK's
-      // toont).
-      const { error } = await sb.from('activity_results').update({
-        result: 'open', nok_status: null, nok_owner_org_id: null, nok_set_at: null, nok_resolved_at: null,
-      }).eq('id', resultId);
+      // Status wordt vergrendeld op "Opgelost, wacht op hertest". De
+      // activiteit zelf blijft op NOK staan totdat de acceptant de
+      // hertest daadwerkelijk uitvoert (in Ketentest → Testscenario's) —
+      // pas dan wordt deze bevinding afgerond of komt er een nieuwe,
+      // gekoppelde bevinding bij als de hertest opnieuw NOK oplevert.
+      const { error } = await sb.from('bevindingen').update({ status: 'opgelost_wacht_hertest' }).eq('id', bevindingId);
 
       if (error) {
         alert('Fout bij opslaan: ' + error.message);
         return;
       }
+      if (b) b.status = 'opgelost_wacht_hertest';
 
       closeModal('modalNokOpgelost');
       nokOpgelostContext = null;
-      await loadNokOverview();
+      renderNokTable();
     }
 
-    // ---- NOK-OPMERKINGEN (meerdere per NOK, nieuwste bovenin) ----
-    let nokNotitiesHuidigResultId = null;
+    // ---- NOK-OPMERKINGEN (meerdere per bevinding, nieuwste bovenin) ----
+    let nokNotitiesHuidigBevindingId = null;
     let nokNotitiesHuidig = [];
 
-    async function openNokNotitiesModal(resultId) {
-      nokNotitiesHuidigResultId = resultId;
-      const r = nokResults.find(x => x.id === resultId);
-      const act = r ? activities.find(a => a.id === r.activity_id) : null;
+    async function openNokNotitiesModal(bevindingId) {
+      nokNotitiesHuidigBevindingId = bevindingId;
+      const b = bevindingen.find(x => x.id === bevindingId);
+      const act = b ? activities.find(a => a.id === b.activity_id) : null;
       const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
-      document.getElementById('nokNotitiesTitel').textContent = `Opmerkingen — ${scen ? scen.code : ''}`;
-      document.getElementById('nokNotitieToevoegenWrap').style.display = r && canMutateNok(r) ? '' : 'none';
+      document.getElementById('nokNotitiesTitel').textContent = `Opmerkingen — B${b?.bevinding_nummer || ''} (${scen ? scen.code : ''})`;
+      document.getElementById('nokNotitieToevoegenWrap').style.display = b && canMutateNok(b) ? '' : 'none';
       document.getElementById('nokNieuweNotitie').value = '';
       document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Laden...</p>';
       openModal('modalNokNotities');
 
-      const { data, error } = await sb.from('nok_notities').select('*').eq('activity_result_id', resultId).order('created_at', { ascending: false });
+      const { data, error } = await sb.from('nok_notities').select('*').eq('bevinding_id', bevindingId).order('created_at', { ascending: false });
       if (error) { document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Kon opmerkingen niet laden.</p>'; return; }
       nokNotitiesHuidig = data || [];
       renderNokNotitiesLijst();
@@ -1720,8 +1760,8 @@
 
     function renderNokNotitiesLijst() {
       const el = document.getElementById('nokNotitiesLijst');
-      const r = nokResults.find(x => x.id === nokNotitiesHuidigResultId);
-      const magMuteren = r ? canMutateNok(r) : false;
+      const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
+      const magMuteren = b ? canMutateNok(b) : false;
 
       if (!nokNotitiesHuidig.length) {
         el.innerHTML = '<p class="empty-dash">Nog geen opmerkingen.</p>';
@@ -1746,23 +1786,23 @@
 
     async function addNokNotitie() {
       const tekst = document.getElementById('nokNieuweNotitie').value.trim();
-      if (!tekst || !nokNotitiesHuidigResultId) return;
-      const r = nokResults.find(x => x.id === nokNotitiesHuidigResultId);
-      const orgId = window.isPageAdmin ? r?.nok_owner_org_id : currentProfile?.organisation_id;
+      if (!tekst || !nokNotitiesHuidigBevindingId) return;
+      const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
+      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
       const { data, error } = await sb.from('nok_notities').insert({
-        activity_result_id: nokNotitiesHuidigResultId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
+        bevinding_id: nokNotitiesHuidigBevindingId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
       }).select().single();
       if (error) { alert('Fout bij opslaan: ' + error.message); return; }
       nokNotitiesHuidig.unshift(data);
-      nokNotitiesMap[nokNotitiesHuidigResultId] = (nokNotitiesMap[nokNotitiesHuidigResultId] || 0) + 1;
+      nokNotitiesMap[nokNotitiesHuidigBevindingId] = (nokNotitiesMap[nokNotitiesHuidigBevindingId] || 0) + 1;
       document.getElementById('nokNieuweNotitie').value = '';
 
-      // Een opmerking toevoegen aan een nog niet-opgepakte NOK betekent
-      // dat er nu mee aan de slag wordt gegaan — zet de status dan
-      // automatisch op "In behandeling". In alle andere gevallen (status
-      // stond al verder) gebeurt er niets extra's.
-      if (r && r.nok_status === 'nieuw') {
-        await updateNokField(nokNotitiesHuidigResultId, 'nok_status', 'in_behandeling');
+      // Een opmerking toevoegen aan een nog niet-opgepakte bevinding
+      // betekent dat er nu mee aan de slag wordt gegaan — zet de status
+      // dan automatisch op "In behandeling". In alle andere gevallen
+      // (status stond al verder) gebeurt er niets extra's.
+      if (b && b.status === 'nieuw') {
+        await updateNokField(nokNotitiesHuidigBevindingId, 'status', 'in_behandeling');
       }
 
       renderNokNotitiesLijst();
@@ -1797,7 +1837,7 @@
         const { error } = await sb.from('nok_notities').delete().eq('id', notitieId);
         if (error) { alert('Fout bij verwijderen: ' + error.message); closeModal('modalConfirm'); return; }
         nokNotitiesHuidig = nokNotitiesHuidig.filter(x => x.id !== notitieId);
-        nokNotitiesMap[nokNotitiesHuidigResultId] = Math.max(0, (nokNotitiesMap[nokNotitiesHuidigResultId] || 1) - 1);
+        nokNotitiesMap[nokNotitiesHuidigBevindingId] = Math.max(0, (nokNotitiesMap[nokNotitiesHuidigBevindingId] || 1) - 1);
         closeModal('modalConfirm');
         renderNokNotitiesLijst();
         renderNokTable();

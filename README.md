@@ -277,7 +277,7 @@ De PDF-exports blijven ongewijzigd: die bevatten nog steeds alle onderdelen in �
 Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar er hing geen vervolgproces aan vast. Dat is nu opgelost met een compleet opvolgingsproces:
 
 1. Voer eenmalig `nok-opvolging-setup.sql` uit in de Supabase SQL Editor. Dit voegt een voortgangsstatus, een eigenaar (organisatie) en tijdstippen toe aan elk NOK-resultaat.
-2. **Pop-up bij NOK**: klik je op de knop NOK bij een activiteit, dan verschijnt er nu een pop-up waarin je **verplicht een reden** invult en de **eigenaar van de oplossing** kiest (standaard de verantwoordelijke organisatie van die activiteit, aan te passen indien nodig). Nogmaals op NOK klikken (om 'm uit te zetten) toont geen pop-up — dat blijft het bestaande een-klik-gedrag.
+2. **Pop-up bij NOK**: klik je op de knop NOK bij een activiteit, dan verschijnt er nu een pop-up waarin je **verplicht een reden** invult en de **eigenaar van de oplossing** kiest (standaard de verantwoordelijke organisatie van die activiteit, aan te passen indien nodig). Eenmaal geregistreerd is de NOK-knop uitgeschakeld (zie hieronder wanneer die weer actief wordt).
 3. **Voortgangsstatus**: elke NOK doorloopt Nieuw → In behandeling → Opgelost, wacht op hertest → Hertest OK. De laatste status wordt **automatisch** gezet zodra de activiteit na een NOK weer op OK gezet wordt (geen handmatige actie nodig) — dat is ook het moment waarop de doorlooptijd wordt vastgelegd.
 4. **Signalering**: gebruikers zien bovenin de Ketentest-pagina een rode badge ("⚠ X openstaande NOK's") zodra er NOK's aan hún organisatie zijn toegewezen die nog niet zijn opgelost. Een klik erop springt naar de eerste openstaande NOK.
 5. **Beheer → NOK-opvolging** (nieuw tabblad): een volledig overzicht van alle NOK's binnen de actieve ketentest, met reden, status (aanpasbaar), eigenaar (aanpasbaar), datum ingesteld en doorlooptijd. Filter tussen "Openstaand" en "Alle (incl. opgelost)".
@@ -302,7 +302,22 @@ Geen SQL-wijziging nodig voor deze ronde.
 1. **Badge-klik**: een klik op de waarschuwingsbadge in de menubalk opent nu direct de pagina NOK-opvolging (in plaats van te scrollen binnen Ketentest).
 2. **Menuvolgorde**: "NOK-opvolging" staat nu onderaan het Ketentest-menu, met een waarschuwingsicoon ervoor, net als de andere menu-items.
 3. **Automatische status bij opmerking**: voegt een gebruiker een opmerking toe aan een NOK die nog op "Nieuw" staat, dan springt de status automatisch naar "In behandeling". Stond de status al verder, dan gebeurt er niets extra's.
-4. **Pop-up bij "Opgelost, wacht op hertest"**: kiest de gebruiker deze status, dan verschijnt een pop-up met een verplichte toelichting en een waarschuwing dat de NOK bij het testscenario wordt verwijderd (de activiteit gaat terug naar Open, klaar voor een hertest). Bevestigen (OK) legt de toelichting vast als opmerking en voert de wijziging door; Annuleren zet de zichtbare status terug naar wat die was.
+4. **Pop-up bij "Opgelost, wacht op hertest"**: kiest de gebruiker deze status, dan verschijnt een pop-up met een verplichte toelichting en een waarschuwing. Bevestigen (OK) legt de toelichting vast als opmerking en zet de status op "Opgelost, wacht op hertest" (zie de sectie hieronder voor wat daarna gebeurt); Annuleren zet de zichtbare status terug naar wat die was.
+
+---
+
+## Bevindingen: nummering, koppeling en hertestproces (herontwerp)
+
+Dit is een fundamentele uitbreiding: in plaats van 1 NOK-status per activiteit kan een activiteit nu een **reeks bevindingen** doorlopen (een NOK, opgelost, hertest mislukt opnieuw, weer een NOK, enzovoort) — alle onderling gekoppeld en zichtbaar.
+
+1. Voer eenmalig `bevindingen-setup.sql` uit in de Supabase SQL Editor (vereist dat de eerdere NOK-migraties al gedraaid zijn). Dit voegt een nieuwe tabel `bevindingen` toe, die nu de bron van waarheid is voor NOK-opvolging (in plaats van de velden direct op `activity_results`).
+2. **Uniek nummer per bevinding**: elke geregistreerde NOK krijgt automatisch een nummer, getoond als "B1", "B2", enzovoort — als eerste kolom van het overzicht, oplopend per ketentest.
+3. **Status vergrendeld na Opgelost**: eenmaal op "Opgelost, wacht op hertest" gezet, kan de status van die bevinding niet meer worden aangepast (dit is ook databasezijdig afgedwongen) — behalve de automatische afronding naar "Hertest OK" die het systeem zelf zet. Opmerkingen toevoegen blijft wel altijd mogelijk.
+4. **Doorklikken naar scenario**: de scenario-code/titel in het overzicht is nu een klikbare link die het scenario opent in Ketentest → Testscenario's.
+5. **Hertestproces met bevestigingsvragen**: zodra een bevinding op "Opgelost, wacht op hertest" staat, worden de OK- en NOK-knoppen bij die activiteit weer actief (daarvoor blijven ze uitgeschakeld — een hertest kan pas als de eigenaar heeft aangegeven dat het is opgelost):
+   - **OK** → "Klopt het dat de bevinding definitief is opgelost?" **Ja** registreert de OK en rondt de bevinding af (Hertest OK); **Nee** registreert niets, de knoppen blijven beschikbaar.
+   - **NOK** → "Klopt het dat de bevinding nog niet is opgelost of er een andere fout is opgetreden?" **Ja** opent de vertrouwde NOK-pop-up (reden + eigenaar) en legt een **nieuwe, gekoppelde bevinding** vast; **Nee** registreert niets.
+6. **Visuele koppeling**: een vervolgbevinding staat in het overzicht direct onder de bevinding waar die uit voortkomt, met een paarse markering en een "🔗 vervolg van B&lt;nummer&gt;"-label.
 
 ---
 
@@ -409,6 +424,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── bericht-definities-naam-setup.sql Database aanpassing: naam-veld toevoegen, trigger-veld verwijderen
 ├── nok-opvolging-setup.sql Database uitbreiding: NOK-opvolgingsproces (status, eigenaar, tijdstippen)
 ├── nok-notities-en-rechten-setup.sql Database uitbreiding: NOK-notities + rechten op organisatieniveau
+├── bevindingen-setup.sql Database herontwerp: bevindingen-tabel (nummering, koppeling, statuslock)
 ├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
