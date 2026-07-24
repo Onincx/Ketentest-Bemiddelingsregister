@@ -48,6 +48,7 @@
       <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
         <span id="navScenariosSlot"></span>
+        <a href="admin.html?tab=nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
         <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
         <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
         <span id="navNotifBerichtenSlot"></span>
@@ -399,9 +400,29 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Scenario / activiteit</th><th>Reden</th><th>Status</th><th>Eigenaar</th><th>Ingesteld</th><th>Doorlooptijd</th></tr></thead>
-            <tbody id="nokTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Scenario / activiteit</th><th>Verantw.</th><th>Acceptant</th><th>Status</th><th>Eigenaar</th><th>Ingesteld</th><th>Doorlooptijd</th><th>Opmerkingen</th></tr></thead>
+            <tbody id="nokTable"><tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: opmerkingen bij een NOK -->
+    <div class="modal-overlay" id="modalNokNotities" style="display:none;" onclick="closeModalOverlay(event,'modalNokNotities')">
+      <div class="modal" style="max-width:560px;" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3 id="nokNotitiesTitel">Opmerkingen</h3>
+          <button class="btn btn-ghost btn-icon" onclick="closeModal('modalNokNotities')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <div id="nokNotitieToevoegenWrap" style="display:none; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--border);">
+            <textarea id="nokNieuweNotitie" placeholder="Nieuwe opmerking toevoegen..." style="min-height:70px;"></textarea>
+            <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="addNokNotitie()">Opmerking toevoegen</button>
+          </div>
+          <div id="nokNotitiesLijst"><p class="empty-dash">Laden...</p></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('modalNokNotities')">Sluiten</button>
         </div>
       </div>
     </div>
@@ -852,6 +873,7 @@
   <script src="js/supabase-config.js?v=30"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
+    let currentProfile = null, currentUser = null;
     let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
     let ketentests = [], activeKetentest = null;
 
@@ -884,7 +906,9 @@
     (async () => {
       const user = await requireAuth();
       if (!user) return;
+      currentUser = user;
       const profile = await getUserProfile(user.id);
+      currentProfile = profile;
       window.isPageAdmin = profile?.role === 'admin';
       document.getElementById('navUser').textContent = profile?.name || user.email;
       await renderActiveKetentestLabel();
@@ -911,11 +935,11 @@
         ketentests = result.all;
         await loadAll();
       } else {
-        // Gewone gebruikers krijgen alleen-lezen toegang tot Notificaties —
-        // er wordt hier bewust niets geladen dat alleen voor beheerders
-        // relevant is (organisaties, gebruikers, ketentestenlijst, etc.).
+        // Gewone gebruikers krijgen alleen-lezen toegang tot Notificaties en
+        // NOK-opvolging — er wordt hier bewust niets geladen dat alleen
+        // voor beheerders relevant is (gebruikers, ketentestenlijst, etc.).
         document.getElementById('btnAddNotification')?.remove();
-        await Promise.all([loadScenarios(), loadNotificationDefs(), loadScenarioFlowMap()]);
+        await Promise.all([loadOrgs(), loadScenarios(), loadNotificationDefs(), loadScenarioFlowMap()]);
         await loadActivities();
       }
 
@@ -923,8 +947,11 @@
       const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok'];
 
       if (!window.isPageAdmin) {
-        // Gewone gebruikers zien altijd alleen Notificaties, ongeacht de URL
-        showTab('notifications');
+        // Gewone gebruikers mogen alleen Notificaties of NOK-opvolging
+        // bekijken op deze pagina, ongeacht welke andere link ze zouden
+        // proberen te volgen.
+        const nonAdminTab = requestedTab === 'nok' ? 'nok' : 'notifications';
+        showTab(nonAdminTab);
         return;
       }
 
@@ -1023,10 +1050,11 @@
     // fallback (bijv. voor "openen in nieuw tabblad").
     function navTab(tab, e) {
       if (e) e.preventDefault();
-      // Gewone gebruikers mogen op deze pagina alleen Notificaties
-      // bekijken (Berichten-beheer is alleen voor beheerders; gewone
-      // gebruikers gebruiken daarvoor de aparte pagina berichten.html).
-      if (!window.isPageAdmin && tab !== 'notifications') return false;
+      // Gewone gebruikers mogen op deze pagina alleen Notificaties of
+      // NOK-opvolging bekijken (Berichten-beheer is alleen voor
+      // beheerders; gewone gebruikers gebruiken daarvoor de aparte
+      // pagina berichten.html).
+      if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok') return false;
       showTab(tab);
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
@@ -1463,12 +1491,22 @@
 
     // ---- NOK-OPVOLGING ----
     let nokResults = [];
+    let nokNotitiesMap = {}; // activity_result_id -> [notities], nieuwste eerst
     let nokFilter = 'open';
     const NOK_STATUS_LABELS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK' };
 
+    // Mag deze gebruiker de status/eigenaar van dit NOK-resultaat wijzigen,
+    // en mag die opmerkingen toevoegen/bewerken/verwijderen? Alleen de
+    // eigenaar-organisatie (of een beheerder) — iedereen mag altijd lezen.
+    function canMutateNok(nokRow) {
+      if (window.isPageAdmin) return true;
+      const myOrgId = currentProfile?.organisation_id;
+      return !!myOrgId && !!nokRow.nok_owner_org_id && myOrgId === nokRow.nok_owner_org_id;
+    }
+
     async function loadNokOverview() {
       const tb = document.getElementById('nokTable');
-      tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      tb.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
       if (!activeKetentest) { nokResults = []; renderNokTable(); return; }
 
       const scenarioIds = scenarios.map(s => s.id);
@@ -1478,6 +1516,17 @@
       const { data, error } = await sb.from('activity_results').select('*').eq('result', 'nok').in('activity_id', activityIds);
       if (error) { console.error('loadNokOverview error:', error); nokResults = []; renderNokTable(); return; }
       nokResults = data || [];
+
+      // Aantal opmerkingen per NOK in één keer ophalen (voor het label op
+      // de knop) — de volledige inhoud laden we pas als de modal opent.
+      nokNotitiesMap = {};
+      if (nokResults.length) {
+        const { data: notitiesData } = await sb.from('nok_notities').select('activity_result_id').in('activity_result_id', nokResults.map(r => r.id));
+        (notitiesData || []).forEach(n => {
+          nokNotitiesMap[n.activity_result_id] = (nokNotitiesMap[n.activity_result_id] || 0) + 1;
+        });
+      }
+
       renderNokTable();
     }
 
@@ -1496,37 +1545,53 @@
       let rows = nokResults;
       if (nokFilter === 'open') rows = rows.filter(r => r.nok_status !== 'hertest_ok');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
         return;
       }
       rows = [...rows].sort((a, b) => new Date(b.nok_set_at || b.updated_at || 0) - new Date(a.nok_set_at || a.updated_at || 0));
       tb.innerHTML = rows.map(r => {
         const act = activities.find(a => a.id === r.activity_id);
         const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : null;
+        const acceptantOrg = act ? orgs.find(o => o.id === act.acceptant_org_id) : null;
         const setDate = r.nok_set_at ? new Date(r.nok_set_at) : (r.updated_at ? new Date(r.updated_at) : null);
         const isResolved = r.nok_status === 'hertest_ok';
         const doorlooptijdDagen = setDate ? Math.round(((r.nok_resolved_at ? new Date(r.nok_resolved_at) : new Date()) - setDate) / (1000 * 60 * 60 * 24)) : null;
         const doorlooptijd = doorlooptijdDagen == null ? '—' : `${doorlooptijdDagen} dagen${isResolved ? '' : ' (loopt nog)'}`;
+        const magMuteren = canMutateNok(r);
+        const notitieCount = nokNotitiesMap[r.id] || 0;
         return `<tr>
           <td>
             <div style="font-weight:600; font-size:13px;">${scen ? scen.code : '?'} — ${scen ? scen.title : ''}</div>
             <div style="font-size:12px; color:var(--text-muted);">${act ? (act.description || '') : ''}</div>
+            ${r.notes ? `<div style="font-size:12px; color:var(--text-muted); margin-top:4px; font-style:italic;">"${r.notes.replace(/</g, '&lt;')}"</div>` : ''}
           </td>
-          <td style="font-size:13px; max-width:220px; color:var(--text);">${r.notes ? r.notes.replace(/</g, '&lt;') : '—'}</td>
+          <td><span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;">${verantwOrg?.name || '—'}</span></td>
+          <td><span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span></td>
           <td>
             ${isResolved
               ? `<span class="badge" style="background:#d1fae5; color:#065f46; font-size:11px;">Hertest OK</span>`
-              : `<select onchange="updateNokField('${r.id}','nok_status',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
-                  ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${r.nok_status === v ? 'selected' : ''}>${l}</option>`).join('')}
-                </select>`}
+              : magMuteren
+                ? `<select onchange="updateNokField('${r.id}','nok_status',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                    ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${r.nok_status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                  </select>`
+                : `<span style="font-size:12px;">${NOK_STATUS_LABELS[r.nok_status] || '—'}</span>`}
           </td>
           <td>
-            <select onchange="updateNokField('${r.id}','nok_owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
-              ${orgs.map(o => `<option value="${o.id}" ${r.nok_owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
-            </select>
+            ${magMuteren
+              ? `<select onchange="updateNokField('${r.id}','nok_owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                  ${orgs.map(o => `<option value="${o.id}" ${r.nok_owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                </select>`
+              : `<span style="font-size:12px;">${orgs.find(o => o.id === r.nok_owner_org_id)?.name || '—'}</span>`}
           </td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${doorlooptijd}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${r.id}')">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              ${notitieCount}
+            </button>
+          </td>
         </tr>`;
       }).join('');
     }
@@ -1537,6 +1602,105 @@
       const r = nokResults.find(x => x.id === resultId);
       if (r) r[field] = value;
       renderNokTable();
+    }
+
+    // ---- NOK-OPMERKINGEN (meerdere per NOK, nieuwste bovenin) ----
+    let nokNotitiesHuidigResultId = null;
+    let nokNotitiesHuidig = [];
+
+    async function openNokNotitiesModal(resultId) {
+      nokNotitiesHuidigResultId = resultId;
+      const r = nokResults.find(x => x.id === resultId);
+      const act = r ? activities.find(a => a.id === r.activity_id) : null;
+      const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+      document.getElementById('nokNotitiesTitel').textContent = `Opmerkingen — ${scen ? scen.code : ''}`;
+      document.getElementById('nokNotitieToevoegenWrap').style.display = r && canMutateNok(r) ? '' : 'none';
+      document.getElementById('nokNieuweNotitie').value = '';
+      document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Laden...</p>';
+      openModal('modalNokNotities');
+
+      const { data, error } = await sb.from('nok_notities').select('*').eq('activity_result_id', resultId).order('created_at', { ascending: false });
+      if (error) { document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Kon opmerkingen niet laden.</p>'; return; }
+      nokNotitiesHuidig = data || [];
+      renderNokNotitiesLijst();
+    }
+
+    function renderNokNotitiesLijst() {
+      const el = document.getElementById('nokNotitiesLijst');
+      const r = nokResults.find(x => x.id === nokNotitiesHuidigResultId);
+      const magMuteren = r ? canMutateNok(r) : false;
+
+      if (!nokNotitiesHuidig.length) {
+        el.innerHTML = '<p class="empty-dash">Nog geen opmerkingen.</p>';
+        return;
+      }
+      el.innerHTML = nokNotitiesHuidig.map(n => {
+        const org = orgs.find(o => o.id === n.organisation_id);
+        const datum = new Date(n.created_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        return `<div style="padding:10px 0; border-bottom:1px solid var(--border);">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span style="font-size:11px; font-weight:700; color:var(--text-muted);">${org?.name || 'Onbekend'} · ${datum}</span>
+            ${magMuteren ? `
+              <span style="display:flex; gap:4px;">
+                <button class="btn btn-ghost btn-icon" style="width:24px; height:24px;" onclick="editNokNotitie('${n.id}')" title="Bewerken"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                <button class="btn btn-ghost btn-icon" style="width:24px; height:24px;" onclick="deleteNokNotitie('${n.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+              </span>` : ''}
+          </div>
+          <p id="nokNotitieTekst-${n.id}" style="font-size:13px; white-space:pre-wrap;">${n.tekst.replace(/</g, '&lt;')}</p>
+        </div>`;
+      }).join('');
+    }
+
+    async function addNokNotitie() {
+      const tekst = document.getElementById('nokNieuweNotitie').value.trim();
+      if (!tekst || !nokNotitiesHuidigResultId) return;
+      const r = nokResults.find(x => x.id === nokNotitiesHuidigResultId);
+      const orgId = window.isPageAdmin ? r?.nok_owner_org_id : currentProfile?.organisation_id;
+      const { data, error } = await sb.from('nok_notities').insert({
+        activity_result_id: nokNotitiesHuidigResultId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
+      }).select().single();
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      nokNotitiesHuidig.unshift(data);
+      nokNotitiesMap[nokNotitiesHuidigResultId] = (nokNotitiesMap[nokNotitiesHuidigResultId] || 0) + 1;
+      document.getElementById('nokNieuweNotitie').value = '';
+      renderNokNotitiesLijst();
+      renderNokTable();
+    }
+
+    function editNokNotitie(notitieId) {
+      const n = nokNotitiesHuidig.find(x => x.id === notitieId);
+      if (!n) return;
+      const el = document.getElementById(`nokNotitieTekst-${notitieId}`);
+      const huidigeTekst = n.tekst;
+      el.innerHTML = `<textarea id="nokEditTextarea-${notitieId}" style="min-height:60px; width:100%;">${huidigeTekst.replace(/</g, '&lt;')}</textarea>
+        <div style="margin-top:6px; display:flex; gap:6px;">
+          <button class="btn btn-primary btn-sm" onclick="saveNokNotitie('${notitieId}')">Opslaan</button>
+          <button class="btn btn-outline btn-sm" onclick="renderNokNotitiesLijst()">Annuleren</button>
+        </div>`;
+    }
+
+    async function saveNokNotitie(notitieId) {
+      const tekst = document.getElementById(`nokEditTextarea-${notitieId}`).value.trim();
+      if (!tekst) return;
+      const { error } = await sb.from('nok_notities').update({ tekst, updated_at: new Date().toISOString() }).eq('id', notitieId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      const n = nokNotitiesHuidig.find(x => x.id === notitieId);
+      if (n) n.tekst = tekst;
+      renderNokNotitiesLijst();
+    }
+
+    function deleteNokNotitie(notitieId) {
+      document.getElementById('confirmMsg').textContent = 'Deze opmerking verwijderen?';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('nok_notities').delete().eq('id', notitieId);
+        if (error) { alert('Fout bij verwijderen: ' + error.message); closeModal('modalConfirm'); return; }
+        nokNotitiesHuidig = nokNotitiesHuidig.filter(x => x.id !== notitieId);
+        nokNotitiesMap[nokNotitiesHuidigResultId] = Math.max(0, (nokNotitiesMap[nokNotitiesHuidigResultId] || 1) - 1);
+        closeModal('modalConfirm');
+        renderNokNotitiesLijst();
+        renderNokTable();
+      };
+      openModal('modalConfirm');
     }
 
     // ---- KETENTESTEN ----

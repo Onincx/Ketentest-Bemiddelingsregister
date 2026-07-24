@@ -284,6 +284,17 @@ Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar 
 
 ---
 
+## NOK-opvolging: rechten, toegang en uitbreiding (nieuw)
+
+1. Voer eenmalig `nok-notities-en-rechten-setup.sql` uit in de Supabase SQL Editor (vereist dat `nok-opvolging-setup.sql` al gedraaid is). Dit voegt een notities-tabel toe én legt databasezijdig vast wie de NOK-opvolging mag muteren.
+2. **Knop uitschakelen**: eenmaal een NOK geregistreerd, kan die niet meer worden "uitgezet" door nogmaals op de NOK-knop te klikken — die knop is dan uitgeschakeld. De enige weg vooruit is een hertest: de activiteit op OK zetten.
+3. **Toegang via het Ketentest-menu**: het overzicht "NOK-opvolging" is nu, naast Beheer, ook bereikbaar voor Gebruikers en Managers via het menu-item Ketentest.
+4. **Rechten op organisatieniveau**: alleen gebruikers van de organisatie die als eigenaar van een NOK is ingesteld (of een beheerder) mogen de status, eigenaar en opmerkingen van díe NOK muteren. Iedereen kan alle NOK's altijd lezen. Dit is niet alleen in het scherm afgedwongen, maar ook databasezijdig via een trigger — de natuurlijke hertest-actie (de acceptant zet de activiteit na een NOK weer op OK) blijft daarbij altijd mogelijk, ongeacht welke organisatie eigenaar is.
+5. **Uitgebreid overzicht**: het scenario waar de NOK is ontdekt, en de verantwoordelijke + acceptant van de activiteit staan er nu ook bij.
+6. **Meerdere opmerkingen per NOK**: in plaats van het ene "reden"-veld kan de eigenaar-organisatie nu meerdere opmerkingen vastleggen via een knop met opmerkingen-teller, in een pop-up met nieuwste bovenin. Iedereen mag lezen; alleen de eigenaar-organisatie (of een beheerder) mag toevoegen, bewerken of verwijderen.
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.
@@ -386,6 +397,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── bericht-definities-setup.sql Database uitbreiding: documentatie/trigger per berichtcode
 ├── bericht-definities-naam-setup.sql Database aanpassing: naam-veld toevoegen, trigger-veld verwijderen
 ├── nok-opvolging-setup.sql Database uitbreiding: NOK-opvolgingsproces (status, eigenaar, tijdstippen)
+├── nok-notities-en-rechten-setup.sql Database uitbreiding: NOK-notities + rechten op organisatieniveau
 ├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest

@@ -39,6 +39,7 @@
       </a>
       <div class="nav-dropdown-menu">
         <span id="navScenariosSlot"></span>
+        <a href="admin.html?tab=nok">NOK-opvolging</a>
         <a href="flow.html">Flow</a>
         <a href="deelname.html">Deelname</a>
         <span id="navNotifBerichtenSlot"></span>
@@ -105,6 +106,7 @@
       { datum: '2026-07-18', beschrijving: "Bugfix: de link 'Testscenario's' stond onterecht zichtbaar voor gewone gebruikers op admin.html, waardoor zij per ongeluk op de Notificaties-tab konden belanden in plaats van bij Ketentest → Testscenario's." },
       { datum: '2026-07-18', beschrijving: "Belangrijke bugfix: een CSS-regel forceerde 'display: flex !important' op elke link in een menu-dropdown, waardoor JavaScript rolafhankelijke menu-items (Testscenario's, Dashboard, Notificaties/Berichten) niet meer daadwerkelijk kon verbergen — ze bleven altijd zichtbaar, ongeacht de rol van de gebruiker of het model van de ketentest. Nu opgelost." },
       { datum: '2026-07-18', beschrijving: "Compleet NOK-opvolgingsproces toegevoegd: verplichte reden en eigenaar via een pop-up bij het instellen van een NOK, een voortgangsstatus (Nieuw/In behandeling/Opgelost/Hertest OK), automatische afronding bij hertest, een signaleringsbadge voor gebruikers, en een nieuw beheerscherm 'NOK-opvolging' met volledig overzicht en doorlooptijd." },
+      { datum: '2026-07-18', beschrijving: 'NOK-opvolging uitgebreid: eenmaal geregistreerd kan een NOK niet meer worden uitgezet, het overzicht is nu ook bereikbaar voor Gebruikers/Managers via het Ketentest-menu, mutatierechten zijn beperkt tot de eigenaar-organisatie (afgedwongen tot in de database), en het overzicht toont nu ook verantwoordelijke/acceptant en meerdere opmerkingen per NOK.' },
     ];
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
