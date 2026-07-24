@@ -664,7 +664,7 @@
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
       const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
 
-      return `<div style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
+      return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
           <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
@@ -883,7 +883,7 @@
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
         const bodyEl = document.getElementById(`detail-panel-${scenarioId}`);
         if (bodyEl) {
-          const tableWrap = bodyEl.querySelector('div[style*="border:1px"]');
+          const tableWrap = bodyEl.querySelector('.activities-table-wrap');
           if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
         }
       }
@@ -928,7 +928,7 @@
       const bodyEl = document.getElementById(`detail-panel-${scenarioId}`);
       if (bodyEl) {
         const acts = activities.filter(a => a.scenario_id === scenarioId).sort((a,b) => a.sort_order - b.sort_order);
-        const tableWrap = bodyEl.querySelector('div[style*="border:1px"]');
+        const tableWrap = bodyEl.querySelector('.activities-table-wrap');
         if (tableWrap) tableWrap.outerHTML = renderActivities(acts);
       }
 
