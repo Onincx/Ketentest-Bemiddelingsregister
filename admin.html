@@ -62,6 +62,7 @@
         <a href="admin.html?tab=berichten" data-tab="berichten" onclick="return navTab('berichten', event)">Berichten</a>
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
         <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
+        <a href="admin.html?tab=nok" data-tab="nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
       </div>
     </div>
     <div class="topnav-right">
@@ -377,6 +378,32 @@
         </div>
       </div>
       <p style="font-size:11px; color:var(--text-muted); margin-top:10px;">Toont de laatste 300 handelingen binnen de actieve ketentest.</p>
+    </div>
+
+    <!-- TAB: NOK-opvolging -->
+    <div id="tab-nok" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>NOK-opvolging</h1>
+          <p>Alle activiteiten die als NOK zijn gemarkeerd binnen de actieve ketentest, met status, eigenaar en doorlooptijd.</p>
+        </div>
+        <button class="btn btn-outline" onclick="loadNokOverview()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+          Vernieuwen
+        </button>
+      </div>
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="nokFilterBtns">
+        <button class="btn btn-sm" data-f="open" onclick="setNokFilter('open',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Openstaand</button>
+        <button class="btn btn-sm btn-outline" data-f="all" onclick="setNokFilter('all',this)">Alle (incl. opgelost)</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Scenario / activiteit</th><th>Reden</th><th>Status</th><th>Eigenaar</th><th>Ingesteld</th><th>Doorlooptijd</th></tr></thead>
+            <tbody id="nokTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
     </div>
 
     <!-- TAB: Berichten -->
@@ -893,7 +920,7 @@
       }
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten'];
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok'];
 
       if (!window.isPageAdmin) {
         // Gewone gebruikers zien altijd alleen Notificaties, ongeacht de URL
@@ -971,7 +998,7 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
@@ -988,6 +1015,7 @@
       if (tab === 'ketentests') renderKetentestTable();
       if (tab === 'logboek') loadActivityLog();
       if (tab === 'berichten') loadBerichtDefs();
+      if (tab === 'nok') loadNokOverview();
     }
 
     // Wisselt van tabblad zonder de pagina opnieuw te laden (gebruikt door
@@ -1433,7 +1461,86 @@
       openModal('modalConfirm');
     }
 
+    // ---- NOK-OPVOLGING ----
+    let nokResults = [];
+    let nokFilter = 'open';
+    const NOK_STATUS_LABELS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK' };
+
+    async function loadNokOverview() {
+      const tb = document.getElementById('nokTable');
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      if (!activeKetentest) { nokResults = []; renderNokTable(); return; }
+
+      const scenarioIds = scenarios.map(s => s.id);
+      const activityIds = activities.filter(a => scenarioIds.includes(a.scenario_id)).map(a => a.id);
+      if (!activityIds.length) { nokResults = []; renderNokTable(); return; }
+
+      const { data, error } = await sb.from('activity_results').select('*').eq('result', 'nok').in('activity_id', activityIds);
+      if (error) { console.error('loadNokOverview error:', error); nokResults = []; renderNokTable(); return; }
+      nokResults = data || [];
+      renderNokTable();
+    }
+
+    function setNokFilter(filter, btn) {
+      nokFilter = filter;
+      document.querySelectorAll('#nokFilterBtns .btn').forEach(b => {
+        b.classList.add('btn-outline'); b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
+      });
+      btn.classList.remove('btn-outline');
+      btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
+      renderNokTable();
+    }
+
+    function renderNokTable() {
+      const tb = document.getElementById('nokTable');
+      let rows = nokResults;
+      if (nokFilter === 'open') rows = rows.filter(r => r.nok_status !== 'hertest_ok');
+      if (!rows.length) {
+        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        return;
+      }
+      rows = [...rows].sort((a, b) => new Date(b.nok_set_at || b.updated_at || 0) - new Date(a.nok_set_at || a.updated_at || 0));
+      tb.innerHTML = rows.map(r => {
+        const act = activities.find(a => a.id === r.activity_id);
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        const setDate = r.nok_set_at ? new Date(r.nok_set_at) : (r.updated_at ? new Date(r.updated_at) : null);
+        const isResolved = r.nok_status === 'hertest_ok';
+        const doorlooptijdDagen = setDate ? Math.round(((r.nok_resolved_at ? new Date(r.nok_resolved_at) : new Date()) - setDate) / (1000 * 60 * 60 * 24)) : null;
+        const doorlooptijd = doorlooptijdDagen == null ? '—' : `${doorlooptijdDagen} dagen${isResolved ? '' : ' (loopt nog)'}`;
+        return `<tr>
+          <td>
+            <div style="font-weight:600; font-size:13px;">${scen ? scen.code : '?'} — ${scen ? scen.title : ''}</div>
+            <div style="font-size:12px; color:var(--text-muted);">${act ? (act.description || '') : ''}</div>
+          </td>
+          <td style="font-size:13px; max-width:220px; color:var(--text);">${r.notes ? r.notes.replace(/</g, '&lt;') : '—'}</td>
+          <td>
+            ${isResolved
+              ? `<span class="badge" style="background:#d1fae5; color:#065f46; font-size:11px;">Hertest OK</span>`
+              : `<select onchange="updateNokField('${r.id}','nok_status',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                  ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${r.nok_status === v ? 'selected' : ''}>${l}</option>`).join('')}
+                </select>`}
+          </td>
+          <td>
+            <select onchange="updateNokField('${r.id}','nok_owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+              ${orgs.map(o => `<option value="${o.id}" ${r.nok_owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+            </select>
+          </td>
+          <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</td>
+          <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${doorlooptijd}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function updateNokField(resultId, field, value) {
+      const { error } = await sb.from('activity_results').update({ [field]: value }).eq('id', resultId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      const r = nokResults.find(x => x.id === resultId);
+      if (r) r[field] = value;
+      renderNokTable();
+    }
+
     // ---- KETENTESTEN ----
+
     function renderKetentestTable() {
       const tb = document.getElementById('ketentestTable');
       if (!tb) return;

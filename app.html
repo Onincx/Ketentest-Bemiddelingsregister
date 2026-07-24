@@ -176,6 +176,7 @@
       <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span class="topnav-user" id="navUser"></span>
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
+      <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="scrollToFirstOpenNok()" title="Klik om naar de eerste openstaande NOK te gaan"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen
       </button>
@@ -247,7 +248,7 @@
   <script src="js/supabase-config.js?v=30"></script>
   <script>
     let currentUser = null, currentProfile = null;
-    let scenarios = [], activities = [], results = {};
+    let scenarios = [], activities = [], results = {}, allOrgs = [];
     let activeFilter = 'all';
     let activeKetentest = null;
     const autosaveTimers = {};
@@ -280,6 +281,7 @@
       await loadData();
       document.getElementById('statsGrid').style.display = '';
       document.getElementById('filterBar').style.display = '';
+      refreshNokBadge();
 
       // Automatisch een scenario openen als er via de URL naar verwezen wordt
       // (bijv. vanuit Beheer → Notificaties → Gebruikt in scenario's).
@@ -306,7 +308,7 @@
 
       // Load orgs first so we can resolve acceptant_org manually
       const { data: orgData } = await sb.from('organisations').select('*');
-      const allOrgs = orgData || [];
+      allOrgs = orgData || [];
 
       const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
       scenarios = scenarioData || [];
@@ -708,7 +710,7 @@
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
                   </button>
                   <button class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}"
-                    onclick="setResult('${a.id}','${a.scenario_id}','nok')"
+                    onclick="openNokModal('${a.id}','${a.scenario_id}')"
                     title="Markeer als NOK">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
                   </button>
@@ -794,6 +796,106 @@
 
       // Scroll naar rij
       setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+    }
+
+    // Pop-up bij het markeren van een activiteit als NOK: verplichte
+    // reden + eigenaar van de oplossing (NOK-opvolgingsproces).
+    function openNokModal(activityId, scenarioId) {
+      const existing = results[activityId];
+      if (existing?.result === 'nok') {
+        // Al NOK: nogmaals klikken zet 'm uit — geen pop-up nodig voor het
+        // uitzetten, alleen voor het (opnieuw) instellen van een NOK.
+        setResult(activityId, scenarioId, 'nok');
+        return;
+      }
+      const act = activities.find(a => a.id === activityId);
+      if (!act) return;
+      const defaultOwnerId = act.organisation_id || '';
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'nokModalOverlay';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3 style="color:var(--danger);">Activiteit als NOK markeren</h3>
+            <button class="btn btn-ghost btn-icon" onclick="document.getElementById('nokModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <div class="modal-body">
+            <div class="form-group">
+              <label>Reden <span style="color:var(--danger);">*</span></label>
+              <textarea id="nokModalReden" placeholder="Wat gaat er mis? Wees zo concreet mogelijk, dit helpt bij het oplossen..." style="min-height:100px;"></textarea>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
+              <label>Eigenaar van de oplossing</label>
+              <select id="nokModalEigenaar">
+                ${allOrgs.map(o => `<option value="${o.id}" ${o.id === defaultOwnerId ? 'selected' : ''}>${o.name}</option>`).join('')}
+              </select>
+              <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Standaard de verantwoordelijke organisatie van deze activiteit — pas aan als het probleem eigenlijk ergens anders ligt.</p>
+            </div>
+            <div id="alertNokModal" class="alert" style="display:none; margin-top:14px;"></div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="document.getElementById('nokModalOverlay').remove()">Annuleren</button>
+            <button class="btn btn-primary" style="background:var(--danger); border-color:var(--danger);" onclick="submitNokModal('${activityId}','${scenarioId}')">NOK vastleggen</button>
+          </div>
+        </div>`;
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      document.body.appendChild(modal);
+    }
+
+    // Signalering: hoeveel NOK's zijn aan mijn organisatie toegewezen om
+    // op te lossen, en zijn nog niet via een hertest opgelost?
+    function computeOpenNokCountForMyOrg() {
+      const myOrgId = currentProfile?.organisation_id;
+      if (!myOrgId) return 0;
+      return Object.values(results).filter(r =>
+        r.result === 'nok' && r.nok_owner_org_id === myOrgId && r.nok_status !== 'hertest_ok'
+      ).length;
+    }
+
+    function refreshNokBadge() {
+      const badge = document.getElementById('nokBadge');
+      if (!badge) return;
+      const count = computeOpenNokCountForMyOrg();
+      if (count > 0) {
+        badge.textContent = `⚠ ${count} openstaande NOK${count === 1 ? '' : "'s"}`;
+        badge.style.display = '';
+      } else {
+        badge.style.display = 'none';
+      }
+    }
+
+    function scrollToFirstOpenNok() {
+      const myOrgId = currentProfile?.organisation_id;
+      const entry = Object.entries(results).find(([, r]) =>
+        r.result === 'nok' && r.nok_owner_org_id === myOrgId && r.nok_status !== 'hertest_ok'
+      );
+      if (!entry) return;
+      const act = activities.find(a => a.id === entry[0]);
+      if (!act) return;
+      const s = scenarios.find(x => x.id === act.scenario_id);
+      if (!s) return;
+      activeTabPrefix = getScenarioPrefix(s.code);
+      renderAll();
+      setTimeout(() => {
+        if (openScenarioId !== s.id) toggleScenario(s.id);
+        setTimeout(() => document.getElementById('detail-panel-' + s.id)?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 50);
+      }, 50);
+    }
+
+    async function submitNokModal(activityId, scenarioId) {
+      const reden = document.getElementById('nokModalReden').value.trim();
+      const eigenaar = document.getElementById('nokModalEigenaar').value;
+      if (!reden) {
+        const al = document.getElementById('alertNokModal');
+        al.textContent = 'Vul een reden in — dit is verplicht bij een NOK.';
+        al.className = 'alert alert-error';
+        al.style.display = '';
+        return;
+      }
+      document.getElementById('nokModalOverlay').remove();
+      await setResult(activityId, scenarioId, 'nok', { notes: reden, nok_owner_org_id: eigenaar });
     }
 
     // Notitie modal
@@ -889,19 +991,39 @@
       }
     }
 
-    async function setResult(activityId, scenarioId, result) {
+    async function setResult(activityId, scenarioId, result, extra = {}) {
       // Toggle: klikken op al-actieve knop zet hem uit
       if (results[activityId]?.result === result) result = 'open';
-      const notes = document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '';
+      const notes = extra.notes !== undefined ? extra.notes : (document.getElementById(`notes-${activityId}`)?.value || results[activityId]?.notes || '');
       const existing = results[activityId];
+
+      const payload = { result, notes, updated_by: currentUser.id, updated_at: new Date().toISOString() };
+
+      if (result === 'nok' && extra.nok_owner_org_id) {
+        // Nieuwe NOK, aangevuld vanuit de pop-up
+        payload.nok_status = 'nieuw';
+        payload.nok_owner_org_id = extra.nok_owner_org_id;
+        payload.nok_set_at = new Date().toISOString();
+        payload.nok_resolved_at = null;
+      } else if (result === 'ok' && existing?.result === 'nok') {
+        // Automatische hertest-registratie: een eerdere NOK is nu goedgekeurd
+        payload.nok_status = 'hertest_ok';
+        payload.nok_resolved_at = new Date().toISOString();
+      } else if (result === 'open') {
+        // NOK-opvolging heeft geen zin meer als de activiteit weer helemaal open staat
+        payload.nok_status = null;
+        payload.nok_owner_org_id = null;
+        payload.nok_set_at = null;
+        payload.nok_resolved_at = null;
+      }
 
       let dbError;
       if (existing) {
-        const res = await sb.from('activity_results').update({ result, notes, updated_by: currentUser.id, updated_at: new Date().toISOString() }).eq('id', existing.id);
+        const res = await sb.from('activity_results').update(payload).eq('id', existing.id);
         dbError = res.error;
-        if (!dbError) results[activityId] = { ...existing, result, notes };
+        if (!dbError) results[activityId] = { ...existing, ...payload };
       } else {
-        const res = await sb.from('activity_results').insert({ activity_id: activityId, updated_by: currentUser.id, result, notes }).select().single();
+        const res = await sb.from('activity_results').insert({ activity_id: activityId, ...payload }).select().single();
         dbError = res.error;
         if (!dbError) results[activityId] = res.data;
       }
@@ -918,6 +1040,7 @@
       }
 
       updateStats();
+      refreshNokBadge();
 
       // Deze handeling wordt vanaf nu automatisch gelogd door een
       // databasetrigger (zie activity-log-trigger-setup.sql) — niet meer

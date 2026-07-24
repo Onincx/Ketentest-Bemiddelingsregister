@@ -272,6 +272,18 @@ De PDF-exports blijven ongewijzigd: die bevatten nog steeds alle onderdelen in �
 
 ---
 
+## NOK-opvolgingsproces (nieuw)
+
+Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar er hing geen vervolgproces aan vast. Dat is nu opgelost met een compleet opvolgingsproces:
+
+1. Voer eenmalig `nok-opvolging-setup.sql` uit in de Supabase SQL Editor. Dit voegt een voortgangsstatus, een eigenaar (organisatie) en tijdstippen toe aan elk NOK-resultaat.
+2. **Pop-up bij NOK**: klik je op de knop NOK bij een activiteit, dan verschijnt er nu een pop-up waarin je **verplicht een reden** invult en de **eigenaar van de oplossing** kiest (standaard de verantwoordelijke organisatie van die activiteit, aan te passen indien nodig). Nogmaals op NOK klikken (om 'm uit te zetten) toont geen pop-up — dat blijft het bestaande een-klik-gedrag.
+3. **Voortgangsstatus**: elke NOK doorloopt Nieuw → In behandeling → Opgelost, wacht op hertest → Hertest OK. De laatste status wordt **automatisch** gezet zodra de activiteit na een NOK weer op OK gezet wordt (geen handmatige actie nodig) — dat is ook het moment waarop de doorlooptijd wordt vastgelegd.
+4. **Signalering**: gebruikers zien bovenin de Ketentest-pagina een rode badge ("⚠ X openstaande NOK's") zodra er NOK's aan hún organisatie zijn toegewezen die nog niet zijn opgelost. Een klik erop springt naar de eerste openstaande NOK.
+5. **Beheer → NOK-opvolging** (nieuw tabblad): een volledig overzicht van alle NOK's binnen de actieve ketentest, met reden, status (aanpasbaar), eigenaar (aanpasbaar), datum ingesteld en doorlooptijd. Filter tussen "Openstaand" en "Alle (incl. opgelost)".
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.
@@ -373,6 +385,7 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── ketentest-model-setup.sql Database uitbreiding: model (Netwerkmodel/Estafettemodel) per ketentest
 ├── bericht-definities-setup.sql Database uitbreiding: documentatie/trigger per berichtcode
 ├── bericht-definities-naam-setup.sql Database aanpassing: naam-veld toevoegen, trigger-veld verwijderen
+├── nok-opvolging-setup.sql Database uitbreiding: NOK-opvolgingsproces (status, eigenaar, tijdstippen)
 ├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
 ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
 ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
