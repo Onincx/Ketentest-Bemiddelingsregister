@@ -1656,7 +1656,7 @@
           <td><span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span></td>
           <td>
             ${isLocked
-              ? `<span class="badge" style="background:${isResolved ? '#d1fae5' : '#ede9fe'}; color:${isResolved ? '#065f46' : '#5b21b6'}; font-size:11px;" title="${isResolved ? '' : 'Status kan niet meer aangepast worden — alleen opmerkingen blijven mogelijk'}">${NOK_STATUS_LABELS[b.status]}</span>`
+              ? `<span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : '#ede9fe'}; color:${isResolved ? '#065f46' : '#5b21b6'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;" title="${isResolved ? 'Deze bevinding is afgerond' : 'Status kan niet meer aangepast worden — alleen opmerkingen blijven mogelijk'}">${isResolved ? '✓' : '🔒'} ${NOK_STATUS_LABELS[b.status]}</span>`
               : magMuteren
                 ? `<select onchange="handleNokStatusChange(this,'${b.id}')" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
                     ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${b.status === v ? 'selected' : ''}>${l}</option>`).join('')}

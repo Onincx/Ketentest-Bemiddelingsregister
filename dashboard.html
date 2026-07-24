@@ -227,6 +227,12 @@
           <div id="nokOverview"><p class="empty-dash">Laden...</p></div>
         </div>
 
+        <!-- Afgehandelde NOK's -->
+        <div class="dash-card" style="grid-column: 1 / -1;">
+          <h3><div class="dot" style="background:#16a34a;"></div>Afgehandelde NOK's</h3>
+          <div id="afgehandeldeNokOverview"><p class="empty-dash">Laden...</p></div>
+        </div>
+
       </div>
     </div>
 
@@ -632,6 +638,33 @@
           headStyles: { fillColor: [220, 38, 38], textColor: 255, fontStyle: 'bold' },
           columnStyles: { 1: { cellWidth: 170 }, 3: { cellWidth: 170 } },
         });
+        afterTable();
+      }
+
+      // ── 8. Afgehandelde NOK's ─────────────────────────────────────
+      heading("Afgehandelde NOK's");
+      const afgehandeldeRows = Object.values(latestBevindingByActivity)
+        .filter(b => b.status === 'hertest_ok')
+        .map(b => {
+          const act = activities.find(a => a.id === b.activity_id);
+          const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+          if (!act || !scen) return null;
+          const org = orgs.find(o => o.id === b.owner_org_id);
+          const doorlooptijdDagen = b.created_at && b.resolved_at ? Math.round((new Date(b.resolved_at) - new Date(b.created_at)) / (1000 * 60 * 60 * 24)) : null;
+          return [`B${b.bevinding_nummer}`, scen.code, act.description || '—', org?.name || '—', doorlooptijdDagen != null ? `${doorlooptijdDagen} dagen` : '—'];
+        }).filter(Boolean);
+
+      if (!afgehandeldeRows.length) {
+        emptyLine('Nog geen bevindingen afgehandeld.');
+      } else {
+        doc.autoTable({
+          startY: y,
+          head: [['Nummer', 'Code', 'Activiteit', 'Eigenaar', 'Doorlooptijd']],
+          body: afgehandeldeRows,
+          styles: { fontSize: 8, cellPadding: 5, overflow: 'linebreak' },
+          headStyles: { fillColor: [22, 163, 74], textColor: 255, fontStyle: 'bold' },
+          columnStyles: { 2: { cellWidth: 200 } },
+        });
       }
 
       doc.save(`ketentest-dashboard-${todayStamp()}.pdf`);
@@ -742,6 +775,7 @@
       renderPendingParticipation();
       renderRejectedParticipation();
       renderNokOverview();
+      renderAfgehandeldeNokOverview();
       renderCharts();
 
 
@@ -965,6 +999,41 @@
     }
 
 
+
+    // Toont álle bevindingen die zijn afgerond (status hertest_ok),
+    // ongeacht of de betreffende activiteit inmiddels weer een nieuwe
+    // (vervolg-)bevinding heeft — dit overzicht is puur historisch.
+    function renderAfgehandeldeNokOverview() {
+      const el = document.getElementById('afgehandeldeNokOverview');
+      const afgehandeld = Object.values(latestBevindingByActivity).filter(b => b.status === 'hertest_ok');
+
+      if (!afgehandeld.length) {
+        el.innerHTML = '<p class="empty-dash">Nog geen bevindingen afgehandeld.</p>';
+        return;
+      }
+
+      const rows = afgehandeld.map(b => {
+        const act = activities.find(a => a.id === b.activity_id);
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        const org = orgs.find(o => o.id === b.owner_org_id);
+        const doorlooptijdDagen = b.created_at && b.resolved_at ? Math.round((new Date(b.resolved_at) - new Date(b.created_at)) / (1000 * 60 * 60 * 24)) : null;
+        return { b, act, scen, org, doorlooptijdDagen };
+      }).filter(x => x.act && x.scen).sort((a, b) => new Date(b.b.resolved_at || 0) - new Date(a.b.resolved_at || 0));
+
+      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ b, act, scen, org, doorlooptijdDagen }) => `
+        <div class="nok-row">
+          <span style="display:inline-flex; align-items:center; gap:4px; background:#d1fae5; color:#065f46; font-size:11px; font-weight:700; border-radius:6px; padding:4px 9px;">✓ B${b.bevinding_nummer}</span>
+          <div>
+            <div class="nok-desc">${act.description || '—'}</div>
+            <div class="nok-meta">
+              ${scen.code} — ${scen.title}
+              ${org ? ` · <strong>${org.name}</strong>` : ''}
+              ${b.toelichting ? ` · <em>"${b.toelichting.substring(0,80)}${b.toelichting.length>80?'...':''}"</em>` : ''}
+              ${doorlooptijdDagen != null ? ` · opgelost in ${doorlooptijdDagen} dag${doorlooptijdDagen === 1 ? '' : 'en'}` : ''}
+            </div>
+          </div>
+        </div>`).join('') + `</div>`;
+    }
 
     let pieChartInstance = null;
 
