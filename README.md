@@ -295,6 +295,17 @@ Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar 
 
 ---
 
+## NOK-opvolging: verdere verfijningen (nieuw)
+
+Geen SQL-wijziging nodig voor deze ronde.
+
+1. **Badge-klik**: een klik op de waarschuwingsbadge in de menubalk opent nu direct de pagina NOK-opvolging (in plaats van te scrollen binnen Ketentest).
+2. **Menuvolgorde**: "NOK-opvolging" staat nu onderaan het Ketentest-menu, met een waarschuwingsicoon ervoor, net als de andere menu-items.
+3. **Automatische status bij opmerking**: voegt een gebruiker een opmerking toe aan een NOK die nog op "Nieuw" staat, dan springt de status automatisch naar "In behandeling". Stond de status al verder, dan gebeurt er niets extra's.
+4. **Pop-up bij "Opgelost, wacht op hertest"**: kiest de gebruiker deze status, dan verschijnt een pop-up met een verplichte toelichting en een waarschuwing dat de NOK bij het testscenario wordt verwijderd (de activiteit gaat terug naar Open, klaar voor een hertest). Bevestigen (OK) legt de toelichting vast als opmerking en voert de wijziging door; Annuleren zet de zichtbare status terug naar wat die was.
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.

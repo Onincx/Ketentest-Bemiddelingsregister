@@ -39,10 +39,10 @@
       </a>
       <div class="nav-dropdown-menu">
         <span id="navScenariosSlot"></span>
-        <a href="admin.html?tab=nok">NOK-opvolging</a>
-        <a href="flow.html">Flow</a>
+                <a href="flow.html">Flow</a>
         <a href="deelname.html">Deelname</a>
         <span id="navNotifBerichtenSlot"></span>
+        <a href="admin.html?tab=nok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> NOK-opvolging</a>
       </div>
     </div>
     <div class="nav-dropdown" id="adminLink" style="display:none;">
@@ -107,6 +107,7 @@
       { datum: '2026-07-18', beschrijving: "Belangrijke bugfix: een CSS-regel forceerde 'display: flex !important' op elke link in een menu-dropdown, waardoor JavaScript rolafhankelijke menu-items (Testscenario's, Dashboard, Notificaties/Berichten) niet meer daadwerkelijk kon verbergen — ze bleven altijd zichtbaar, ongeacht de rol van de gebruiker of het model van de ketentest. Nu opgelost." },
       { datum: '2026-07-18', beschrijving: "Compleet NOK-opvolgingsproces toegevoegd: verplichte reden en eigenaar via een pop-up bij het instellen van een NOK, een voortgangsstatus (Nieuw/In behandeling/Opgelost/Hertest OK), automatische afronding bij hertest, een signaleringsbadge voor gebruikers, en een nieuw beheerscherm 'NOK-opvolging' met volledig overzicht en doorlooptijd." },
       { datum: '2026-07-18', beschrijving: 'NOK-opvolging uitgebreid: eenmaal geregistreerd kan een NOK niet meer worden uitgezet, het overzicht is nu ook bereikbaar voor Gebruikers/Managers via het Ketentest-menu, mutatierechten zijn beperkt tot de eigenaar-organisatie (afgedwongen tot in de database), en het overzicht toont nu ook verantwoordelijke/acceptant en meerdere opmerkingen per NOK.' },
+      { datum: '2026-07-18', beschrijving: 'NOK-opvolging verder verfijnd: badge-klik opent nu direct het overzicht, "NOK-opvolging" staat nu onderaan het Ketentest-menu met een icoon, status springt automatisch naar "In behandeling" bij een eerste opmerking, en het kiezen van "Opgelost, wacht op hertest" vraagt nu eerst een verplichte toelichting via een pop-up.' },
     ];
 
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }

@@ -48,10 +48,10 @@
       <a href="app.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg> Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
         <span id="navScenariosSlot"></span>
-        <a href="admin.html?tab=nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
         <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
         <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
         <span id="navNotifBerichtenSlot"></span>
+        <a href="admin.html?tab=nok" onclick="return navTab('nok', event)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> NOK-opvolging</a>
       </div>
     </div>
     <div class="nav-dropdown" id="beheerDropdown" style="display:none;">
@@ -423,6 +423,30 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline" onclick="closeModal('modalNokNotities')">Sluiten</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: NOK op Opgelost zetten -->
+    <div class="modal-overlay" id="modalNokOpgelost" style="display:none;" onclick="closeModalOverlay(event,'modalNokOpgelost')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>NOK op Opgelost zetten</h3>
+          <button class="btn btn-ghost btn-icon" onclick="cancelNokOpgelost()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Toelichting <span style="color:var(--danger);">*</span></label>
+            <textarea id="nokOpgelostToelichting" placeholder="Wat is er gedaan om dit op te lossen?" style="min-height:90px;"></textarea>
+          </div>
+          <div class="alert" style="display:block; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; margin-top:14px;">
+            Let op: door de bevinding op Opgelost te zetten wordt de NOK bij het betreffende testscenario verwijderd en kan een hertest plaatsvinden.
+          </div>
+          <div id="alertNokOpgelost" class="alert" style="display:none; margin-top:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="cancelNokOpgelost()">Annuleren</button>
+          <button class="btn btn-primary" onclick="confirmNokOpgelost()">OK</button>
         </div>
       </div>
     </div>
@@ -1572,7 +1596,7 @@
             ${isResolved
               ? `<span class="badge" style="background:#d1fae5; color:#065f46; font-size:11px;">Hertest OK</span>`
               : magMuteren
-                ? `<select onchange="updateNokField('${r.id}','nok_status',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                ? `<select onchange="handleNokStatusChange(this,'${r.id}')" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
                     ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${r.nok_status === v ? 'selected' : ''}>${l}</option>`).join('')}
                   </select>`
                 : `<span style="font-size:12px;">${NOK_STATUS_LABELS[r.nok_status] || '—'}</span>`}
@@ -1602,6 +1626,75 @@
       const r = nokResults.find(x => x.id === resultId);
       if (r) r[field] = value;
       renderNokTable();
+    }
+
+    // Kiest de gebruiker "Opgelost, wacht op hertest", dan eerst een
+    // pop-up met verplichte toelichting en een waarschuwing, vóórdat er
+    // daadwerkelijk iets wijzigt.
+    let nokOpgelostContext = null;
+
+    function handleNokStatusChange(selectEl, resultId) {
+      const newValue = selectEl.value;
+      if (newValue === 'opgelost_wacht_hertest') {
+        const r = nokResults.find(x => x.id === resultId);
+        openNokOpgelostModal(resultId, r?.nok_status, selectEl);
+      } else {
+        updateNokField(resultId, 'nok_status', newValue);
+      }
+    }
+
+    function openNokOpgelostModal(resultId, previousValue, selectEl) {
+      nokOpgelostContext = { resultId, previousValue, selectEl };
+      document.getElementById('nokOpgelostToelichting').value = '';
+      document.getElementById('alertNokOpgelost').style.display = 'none';
+      openModal('modalNokOpgelost');
+    }
+
+    function cancelNokOpgelost() {
+      // Zet de zichtbare keuze terug naar de status van vóór deze poging
+      if (nokOpgelostContext?.selectEl) {
+        nokOpgelostContext.selectEl.value = nokOpgelostContext.previousValue || 'nieuw';
+      }
+      closeModal('modalNokOpgelost');
+      nokOpgelostContext = null;
+    }
+
+    async function confirmNokOpgelost() {
+      const toelichting = document.getElementById('nokOpgelostToelichting').value.trim();
+      if (!toelichting) {
+        const al = document.getElementById('alertNokOpgelost');
+        al.textContent = 'Vul een toelichting in — dit is verplicht.';
+        al.className = 'alert alert-error';
+        al.style.display = '';
+        return;
+      }
+      if (!nokOpgelostContext) return;
+      const { resultId } = nokOpgelostContext;
+      const r = nokResults.find(x => x.id === resultId);
+
+      // Leg de toelichting vast als nieuwe opmerking, vóórdat de NOK
+      // verdwijnt uit dit overzicht.
+      const orgId = window.isPageAdmin ? r?.nok_owner_org_id : currentProfile?.organisation_id;
+      await sb.from('nok_notities').insert({
+        activity_result_id: resultId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
+      });
+
+      // De NOK wordt "verwijderd" bij het testscenario: de activiteit gaat
+      // terug naar Open, zodat een hertest kan plaatsvinden. Daarmee
+      // verdwijnt deze rij ook uit dit NOK-overzicht (dat alleen NOK's
+      // toont).
+      const { error } = await sb.from('activity_results').update({
+        result: 'open', nok_status: null, nok_owner_org_id: null, nok_set_at: null, nok_resolved_at: null,
+      }).eq('id', resultId);
+
+      if (error) {
+        alert('Fout bij opslaan: ' + error.message);
+        return;
+      }
+
+      closeModal('modalNokOpgelost');
+      nokOpgelostContext = null;
+      await loadNokOverview();
     }
 
     // ---- NOK-OPMERKINGEN (meerdere per NOK, nieuwste bovenin) ----
@@ -1663,6 +1756,15 @@
       nokNotitiesHuidig.unshift(data);
       nokNotitiesMap[nokNotitiesHuidigResultId] = (nokNotitiesMap[nokNotitiesHuidigResultId] || 0) + 1;
       document.getElementById('nokNieuweNotitie').value = '';
+
+      // Een opmerking toevoegen aan een nog niet-opgepakte NOK betekent
+      // dat er nu mee aan de slag wordt gegaan — zet de status dan
+      // automatisch op "In behandeling". In alle andere gevallen (status
+      // stond al verder) gebeurt er niets extra's.
+      if (r && r.nok_status === 'nieuw') {
+        await updateNokField(nokNotitiesHuidigResultId, 'nok_status', 'in_behandeling');
+      }
+
       renderNokNotitiesLijst();
       renderNokTable();
     }
