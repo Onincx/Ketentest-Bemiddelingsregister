@@ -440,13 +440,34 @@
             <textarea id="nokOpgelostToelichting" placeholder="Wat is er gedaan om dit op te lossen?" style="min-height:90px;"></textarea>
           </div>
           <div class="alert" style="display:block; background:#fef3c7; color:#92400e; border:1px solid #fcd34d; margin-top:14px;">
-            Let op: door de bevinding op Opgelost te zetten wordt de NOK bij het betreffende testscenario verwijderd en kan een hertest plaatsvinden.
+            Let op: de status wordt vergrendeld op "Opgelost, wacht op hertest" en kan daarna niet meer aangepast worden. De acceptant kan de activiteit nu opnieuw testen (OK/NOK) bij het betreffende testscenario.
           </div>
           <div id="alertNokOpgelost" class="alert" style="display:none; margin-top:10px;"></div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline" onclick="cancelNokOpgelost()">Annuleren</button>
           <button class="btn btn-primary" onclick="confirmNokOpgelost()">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: NOK op In behandeling zetten (vereist een toelichting) -->
+    <div class="modal-overlay" id="modalNokInBehandeling" style="display:none;" onclick="closeModalOverlay(event,'modalNokInBehandeling')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>NOK op In behandeling zetten</h3>
+          <button class="btn btn-ghost btn-icon" onclick="cancelNokInBehandeling()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label>Notitie <span style="color:var(--danger);">*</span></label>
+            <textarea id="nokInBehandelingNotitie" placeholder="Wat ga je doen om dit op te pakken?" style="min-height:90px;"></textarea>
+          </div>
+          <div id="alertNokInBehandeling" class="alert" style="display:none; margin-top:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="cancelNokInBehandeling()">Annuleren</button>
+          <button class="btn btn-primary" onclick="confirmNokInBehandeling()">OK</button>
         </div>
       </div>
     </div>
@@ -1676,12 +1697,62 @@
 
     function handleNokStatusChange(selectEl, bevindingId) {
       const newValue = selectEl.value;
+      const b = bevindingen.find(x => x.id === bevindingId);
       if (newValue === 'opgelost_wacht_hertest') {
-        const b = bevindingen.find(x => x.id === bevindingId);
         openNokOpgelostModal(bevindingId, b?.status, selectEl);
+      } else if (newValue === 'in_behandeling' && b?.status === 'nieuw') {
+        openNokInBehandelingModal(bevindingId, b?.status, selectEl);
       } else {
         updateNokField(bevindingId, 'status', newValue);
       }
+    }
+
+    // Van Nieuw naar In behandeling zetten vereist een toelichting: wat
+    // gaat de eigenaar-organisatie doen om dit op te pakken?
+    let nokInBehandelingContext = null;
+
+    function openNokInBehandelingModal(bevindingId, previousValue, selectEl) {
+      nokInBehandelingContext = { bevindingId, previousValue, selectEl };
+      document.getElementById('nokInBehandelingNotitie').value = '';
+      document.getElementById('alertNokInBehandeling').style.display = 'none';
+      openModal('modalNokInBehandeling');
+    }
+
+    function cancelNokInBehandeling() {
+      if (nokInBehandelingContext?.selectEl) {
+        nokInBehandelingContext.selectEl.value = nokInBehandelingContext.previousValue || 'nieuw';
+      }
+      closeModal('modalNokInBehandeling');
+      nokInBehandelingContext = null;
+    }
+
+    async function confirmNokInBehandeling() {
+      const tekst = document.getElementById('nokInBehandelingNotitie').value.trim();
+      if (!tekst) {
+        const al = document.getElementById('alertNokInBehandeling');
+        al.textContent = 'Vul een notitie in — dit is verplicht.';
+        al.className = 'alert alert-error';
+        al.style.display = '';
+        return;
+      }
+      if (!nokInBehandelingContext) return;
+      const { bevindingId } = nokInBehandelingContext;
+      const b = bevindingen.find(x => x.id === bevindingId);
+      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
+
+      const { error: notitieError } = await sb.from('nok_notities').insert({
+        bevinding_id: bevindingId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
+      });
+      if (notitieError) { alert('Fout bij opslaan: ' + notitieError.message); return; }
+      nokNotitiesMap[bevindingId] = (nokNotitiesMap[bevindingId] || 0) + 1;
+
+      const { error } = await sb.from('bevindingen').update({ status: 'in_behandeling' }).eq('id', bevindingId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      if (b) b.status = 'in_behandeling';
+
+      closeModal('modalNokInBehandeling');
+      nokInBehandelingContext = null;
+      renderNokTable();
     }
 
     function openNokOpgelostModal(bevindingId, previousValue, selectEl) {

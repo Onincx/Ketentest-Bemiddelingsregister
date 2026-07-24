@@ -318,6 +318,7 @@ Dit is een fundamentele uitbreiding: in plaats van 1 NOK-status per activiteit k
    - **OK** → "Klopt het dat de bevinding definitief is opgelost?" **Ja** registreert de OK en rondt de bevinding af (Hertest OK); **Nee** registreert niets, de knoppen blijven beschikbaar.
    - **NOK** → "Klopt het dat de bevinding nog niet is opgelost of er een andere fout is opgetreden?" **Ja** opent de vertrouwde NOK-pop-up (reden + eigenaar) en legt een **nieuwe, gekoppelde bevinding** vast; **Nee** registreert niets.
 6. **Visuele koppeling**: een vervolgbevinding staat in het overzicht direct onder de bevinding waar die uit voortkomt, met een paarse markering en een "🔗 vervolg van B&lt;nummer&gt;"-label.
+7. **Verplichte notitie bij In behandeling**: zet de eigenaar-organisatie de status handmatig van "Nieuw" naar "In behandeling" (via het dropdown-menu), dan verschijnt eerst een pop-up die een toelichting verplicht — wat gaat er gedaan worden om dit op te pakken? Annuleren zet de status terug naar Nieuw.
 
 ---
 
