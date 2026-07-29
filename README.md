@@ -346,6 +346,12 @@ De rode waarschuwingsbadge ("⚠ X openstaande NOK's") stond tot nu toe alleen i
 
 ---
 
+## Export bij Deelname (nieuw)
+
+Gebruikers kunnen op de Deelname-pagina nu hun eigen flows (met daaronder de bijbehorende scenario's) exporteren naar **Excel** of **PDF** — twee knoppen naast "Vernieuwen". Toont per flow: flownummer, naam, de deelname-status van de eigen organisatie (en reden bij een afwijzing), en de scenario's die eronder vallen. Geen SQL-wijziging nodig.
+
+---
+
 ## Flows met afwijzingen (nieuw)
 
 Nieuwe dashboardkaart **"Flows met afwijzingen"**: toont per flow welke organisatie(s) hebben aangegeven deze **niet** te gaan testen, inclusief de opgegeven reden. Een flow verschijnt hier zodra minimaal 1 betrokken organisatie "nee" heeft aangegeven — ongeacht of andere organisaties wel "ja" zeiden. Ook opgenomen in de volledige dashboard-PDF-export. Geen SQL-wijziging nodig.
