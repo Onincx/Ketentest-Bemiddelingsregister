@@ -155,6 +155,28 @@ function scenariosLinkHtml(role, isAdminPage) {
 // (niet uit eventueel al geladen/verouderde paginagegevens) — de
 // badge blijft daardoor overal zichtbaar, ook op Beheer → NOK-opvolging
 // zelf, en verandert nooit door alleen maar te navigeren.
+// Haalt ALLE rijen van een query op, ook als het totaal boven de
+// standaardlimiet van 1000 rijen per verzoek uitkomt (een bekende
+// Supabase/PostgREST-beperking). Geef een functie mee die, gegeven een
+// 'from'/'to'-bereik, de bijbehorende (nog niet uitgevoerde) Supabase-
+// query teruggeeft — bijv.:
+//   await fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', ids).range(from, to))
+// Belangrijk: de query moet consistent gesorteerd zijn (voeg zo nodig
+// een .order() toe) zodat elke pagina een ander, aansluitend deel van
+// de data teruggeeft.
+async function fetchAllRows(queryBuilderFn, batchSize = 1000) {
+  let allRows = [];
+  let from = 0;
+  while (true) {
+    const { data, error } = await queryBuilderFn(from, from + batchSize - 1);
+    if (error) return { data: allRows, error };
+    allRows = allRows.concat(data || []);
+    if (!data || data.length < batchSize) break;
+    from += batchSize;
+  }
+  return { data: allRows, error: null };
+}
+
 async function refreshGlobalNokBadge(orgId) {
   const badge = document.getElementById('nokBadge');
   if (!badge) return;
