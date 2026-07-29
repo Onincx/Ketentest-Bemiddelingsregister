@@ -346,6 +346,12 @@ De rode waarschuwingsbadge ("⚠ X openstaande NOK's") stond tot nu toe alleen i
 
 ---
 
+## Deelnamekeuzes opnieuw laten beoordelen bij scenariowijziging (nieuw)
+
+Bewerk je (Beheer → Testscenario's) een scenario dat onderdeel is van een flow, of voeg je een activiteit toe/bewerk je die/verwijder je die (los of in bulk, ook via "Activiteiten importeren"), en hebben één of meer organisaties voor die flow al een deelnamekeuze gemaakt bij Deelname, dan verschijnt nu een bevestigingsvraag: wil je de deelnamekeuzes voor die flow wissen, zodat organisaties de flow opnieuw moeten beoordelen? Bevestig je dit, dan worden alle bestaande keuzes voor die flow gewist (de flow verschijnt dan weer bij "Nog te beoordelen" voor de betrokken organisaties). Kies je niet te wissen, dan blijft alles ongewijzigd. Geldt alleen voor scenario's die al onderdeel zijn van een flow **en** waarvoor al daadwerkelijk keuzes gemaakt zijn — anders blijft opslaan net zo simpel als voorheen. Geen SQL-wijziging nodig.
+
+---
+
 ## Export bij Deelname (nieuw)
 
 Gebruikers kunnen op de Deelname-pagina nu hun eigen flows (met daaronder de bijbehorende scenario's) exporteren naar **Excel** of **PDF** — twee knoppen naast "Vernieuwen". Toont per flow: flownummer, naam, de deelname-status van de eigen organisatie (en reden bij een afwijzing), en de scenario's die eronder vallen. Geen SQL-wijziging nodig.

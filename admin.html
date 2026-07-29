@@ -2949,6 +2949,42 @@
       showAlert(`Scenario ${parsed.code} succesvol ${actie}.`, 'success');
     }
 
+    // Als dit scenario onderdeel is van een flow waarvoor al
+    // deelnamekeuzes zijn gemaakt bij Deelname, vraagt dit of die keuzes
+    // gewist moeten worden zodat organisaties opnieuw moeten beoordelen.
+    // Gebruikt door zowel scenariowijzigingen als het toevoegen/wijzigen/
+    // verwijderen van activiteiten binnen zo'n scenario.
+    async function checkEnPromptFlowHeropening(scenarioId) {
+      const flowVanScenario = scenarioFlowMap[scenarioId];
+      if (!flowVanScenario) return;
+
+      const { data: bestaandeKeuzes } = await sb.from('flow_participation').select('id').eq('flow_id', flowVanScenario.id);
+      if (!bestaandeKeuzes || !bestaandeKeuzes.length) return;
+
+      document.getElementById('confirmMsg').textContent = `Dit scenario maakt deel uit van flow ${flowLabel(flowVanScenario)}, waarvoor ${bestaandeKeuzes.length} organisatie(s) al een keuze hebben gemaakt bij Deelname. Wil je deze flow weer op "open" zetten, zodat organisaties opnieuw moeten beoordelen?`;
+      const confirmBtn = document.getElementById('confirmBtn');
+      const modalEl = document.getElementById('modalConfirm');
+      confirmBtn.textContent = 'Ja, opnieuw laten beoordelen';
+
+      // Zet de knoptekst weer terug naar de standaard zodra deze modal
+      // sluit, ongeacht hoe — zodat andere (verwijder-)bevestigingen
+      // elders niet per ongeluk deze tekst overnemen.
+      const observer = new MutationObserver(() => {
+        if (modalEl.style.display === 'none') {
+          confirmBtn.textContent = 'Verwijderen';
+          observer.disconnect();
+        }
+      });
+      observer.observe(modalEl, { attributes: true, attributeFilter: ['style'] });
+
+      confirmBtn.onclick = async () => {
+        await sb.from('flow_participation').delete().eq('flow_id', flowVanScenario.id);
+        closeModal('modalConfirm');
+        showAlert('Deelnamekeuzes voor deze flow zijn gewist — organisaties moeten de flow opnieuw beoordelen.', 'success');
+      };
+      openModal('modalConfirm');
+    }
+
     async function saveScenario() {
       const id = document.getElementById('scenarioId').value;
       const code = document.getElementById('scenarioCode').value.trim();
@@ -2958,7 +2994,9 @@
       const wanneer = document.getElementById('scenarioWanneer').value.trim();
       if (!code || !title) { showAlert('Vul ID en titel in.', 'error', 'alertScenario'); return; }
 
-      if (id) {
+      const isEdit = !!id;
+
+      if (isEdit) {
         await sb.from('scenarios').update({ code, title, description, gegeven, wanneer }).eq('id', id);
       } else {
         await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, ketentest_id: activeKetentest?.id });
@@ -2973,6 +3011,8 @@
       document.getElementById('modalScenarioTitle').textContent = 'Scenario toevoegen';
       await loadScenarios(); renderScenarios();
       showAlert('Scenario opgeslagen.', 'success');
+
+      if (isEdit) await checkEnPromptFlowHeropening(id);
     }
 
     function deleteScenario(id, title) {
@@ -3057,6 +3097,7 @@
           if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 50);
       }
+      await checkEnPromptFlowHeropening(scenarioId);
     }
 
     function toggleSelectAll(scenarioId, checked) {
@@ -3089,6 +3130,7 @@
         closeModal('modalConfirm');
         await loadActivities(); renderScenarios();
         showAlert(`${count} activiteit${count !== 1 ? 'en' : ''} verwijderd.`, 'success');
+        await checkEnPromptFlowHeropening(scenarioId);
       };
       openModal('modalConfirm');
     }
@@ -3327,9 +3369,11 @@
       await loadActivities();
       renderScenarios();
       showAlert(`${rows.length} activiteit${rows.length !== 1 ? 'en' : ''} geïmporteerd.`, 'success');
+      await checkEnPromptFlowHeropening(scenarioId);
     }
 
     function deleteActivity(id, desc) {
+      const scenarioId = activities.find(a => a.id === id)?.scenario_id;
       document.getElementById('confirmMsg').textContent = `Activiteit "${desc}..." verwijderen?`;
       document.getElementById('confirmBtn').onclick = async () => {
         const { error } = await sb.from('activities').delete().eq('id', id);
@@ -3342,6 +3386,7 @@
         closeModal('modalConfirm');
         await loadActivities(); renderScenarios();
         showAlert('Activiteit verwijderd.', 'success');
+        if (scenarioId) await checkEnPromptFlowHeropening(scenarioId);
       };
       openModal('modalConfirm');
     }
