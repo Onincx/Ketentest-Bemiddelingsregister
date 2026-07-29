@@ -293,15 +293,15 @@
 
       const [a, r, u, o, fl, fn, fp, bv] = await Promise.all([
         scenarioIds.length
-          ? sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order')
+          ? fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
           : Promise.resolve({ data: [] }),
-        sb.from('activity_results').select('*'),
+        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         sb.from('users').select('*, organisations(name)'),
         sb.from('organisations').select('*').order('name'),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('nummer'),
-        sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id),
-        sb.from('flow_participation').select('*'),
-        sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_participation').select('*').order('id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }).range(from, to)),
       ]);
 
       activities = a.data || [];

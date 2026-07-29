@@ -1060,7 +1060,7 @@
     async function loadActivities() {
       if (!scenarios.length) { activities = []; return; }
       const scenarioIds = scenarios.map(s => s.id);
-      const { data, error } = await sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').in('scenario_id', scenarioIds).order('sort_order');
+      const { data, error } = await fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').in('scenario_id', scenarioIds).order('sort_order').range(from, to));
       if (error) { console.error('loadActivities error:', error); activities = []; return; }
       const raw = data || [];
       // Resolve acceptant_org manually using already-loaded orgs list
@@ -1556,7 +1556,7 @@
       tb.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
       if (!activeKetentest) { bevindingen = []; renderNokTable(); return; }
 
-      const { data, error } = await sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id);
+      const { data, error } = await fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at').range(from, to));
       if (error) { console.error('loadNokOverview error:', error); bevindingen = []; renderNokTable(); return; }
       bevindingen = data || [];
 

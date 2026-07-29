@@ -332,6 +332,14 @@ Geen SQL-wijziging nodig voor beide.
 
 ---
 
+## Belangrijke bugfix: Supabase's standaardlimiet van 1000 rijen per query
+
+Supabase/PostgREST geeft **standaard maximaal 1000 rijen per query terug, zonder foutmelding**. Bij grote ketentesten (veel scenario's en activiteiten) kon een query zonder paginering daardoor stilzwijgend een deel van de resultaten weglaten — met als concreet gevolg dat recent toegevoegde scenario's/flows leken te ontbreken bij Deelname ("Geen organisaties gekoppeld"), terwijl de gegevens in de database gewoon correct stonden.
+
+Dit is verholpen met een gedeelde helperfunctie `fetchAllRows()` (in `js/supabase-config.js`) die automatisch doorpagineert tot écht alle rijen zijn opgehaald. Deze was al toegepast op de risicovolle query's (activiteiten, activiteitresultaten, flow-koppelingen, deelname, bevindingen) in `app.html`, `admin.html` en `deelname.html` — nu ook consistent doorgevoerd in `dashboard.html`, `flow.html` en `berichten.html`, waar dezelfde kwetsbare query's nog onbeschermd waren. Geen SQL-wijziging nodig.
+
+---
+
 ## Signaleringsbadge nu overal zichtbaar (bugfix)
 
 De rode waarschuwingsbadge ("⚠ X openstaande NOK's") stond tot nu toe alleen in de navigatiebalk van Ketentest → Testscenario's (`app.html`) — klikte je erop om naar NOK-opvolging te gaan, dan verdween de badge, want die pagina had 'm niet. Dit is opgelost: de badge staat nu op **elke** pagina met dezelfde navigatiebalk, haalt de stand altijd rechtstreeks en actueel op uit de database (niet uit al geladen paginagegevens), en blijft dus zichtbaar zolang er minimaal 1 openstaande bevinding aan de organisatie is toegewezen — ook op Beheer → NOK-opvolging zelf. Geen SQL-wijziging nodig.
