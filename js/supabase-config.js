@@ -197,6 +197,53 @@ async function refreshGlobalNokBadge(orgId) {
   badge.style.display = '';
 }
 
+// Toont in de navigatiebalk (element met id="mijnActiesBadge") hoeveel
+// scenario's op dit moment "nu te doen" zijn voor de organisatie van de
+// huidige gebruiker — d.w.z. scenario's waarbij de eerstvolgende nog
+// niet-OK activiteit aan deze organisatie toebehoort (als
+// verantwoordelijke of acceptant). Zelfde live/overal-zichtbare opzet
+// als refreshGlobalNokBadge hierboven.
+async function refreshMijnActiesBadge(orgId) {
+  const badge = document.getElementById('mijnActiesBadge');
+  if (!badge) return;
+  if (!orgId) { badge.style.display = 'none'; return; }
+
+  const result = await ensureActiveKetentest();
+  if (!result) { badge.style.display = 'none'; return; }
+
+  const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', result.active.id);
+  const scenarioIds = (scenarioData || []).map(s => s.id);
+  if (!scenarioIds.length) { badge.style.display = 'none'; return; }
+
+  const { data: activityData } = await fetchAllRows((from, to) =>
+    sb.from('activities').select('id,scenario_id,sort_order,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).order('sort_order').range(from, to)
+  );
+  const activityIds = (activityData || []).map(a => a.id);
+  const { data: resultData } = activityIds.length
+    ? await fetchAllRows((from, to) => sb.from('activity_results').select('activity_id,result').in('activity_id', activityIds).range(from, to))
+    : { data: [] };
+
+  const resultsMap = {};
+  (resultData || []).forEach(r => { resultsMap[r.activity_id] = r.result; });
+
+  const byScenario = {};
+  (activityData || []).forEach(a => { (byScenario[a.scenario_id] = byScenario[a.scenario_id] || []).push(a); });
+
+  let count = 0;
+  Object.values(byScenario).forEach(acts => {
+    acts.sort((a, b) => a.sort_order - b.sort_order);
+    const bottleneck = acts.find(a => (resultsMap[a.id] || 'open') !== 'ok');
+    if (bottleneck && (bottleneck.organisation_id === orgId || bottleneck.acceptant_org_id === orgId)) count++;
+  });
+
+  if (count > 0) {
+    badge.textContent = `🔔 ${count} actie${count === 1 ? '' : 's'} voor jou`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 async function renderActiveKetentestLabel() {
   const el = document.getElementById('ketentestLabel');
   const result = await ensureActiveKetentest();
