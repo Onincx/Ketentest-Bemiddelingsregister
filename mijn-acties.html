@@ -27,10 +27,11 @@
     .ma-scenario-title { font-weight:700; font-size:14px; }
     .ma-scenario-title a { color:var(--text); text-decoration:none; }
     .ma-scenario-title a:hover { color:var(--brand); text-decoration:underline; }
-    .ma-status-line { font-size:12.5px; margin-top:3px; }
-    .ma-status-nu { color:#166534; font-weight:600; }
-    .ma-status-wacht { color:#92400e; font-weight:600; }
-    .ma-status-af { color:var(--text-muted); }
+    .ma-status-line { font-size:12.5px; margin-top:3px; color:var(--text); }
+    .ma-status-badge { display:inline-flex; align-items:center; white-space:nowrap; font-size:11.5px; font-weight:700; border-radius:99px; padding:5px 12px; }
+    .ma-status-badge.ma-status-nu { background:#dcfce7; color:#166534; }
+    .ma-status-badge.ma-status-wacht { background:#fef3c7; color:#92400e; }
+    .ma-status-badge.ma-status-af { background:var(--surface); color:var(--text-muted); }
     .ma-open-btn { white-space:nowrap; }
 
     .ma-stepper { display:flex; align-items:flex-start; overflow-x:auto; padding:4px 2px 8px; gap:0; }
@@ -284,27 +285,32 @@
       }
 
       el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket }) => {
-        let statusLine = '';
+        let statusBadge = '';
+        let statusDetail = '';
         const notStarted = isNotStartedYet();
         if (bucket === 'nu_te_doen' && bottleneck) {
           const isAcceptant = bottleneck.acceptant_org_id === myOrgId;
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' — <span style="color:var(--danger); font-weight:700;">⚠ staat op NOK</span>' : '';
           if (notStarted) {
             const datum = new Date(activeKetentest.start_op).toLocaleDateString('nl-NL');
-            statusLine = isAcceptant
-              ? `<span class="ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum}): beoordeel dan "${esc(bottleneck.description || '')}"</span>`
-              : `<span class="ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum}): zorg dan dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd</span>`;
+            statusBadge = `<span class="ma-status-badge ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum})</span>`;
+            statusDetail = isAcceptant
+              ? `beoordeel dan "${esc(bottleneck.description || '')}"`
+              : `zorg dan dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd`;
           } else {
-            statusLine = isAcceptant
-              ? `<span class="ma-status-nu">✅ Nu te doen: beoordeel "${esc(bottleneck.description || '')}"</span>${nokIndicatie}`
-              : `<span class="ma-status-nu">✅ Nu te doen: zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd</span>${nokIndicatie}`;
+            statusBadge = `<span class="ma-status-badge ma-status-nu">✅ Nu te doen</span>`;
+            statusDetail = (isAcceptant
+              ? `beoordeel "${esc(bottleneck.description || '')}"`
+              : `zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd`) + nokIndicatie;
           }
         } else if (bucket === 'wachtend' && bottleneck) {
           const wachtOrg = orgById(bottleneck.acceptant_org_id);
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' (staat op NOK, wacht op oplossing)' : '';
-          statusLine = `<span class="ma-status-wacht">⏳ Wacht op ${wachtOrg ? esc(wachtOrg.name) : 'een andere partij'} — "${esc(bottleneck.description || '')}"${nokIndicatie}</span>`;
+          statusBadge = `<span class="ma-status-badge ma-status-wacht">⏳ Wachten op andere partij</span>`;
+          statusDetail = `Wacht op ${wachtOrg ? esc(wachtOrg.name) : 'een andere partij'} — "${esc(bottleneck.description || '')}"${nokIndicatie}`;
         } else {
-          statusLine = `<span class="ma-status-af">🏁 Jouw deel van dit scenario is afgerond.</span>`;
+          statusBadge = `<span class="ma-status-badge ma-status-af">🏁 Afgerond</span>`;
+          statusDetail = `Jouw deel van dit scenario is afgerond.`;
         }
 
         return `<div class="ma-card">
@@ -314,9 +320,12 @@
                 <a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a>
                 ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
               </div>
-              <div class="ma-status-line">${statusLine}</div>
+              <div class="ma-status-line">${statusDetail}</div>
             </div>
-            <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
+            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
+              ${statusBadge}
+              <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
+            </div>
           </div>
           ${renderStepper(acts, bottleneck)}
         </div>`;
