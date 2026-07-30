@@ -3049,7 +3049,7 @@
       if (eindigtOpPunt) tekst = tekst.slice(0, -1);
 
       // Splits op " en " in losse clausules
-      let clausules = tekst.split(/\s+en\s+/i);
+      let clausules = tekst.split(/\s+en\s+/i).map(c => c.trim());
 
       // Verwijder trailing clausules die eerder een voorwaarde/toestand
       // lijken te beschrijven (bevatten " is ") dan een handeling —
@@ -3058,27 +3058,41 @@
         clausules.pop();
       }
 
-      let resultaat = clausules.join(' en ');
-
       // Verwijder een leidend, organisatie-achtig onderwerp aan het
-      // begin van de zin (hoofdletter, gevolgd door een lidwoord/
-      // voegwoord) — een grove benadering.
-      resultaat = resultaat.replace(/^[A-Z][\w()]*(?:\s[A-Z][\w()]*)*\s(?=(?:een|de|het|dat|of)\b)/, '');
+      // begin van de eerste clausule (hoofdletter, gevolgd door een
+      // lidwoord/voegwoord) — een grove benadering.
+      clausules[0] = clausules[0].replace(/^[A-Z][\w()]*(?:\s[A-Z][\w()]*)*\s(?=(?:een|de|het|dat|of)\b)/, '');
 
-      // Zet het laatste werkwoord (3e persoon tegenwoordige tijd) om
-      // naar de gebiedende wijs — sluit veelvoorkomende functiewoorden
-      // die toevallig ook op -t eindigen uit (het, dat, niet, etc.),
-      // anders wordt per ongeluk het verkeerde woord aangepast.
+      // De laatste clausule bevat vaak meerdere object-zinsdelen mét het
+      // hoofdwerkwoord erachteraan geplakt (bijv. "... en een Regiehouder
+      // periode ... registreert in het Bemiddelingsregister"). Zoek het
+      // laatste woord dat op -t eindigt en geen functiewoord is, en knip
+      // de clausule daar los in een object-deel en een werkwoord-deel.
       const geenWerkwoord = new Set(['het', 'dat', 'niet', 'met', 'tot', 'uit', 'wat', 'dit', 'omdat', 'zodat']);
-      const woorden = resultaat.split(' ');
+      const laatsteIdx = clausules.length - 1;
+      const woorden = clausules[laatsteIdx].split(' ');
+      let werkwoordIdx = -1;
       for (let i = woorden.length - 1; i >= 0; i--) {
         const kaal = woorden[i].replace(/[.,;:()]/g, '');
-        if (/^[a-zA-Z]+t$/.test(kaal) && !geenWerkwoord.has(kaal.toLowerCase())) {
-          woorden[i] = woorden[i].replace(kaal, kaal.slice(0, -1));
-          break;
-        }
+        if (/^[a-zA-Z]+t$/.test(kaal) && !geenWerkwoord.has(kaal.toLowerCase())) { werkwoordIdx = i; break; }
       }
-      resultaat = woorden.join(' ');
+
+      let werkwoordZin = null;
+      if (werkwoordIdx !== -1) {
+        const kaal = woorden[werkwoordIdx].replace(/[.,;:()]/g, '');
+        const gebiedendeWijs = kaal.slice(0, -1);
+        const objectDeel = woorden.slice(0, werkwoordIdx).join(' ').trim();
+        const restDeel = woorden.slice(werkwoordIdx + 1).join(' ').trim();
+        werkwoordZin = `${gebiedendeWijs} deze${restDeel ? ' ' + restDeel : ''}`;
+        clausules[laatsteIdx] = objectDeel;
+      }
+
+      // Elk resterend object-zinsdeel krijgt een eigen "Maak"/"maak"
+      // ervoor, gevolgd door de losgeknipte werkwoord-zin.
+      const delen = clausules.filter(c => c).map((c, i) => `${i === 0 ? 'Maak' : 'maak'} ${c}`);
+      if (werkwoordZin) delen.push(werkwoordZin);
+
+      let resultaat = delen.join(' en ');
 
       if (!resultaat) {
         showAlert('Kon geen voorstel maken van deze tekst — vul de instructie handmatig in.', 'error', 'alertScenario');
