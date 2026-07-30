@@ -22,8 +22,8 @@
     .ma-tab .ma-count { background:rgba(0,0,0,0.12); border-radius:99px; padding:1px 8px; font-size:11px; }
     .ma-tab.active .ma-count { background:rgba(255,255,255,0.25); }
 
-    .ma-card { background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 20px; margin-bottom:14px; }
-    .ma-card-header { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+    .ma-card { position:relative; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 150px 18px 20px; margin-bottom:14px; }
+    .ma-status-badge-corner { position:absolute; top:16px; right:20px; }
     .ma-scenario-title { font-weight:700; font-size:14px; }
     .ma-scenario-title a { color:var(--text); text-decoration:none; }
     .ma-scenario-title a:hover { color:var(--brand); text-decoration:underline; }
@@ -314,18 +314,14 @@
         }
 
         return `<div class="ma-card">
-          <div class="ma-card-header">
-            <div>
-              <div class="ma-scenario-title">
-                <a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a>
-                ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
-              </div>
-              <div class="ma-status-line">${statusDetail}</div>
-            </div>
-            <div style="display:flex; flex-direction:column; align-items:flex-end; gap:8px; flex-shrink:0;">
-              ${statusBadge}
-              <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
-            </div>
+          <span class="ma-status-badge-corner">${statusBadge}</span>
+          <div class="ma-scenario-title">
+            <a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a>
+            ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
+          </div>
+          <div class="ma-status-line">${statusDetail}</div>
+          <div style="margin-top:12px; margin-bottom:14px;">
+            <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
           </div>
           ${renderStepper(acts, bottleneck)}
         </div>`;
