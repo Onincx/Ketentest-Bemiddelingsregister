@@ -207,6 +207,7 @@
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
       <span class="topnav-user" id="navUser"></span>
+      <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
     </div>
   </nav>
@@ -432,6 +433,7 @@
       refreshGlobalNokBadge(currentProfile?.organisation_id);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
+      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }

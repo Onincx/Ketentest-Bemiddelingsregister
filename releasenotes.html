@@ -61,6 +61,7 @@
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
+      <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7); display:none;" onclick="doLogout()" id="logoutBtn">
         Uitloggen
       </button>
@@ -153,6 +154,7 @@
       refreshGlobalNokBadge(profile?.organisation_id);
       refreshMijnActiesBadge(profile?.organisation_id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
+      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
       document.getElementById('logoutBtn').style.display = '';
       if (profile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
