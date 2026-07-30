@@ -749,6 +749,15 @@
           <label>Wanneer <span style="color:var(--text-muted); font-weight:400; font-size:12px;">— de handeling die wordt uitgevoerd</span></label>
           <textarea id="scenarioWanneer" placeholder="Wanneer de gebruiker..." style="min-height:90px;"></textarea>
         </div>
+        <div class="form-group">
+          <label>Instructie voor "Mijn acties" <span style="color:var(--text-muted); font-weight:400; font-size:12px;">— gebruikt bij Voortgang → Mijn acties voor de eerste activiteit(en) van dit scenario</span></label>
+          <textarea id="scenarioInstructie" placeholder="Bijv.: Maak een toewijzing voor... en registreer deze in het Bemiddelingsregister." style="min-height:70px;"></textarea>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:6px;" onclick="genereerInstructieVoorstel()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            Genereer voorstel op basis van "Wanneer"
+          </button>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Dit is een automatisch, ruw voorstel — controleer en pas de tekst altijd zelf aan voordat je opslaat.</p>
+        </div>
       </div>
       <div id="alertScenario" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
@@ -2796,6 +2805,7 @@
       document.getElementById('scenarioDesc').value = s.description || '';
       document.getElementById('scenarioGegeven').value = s.gegeven || '';
       document.getElementById('scenarioWanneer').value = s.wanneer || '';
+      document.getElementById('scenarioInstructie').value = s.instructie || '';
       document.getElementById('modalScenarioTitle').textContent = 'Scenario bewerken';
       openModal('modalScenario');
     }
@@ -2997,14 +3007,15 @@
       const description = document.getElementById('scenarioDesc').value.trim();
       const gegeven = document.getElementById('scenarioGegeven').value.trim();
       const wanneer = document.getElementById('scenarioWanneer').value.trim();
+      const instructie = document.getElementById('scenarioInstructie').value.trim();
       if (!code || !title) { showAlert('Vul ID en titel in.', 'error', 'alertScenario'); return; }
 
       const isEdit = !!id;
 
       if (isEdit) {
-        await sb.from('scenarios').update({ code, title, description, gegeven, wanneer }).eq('id', id);
+        await sb.from('scenarios').update({ code, title, description, gegeven, wanneer, instructie }).eq('id', id);
       } else {
-        await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, ketentest_id: activeKetentest?.id });
+        await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, instructie, ketentest_id: activeKetentest?.id });
       }
       closeModal('modalScenario');
       document.getElementById('scenarioId').value = '';
@@ -3013,11 +3024,70 @@
       document.getElementById('scenarioDesc').value = '';
       document.getElementById('scenarioGegeven').value = '';
       document.getElementById('scenarioWanneer').value = '';
+      document.getElementById('scenarioInstructie').value = '';
       document.getElementById('modalScenarioTitle').textContent = 'Scenario toevoegen';
       await loadScenarios(); renderScenarios();
       showAlert('Scenario opgeslagen.', 'success');
 
       if (isEdit) await checkEnPromptFlowHeropening(id);
+    }
+
+    // Zet een "Wanneer"-tekst (derde persoon, beschrijvend) om in een
+    // ruw voorstel voor een directe instructie. Dit is bewust een
+    // eenvoudige, mechanische omvorming — Nederlandse zinnen lopen te
+    // veel uiteen om dit voor élke tekst goed te doen. Altijd zelf
+    // controleren en waar nodig aanpassen vóór het opslaan.
+    function genereerInstructieVoorstel() {
+      const wanneerTekst = document.getElementById('scenarioWanneer').value.trim();
+      if (!wanneerTekst) {
+        showAlert('Vul eerst het veld "Wanneer" in.', 'error', 'alertScenario');
+        return;
+      }
+
+      let tekst = wanneerTekst;
+      const eindigtOpPunt = /[.!?]$/.test(tekst);
+      if (eindigtOpPunt) tekst = tekst.slice(0, -1);
+
+      // Splits op " en " in losse clausules
+      let clausules = tekst.split(/\s+en\s+/i);
+
+      // Verwijder trailing clausules die eerder een voorwaarde/toestand
+      // lijken te beschrijven (bevatten " is ") dan een handeling —
+      // bijv. "... en zorgaanbieder (1) is NIET aangesloten op ...".
+      while (clausules.length > 1 && /\bis\b/i.test(clausules[clausules.length - 1])) {
+        clausules.pop();
+      }
+
+      let resultaat = clausules.join(' en ');
+
+      // Verwijder een leidend, organisatie-achtig onderwerp aan het
+      // begin van de zin (hoofdletter, gevolgd door een lidwoord/
+      // voegwoord) — een grove benadering.
+      resultaat = resultaat.replace(/^[A-Z][\w()]*(?:\s[A-Z][\w()]*)*\s(?=(?:een|de|het|dat|of)\b)/, '');
+
+      // Zet het laatste werkwoord (3e persoon tegenwoordige tijd) om
+      // naar de gebiedende wijs — sluit veelvoorkomende functiewoorden
+      // die toevallig ook op -t eindigen uit (het, dat, niet, etc.),
+      // anders wordt per ongeluk het verkeerde woord aangepast.
+      const geenWerkwoord = new Set(['het', 'dat', 'niet', 'met', 'tot', 'uit', 'wat', 'dit', 'omdat', 'zodat']);
+      const woorden = resultaat.split(' ');
+      for (let i = woorden.length - 1; i >= 0; i--) {
+        const kaal = woorden[i].replace(/[.,;:()]/g, '');
+        if (/^[a-zA-Z]+t$/.test(kaal) && !geenWerkwoord.has(kaal.toLowerCase())) {
+          woorden[i] = woorden[i].replace(kaal, kaal.slice(0, -1));
+          break;
+        }
+      }
+      resultaat = woorden.join(' ');
+
+      if (!resultaat) {
+        showAlert('Kon geen voorstel maken van deze tekst — vul de instructie handmatig in.', 'error', 'alertScenario');
+        return;
+      }
+
+      resultaat = resultaat.charAt(0).toUpperCase() + resultaat.slice(1) + '.';
+      document.getElementById('scenarioInstructie').value = resultaat;
+      showAlert('Voorstel gegenereerd — controleer en pas waar nodig aan vóór het opslaan.', 'success');
     }
 
     function deleteScenario(id, title) {

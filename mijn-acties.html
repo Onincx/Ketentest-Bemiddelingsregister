@@ -288,20 +288,23 @@
         let statusBadge = '';
         let statusDetail = '';
         const notStarted = isNotStartedYet();
+        const isEersteActiviteit = !!(bottleneck && acts.length && bottleneck.id === acts[0].id);
         if (bucket === 'nu_te_doen' && bottleneck) {
           const isAcceptant = bottleneck.acceptant_org_id === myOrgId;
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' — <span style="color:var(--danger); font-weight:700;">⚠ staat op NOK</span>' : '';
+          // Bij de eerste activiteit van het scenario tonen we, als
+          // ingevuld, de instructie van het scenario zelf (afgeleid van
+          // "Wanneer") in plaats van de kale activiteitomschrijving.
+          const actieTekst = (isEersteActiviteit && scenario.instructie)
+            ? esc(scenario.instructie)
+            : (isAcceptant ? `beoordeel "${esc(bottleneck.description || '')}"` : `zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd`);
           if (notStarted) {
             const datum = new Date(activeKetentest.start_op).toLocaleDateString('nl-NL');
             statusBadge = `<span class="ma-status-badge ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum})</span>`;
-            statusDetail = isAcceptant
-              ? `beoordeel dan "${esc(bottleneck.description || '')}"`
-              : `zorg dan dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd`;
+            statusDetail = actieTekst;
           } else {
             statusBadge = `<span class="ma-status-badge ma-status-nu">✅ Nu te doen</span>`;
-            statusDetail = (isAcceptant
-              ? `beoordeel "${esc(bottleneck.description || '')}"`
-              : `zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd`) + nokIndicatie;
+            statusDetail = actieTekst + nokIndicatie;
           }
         } else if (bucket === 'wachtend' && bottleneck) {
           const wachtOrg = orgById(bottleneck.acceptant_org_id);

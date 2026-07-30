@@ -358,6 +358,14 @@ Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwer
 
 ---
 
+## Duidelijkere instructietekst bij de eerste activiteit van een scenario (nieuw)
+
+1. Voer eenmalig `sql/scenario-instructie-setup.sql` uit in de Supabase SQL Editor. Dit voegt een los veld "Instructie" toe aan scenario's.
+2. Bij Beheer → Testscenario's staat nu, naast het veld "Wanneer", een nieuw veld **"Instructie voor 'Mijn acties'"** met een knop **"Genereer voorstel op basis van 'Wanneer'"**. Deze knop zet de (derde-persoons, beschrijvende) "Wanneer"-tekst automatisch om in een ruw voorstel voor een directe instructie — bijvoorbeeld van *"VGZ een toewijzing ... registreert in het Bemiddelingsregister en zorgaanbieder (1) is NIET aangesloten ..."* naar *"Een toewijzing ... registreer in het Bemiddelingsregister."* Dit is bewust een **automatisch, ruw voorstel** — zulke tekstomvorming kan met code nooit voor elke zin perfect kloppen. Controleer en pas de voorgestelde tekst altijd zelf aan voordat je opslaat.
+3. Is deze instructie ingevuld, dan wordt die getoond bij **Voortgang → Mijn acties**, maar alleen voor de **eerste activiteit** van een scenario (de activiteit met het laagste volgnummer) — voor de overige activiteiten blijft de bestaande, activiteit-gebaseerde tekst gelden (hier volgt later nog verdere verfijning voor).
+
+---
+
 ## Deelnamekeuzes opnieuw laten beoordelen bij scenariowijziging (nieuw)
 
 Bewerk je (Beheer → Testscenario's) een scenario dat onderdeel is van een flow, of voeg je een activiteit toe/bewerk je die/verwijder je die (los of in bulk, ook via "Activiteiten importeren"), en hebben één of meer organisaties voor die flow al een deelnamekeuze gemaakt bij Deelname, dan verschijnt nu een bevestigingsvraag: wil je de deelnamekeuzes voor die flow wissen, zodat organisaties de flow opnieuw moeten beoordelen? Bevestig je dit, dan worden alle bestaande keuzes voor die flow gewist (de flow verschijnt dan weer bij "Nog te beoordelen" voor de betrokken organisaties). Kies je niet te wissen, dan blijft alles ongewijzigd. Geldt alleen voor scenario's die al onderdeel zijn van een flow **en** waarvoor al daadwerkelijk keuzes gemaakt zijn — anders blijft opslaan net zo simpel als voorheen. Geen SQL-wijziging nodig.
