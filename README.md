@@ -358,6 +358,18 @@ Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwer
 
 ---
 
+## Nieuw tijdelijk wachtwoord instellen voor bestaande gebruikers (nieuw)
+
+Werkt het tijdelijke wachtwoord van een gebruiker niet meer (bijv. te lang gewacht met de eerste keer inloggen), dan kan een beheerder nu handmatig een nieuw tijdelijk wachtwoord instellen — zonder e-mail, direct in de tool.
+
+Dit vereist server-side infrastructuur (een **Supabase Edge Function**), omdat het wijzigen van andermans wachtwoord Supabase's service-role-sleutel nodig heeft — die mag nooit in de browser-code staan.
+
+1. **Eenmalig installeren**: volg de stappen in `sql/reset-user-password-edge-function.md` om de Edge Function `reset-user-password` (code in `supabase/functions/reset-user-password/index.ts`) te deployen via het Supabase Dashboard.
+2. **Gebruik**: Beheer → Gebruikers → bewerk een bestaande gebruiker → onderaan de sectie **"Nieuw tijdelijk wachtwoord instellen"** → genereer of vul een wachtwoord in → "Nieuw wachtwoord instellen". De gebruiker moet bij de eerstvolgende login weer een eigen wachtwoord kiezen, net als bij een nieuw account.
+3. **Beveiliging**: de Edge Function controleert zelf of de aanroeper daadwerkelijk beheerder is; de service-role-sleutel blijft volledig binnen de Edge Function-omgeving.
+
+---
+
 ## Duidelijkere instructietekst bij de eerste activiteit van een scenario (nieuw)
 
 1. Voer eenmalig `sql/scenario-instructie-setup.sql` uit in de Supabase SQL Editor. Dit voegt een los veld "Instructie" toe aan scenario's.

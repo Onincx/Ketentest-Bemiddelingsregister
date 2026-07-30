@@ -670,6 +670,16 @@
           </div>
           <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Geef dit wachtwoord door aan de gebruiker (bijv. telefonisch of persoonlijk). Bij de eerste keer inloggen moet de gebruiker direct een eigen wachtwoord kiezen — dit tijdelijke wachtwoord werkt daarna niet meer.</p>
         </div>
+        <div class="form-group" id="userResetPwGroup" style="display:none; border-top:1px solid var(--border); padding-top:16px; margin-top:4px;">
+          <label>Nieuw tijdelijk wachtwoord instellen</label>
+          <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Gebruik dit als het eerder gegeven tijdelijke wachtwoord niet meer werkt (bijv. te lang gewacht). Dit vervangt het huidige wachtwoord meteen en dwingt bij de eerstvolgende login weer een eigen wachtwoordkeuze af.</p>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="userResetPassword" placeholder="Minimaal 8 tekens" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="generateResetPassword()">🎲 Genereer</button>
+          </div>
+          <button type="button" class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="resetUserPassword()" id="resetUserPasswordBtn">Nieuw wachtwoord instellen</button>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Vereist dat de Edge Function <code>reset-user-password</code> is gedeployed (zie README).</p>
+        </div>
         <div id="alertUser" class="alert" style="display:none;"></div>
       </div>
       <div class="modal-footer">
@@ -2375,6 +2385,7 @@
       document.getElementById('userRole').value = 'user';
       document.getElementById('userTempPassword').value = '';
       document.getElementById('userTempPwGroup').style.display = '';
+      document.getElementById('userResetPwGroup').style.display = 'none';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker uitnodigen';
       document.getElementById('saveUserBtn').textContent = 'Gebruiker aanmaken';
       document.getElementById('alertUser').style.display = 'none';
@@ -2391,6 +2402,60 @@
       const symbols = ['!','#','$','%','&','*'];
       const symbol = symbols[Math.floor(Math.random() * symbols.length)];
       document.getElementById('userTempPassword').value = `${word}${num}${symbol}`;
+    }
+
+    function generateResetPassword() {
+      const words = ['Kentest','Regio','Zorgketen','Bemiddel','Toets','Scenario','Vlucht','Rivier','Beemd','Wolken'];
+      const word = words[Math.floor(Math.random() * words.length)];
+      const num = Math.floor(1000 + Math.random() * 9000);
+      const symbols = ['!','#','$','%','&','*'];
+      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
+      document.getElementById('userResetPassword').value = `${word}${num}${symbol}`;
+    }
+
+    // Stelt via de Edge Function 'reset-user-password' een nieuw
+    // wachtwoord in voor een BESTAANDE gebruiker (bijv. omdat het eerder
+    // gegeven tijdelijke wachtwoord niet meer werkt). Dit kan alleen
+    // via een Edge Function, omdat het wijzigen van andermans
+    // wachtwoord Supabase's service-role-sleutel vereist — die mag
+    // nooit in de browser-code staan. Zie sql/reset-user-password-edge-function.md
+    // voor installatie-instructies.
+    async function resetUserPassword() {
+      const userId = document.getElementById('userId').value;
+      const newPassword = document.getElementById('userResetPassword').value;
+      if (!userId) return;
+      if (!newPassword || newPassword.length < 8) {
+        showAlert('Kies een nieuw wachtwoord van minimaal 8 tekens (of klik op "Genereer").', 'error', 'alertUser');
+        return;
+      }
+
+      const btn = document.getElementById('resetUserPasswordBtn');
+      btn.disabled = true; btn.textContent = 'Bezig...';
+
+      try {
+        const { data: { session } } = await sb.auth.getSession();
+        const response = await fetch(`${SUPABASE_URL}/functions/v1/reset-user-password`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token || ''}`,
+          },
+          body: JSON.stringify({ userId, newPassword }),
+        });
+        const result = await response.json();
+
+        if (!response.ok) {
+          showAlert('Fout bij instellen: ' + (result?.error || response.statusText), 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Nieuw wachtwoord instellen';
+          return;
+        }
+
+        showAlert('Nieuw tijdelijk wachtwoord ingesteld. Geef het door aan de gebruiker.', 'success', 'alertUser');
+        btn.disabled = false; btn.textContent = 'Nieuw wachtwoord instellen';
+      } catch (e) {
+        showAlert('Fout bij instellen: ' + e.message, 'error', 'alertUser');
+        btn.disabled = false; btn.textContent = 'Nieuw wachtwoord instellen';
+      }
     }
 
     function renderUserKetentestAccessCheckboxes(selectedIds) {
@@ -2424,6 +2489,8 @@
       document.getElementById('userRole').value = u.role || 'user';
       document.getElementById('userEmail').disabled = true;
       document.getElementById('userTempPwGroup').style.display = 'none';
+      document.getElementById('userResetPwGroup').style.display = '';
+      document.getElementById('userResetPassword').value = '';
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
 
