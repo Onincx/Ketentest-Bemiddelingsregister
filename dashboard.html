@@ -74,6 +74,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
           Deelname
         </a>
+        <a href="mijn-acties.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Mijn acties</a>
         <span id="navNotifBerichtenSlot"></span>
         <a href="admin.html?tab=nok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> NOK-opvolging</a>
       </div>
@@ -94,6 +95,7 @@
     <div class="topnav-right">
       <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
+      <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
       <span class="topnav-user" id="navUser"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -215,6 +217,13 @@
           <div id="orgProgress"><p class="empty-dash">Laden...</p></div>
         </div>
 
+        <!-- Wie is nu aan zet? -->
+        <div class="dash-card" style="grid-column: 1 / -1;">
+          <h3><div class="dot" style="background:#1e3a8a;"></div>Wie is nu aan zet?</h3>
+          <p style="font-size:12.5px; color:var(--text-muted); margin:-6px 0 14px;">Per organisatie: bij hoeveel scenario's ligt de bal nú bij hen (de eerstvolgende niet-afgeronde activiteit), en bij hoeveel scenario's hebben ze straks nog een activiteit te gaan.</p>
+          <div id="ketenBottleneck"><p class="empty-dash">Laden...</p></div>
+        </div>
+
         <!-- Voortgang per flow -->
         <div class="dash-card" style="grid-column: 1 / -1;">
           <h3><div class="dot" style="background:#8b5cf6;"></div>Voortgang per flow</h3>
@@ -255,6 +264,7 @@
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
       refreshGlobalNokBadge(currentProfile?.organisation_id);
+      refreshMijnActiesBadge(currentProfile?.organisation_id);
 
       // Admin en Manager mogen het dashboard zien; Manager alleen-lezen
       // (mag verder net als een gewone gebruiker niets muteren).
@@ -786,6 +796,7 @@
       document.getElementById('ds-bar').style.width = pct + '%';
 
       renderOrgProgress();
+      renderKetenBottleneck();
       renderFlowProgress();
       renderPendingParticipation();
       renderRejectedParticipation();
@@ -796,6 +807,59 @@
 
       document.getElementById('lastUpdated').textContent =
         'Laatst bijgewerkt: ' + new Date().toLocaleString('nl-NL');
+    }
+
+    // Per organisatie: bij hoeveel scenario's ligt de bal nú bij hen
+    // (de eerstvolgende niet-afgeronde activiteit is van hen), en bij
+    // hoeveel scenario's hebben ze straks nog een activiteit te gaan
+    // (maar wachten ze nu nog op een andere partij)?
+    function renderKetenBottleneck() {
+      const el = document.getElementById('ketenBottleneck');
+      const perOrg = {};
+
+      scenarios.forEach(s => {
+        const acts = activities.filter(a => a.scenario_id === s.id).sort((a, b) => a.sort_order - b.sort_order);
+        if (!acts.length) return;
+        const bottleneck = acts.find(a => getResult(a.id) !== 'ok');
+        if (!bottleneck) return;
+
+        const bottleneckOrgs = new Set([bottleneck.organisation_id, bottleneck.acceptant_org_id].filter(Boolean));
+        bottleneckOrgs.forEach(oid => {
+          perOrg[oid] = perOrg[oid] || { nu: 0, wacht: 0 };
+          perOrg[oid].nu++;
+        });
+
+        const laterOrgs = new Set();
+        acts.forEach(a => {
+          if (a.sort_order > bottleneck.sort_order) {
+            if (a.organisation_id) laterOrgs.add(a.organisation_id);
+            if (a.acceptant_org_id) laterOrgs.add(a.acceptant_org_id);
+          }
+        });
+        laterOrgs.forEach(oid => {
+          if (bottleneckOrgs.has(oid)) return;
+          perOrg[oid] = perOrg[oid] || { nu: 0, wacht: 0 };
+          perOrg[oid].wacht++;
+        });
+      });
+
+      const rows = Object.entries(perOrg)
+        .map(([oid, counts]) => ({ org: orgs.find(o => o.id === oid), ...counts }))
+        .filter(x => x.org)
+        .sort((a, b) => b.nu - a.nu);
+
+      if (!rows.length) {
+        el.innerHTML = '<p class="empty-dash">Alle scenario\'s zijn afgerond. 🎉</p>';
+        return;
+      }
+
+      el.innerHTML = `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(220px,1fr)); gap:12px;">` +
+        rows.map(({ org, nu, wacht }) => `
+          <div style="border:1px solid var(--border); border-radius:var(--radius); padding:14px; ${nu > 0 ? 'border-left:4px solid #dc2626;' : ''}">
+            <div style="font-weight:700; font-size:14px; margin-bottom:8px;">${org.name}</div>
+            <div style="font-size:13px; ${nu > 0 ? 'color:#dc2626; font-weight:700;' : 'color:var(--text-muted);'}">🔴 ${nu} scenario${nu === 1 ? '' : "'s"} nu bij hen</div>
+            <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">⏳ ${wacht} scenario${wacht === 1 ? '' : "'s"} komen nog aan</div>
+          </div>`).join('') + `</div>`;
     }
 
     function renderOrgProgress() {

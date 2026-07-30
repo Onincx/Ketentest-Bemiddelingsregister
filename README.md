@@ -346,6 +346,17 @@ De rode waarschuwingsbadge ("⚠ X openstaande NOK's") stond tot nu toe alleen i
 
 ---
 
+## Mijn acties: voortgang en actie-ondersteuning tijdens de test (nieuw)
+
+Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwerkelijk loopt: wat moet ik nu zelf doen, en waar wacht ik op een andere partij? Geen SQL-wijziging nodig — bouwt volledig voort op de bestaande volgordelijke afhankelijkheid tussen activiteiten (de acceptant kan pas beoordelen als de voorgaande activiteit op OK staat).
+
+1. **Nieuwe pagina "Mijn acties"** (`mijn-acties.html`, nieuw menu-item onder Ketentest): toont voor de ingelogde organisatie drie groepen scenario's — ✅ **Nu te doen** (de eerstvolgende activiteit is van hen), ⏳ **Wachten op andere partij** (ze hebben nog een activiteit te gaan, maar een andere organisatie is eerst aan zet — met wie expliciet genoemd), en 🏁 **Afgerond**.
+2. **Visuele stappenketen (stepper) per scenario**: elke activiteit als bolletje in volgorde, met kleur voor status (groen = OK, rood = NOK, blauw omrand = nu actueel, grijs = moet nog wachten) en de betrokken organisatie eronder — in één oogopslag zien waar een scenario vaststaat en bij wie.
+3. **Signaleringsbadge "acties voor jou"**: een blauwe badge in de navigatiebalk op elke pagina (naast de NOK-badge), die live het aantal scenario's toont dat nu voor de eigen organisatie klaarstaat. Klikken springt naar Mijn acties.
+4. **Dashboard: "Wie is nu aan zet?"**: nieuwe kaart op het Dashboard die per organisatie toont bij hoeveel scenario's de bal nú bij hen ligt, en bij hoeveel scenario's ze straks nog een activiteit te gaan hebben — voor beheerders in één oogopslag zichtbaar welke partij de hele keten op dit moment ophoudt.
+
+---
+
 ## Deelnamekeuzes opnieuw laten beoordelen bij scenariowijziging (nieuw)
 
 Bewerk je (Beheer → Testscenario's) een scenario dat onderdeel is van een flow, of voeg je een activiteit toe/bewerk je die/verwijder je die (los of in bulk, ook via "Activiteiten importeren"), en hebben één of meer organisaties voor die flow al een deelnamekeuze gemaakt bij Deelname, dan verschijnt nu een bevestigingsvraag: wil je de deelnamekeuzes voor die flow wissen, zodat organisaties de flow opnieuw moeten beoordelen? Bevestig je dit, dan worden alle bestaande keuzes voor die flow gewist (de flow verschijnt dan weer bij "Nog te beoordelen" voor de betrokken organisaties). Kies je niet te wissen, dan blijft alles ongewijzigd. Geldt alleen voor scenario's die al onderdeel zijn van een flow **en** waarvoor al daadwerkelijk keuzes gemaakt zijn — anders blijft opslaan net zo simpel als voorheen. Geen SQL-wijziging nodig.
