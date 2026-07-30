@@ -358,6 +358,16 @@ Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwer
 
 ---
 
+## Export bij Testscenario's uitgebreid met Gegeven/Wanneer (nieuw)
+
+De export-knoppen bij Ketentest → Testscenario's (Excel/CSV en PDF) tonen nu ook de velden **Gegeven** en **Wanneer** van elk scenario:
+- **Excel/CSV**: twee extra kolommen, met de tekst van dat scenario herhaald per activiteitregel.
+- **PDF**: rechtstreeks onder de scenario-omschrijving, met duidelijke "GEGEVEN"/"WANNEER"-labels, vóór de activiteitentabel.
+
+Geen SQL-wijziging nodig.
+
+---
+
 ## Nieuw tijdelijk wachtwoord instellen voor bestaande gebruikers (nieuw)
 
 Werkt het tijdelijke wachtwoord van een gebruiker niet meer (bijv. te lang gewacht met de eerste keer inloggen), dan kan een beheerder nu handmatig een nieuw tijdelijk wachtwoord instellen — zonder e-mail, direct in de tool.

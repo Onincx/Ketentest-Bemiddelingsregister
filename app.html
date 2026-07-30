@@ -1151,12 +1151,12 @@
     }
 
     function exportCSV() {
-      const rows = [['Scenario ID', 'Scenario', 'Activiteit #', 'Activiteit', 'Verantw. organisatie', 'Acceptant', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
+      const rows = [['Scenario ID', 'Scenario', 'Gegeven', 'Wanneer', 'Activiteit #', 'Activiteit', 'Verantw. organisatie', 'Acceptant', 'Resultaat', 'Opmerkingen', 'Bijgewerkt']];
       scenarios.forEach(s => {
         const acts = activities.filter(a => a.scenario_id === s.id).sort((a,b) => a.sort_order - b.sort_order);
         acts.forEach(a => {
           const r = results[a.id] || {};
-          rows.push([s.code, s.title, a.sort_order, a.description, a.organisations?.name || '', a.acceptant_org?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
+          rows.push([s.code, s.title, s.gegeven || '', s.wanneer || '', a.sort_order, a.description, a.organisations?.name || '', a.acceptant_org?.name || '', r.result || 'open', r.notes || '', r.updated_at ? new Date(r.updated_at).toLocaleString('nl-NL') : '']);
         });
       });
       const csv = rows.map(r => r.map(c => `"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
@@ -1276,6 +1276,34 @@
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(55, 65, 81);
           lines.forEach(line => { ensureSpace(12); doc.text(line, margin, y); y += 12; });
+          y += 4;
+        }
+
+        if (s.gegeven) {
+          ensureSpace(12);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(...kleurAccent);
+          doc.text('GEGEVEN', margin, y);
+          y += 11;
+          const gegevenLines = wrapText(s.gegeven, contentWidth, 9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
+          gegevenLines.forEach(line => { ensureSpace(12); doc.text(line, margin, y); y += 12; });
+          y += 4;
+        }
+
+        if (s.wanneer) {
+          ensureSpace(12);
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(8);
+          doc.setTextColor(...kleurAccent);
+          doc.text('WANNEER', margin, y);
+          y += 11;
+          const wanneerLines = wrapText(s.wanneer, contentWidth, 9);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(55, 65, 81);
+          wanneerLines.forEach(line => { ensureSpace(12); doc.text(line, margin, y); y += 12; });
           y += 4;
         }
 
