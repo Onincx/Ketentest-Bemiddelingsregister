@@ -28,7 +28,7 @@ Webapplicatie voor het beheren en uitvoeren van ketentestscenario's voor de impl
 
 1. Ga in het Supabase dashboard naar **SQL Editor**
 2. Klik op **New query**
-3. Kopieer de volledige inhoud van `supabase-setup.sql` en plak die in de editor
+3. Kopieer de volledige inhoud van `sql/supabase-setup.sql` en plak die in de editor
 4. Klik op **Run** (groene knop)
 5. Je ziet "Success. No rows returned" als alles goed gaat
 
@@ -113,14 +113,14 @@ Gebruikers van die organisatie kunnen de activiteit dan bewerken in de app.
 
 Voordat organisaties een testscenario daadwerkelijk gaan uitvoeren, geven ze eerst aan of ze dat scenario willen testen:
 
-1. Voer eenmalig `deelname-setup.sql` uit in de Supabase **SQL Editor** (zelfde werkwijze als `supabase-setup.sql`). Dit voegt de tabel `scenario_participation` toe met de bijbehorende beveiliging (RLS).
-2. Voer daarna ook `flow-deelname-setup.sql` uit — dit voegt de tabel `flow_participation` toe. **Sinds deze update werkt de Deelname-pagina op flow-niveau, niet meer op scenarioniveau** (zie hieronder); `scenario_participation` wordt niet meer gebruikt door de pagina zelf, maar blijft bestaan voor het geval je de oude gegevens nog wilt inzien.
+1. Voer eenmalig `sql/deelname-setup.sql` uit in de Supabase **SQL Editor** (zelfde werkwijze als `sql/supabase-setup.sql`). Dit voegt de tabel `scenario_participation` toe met de bijbehorende beveiliging (RLS).
+2. Voer daarna ook `sql/flow-deelname-setup.sql` uit — dit voegt de tabel `flow_participation` toe. **Sinds deze update werkt de Deelname-pagina op flow-niveau, niet meer op scenarioniveau** (zie hieronder); `scenario_participation` wordt niet meer gebruikt door de pagina zelf, maar blijft bestaan voor het geval je de oude gegevens nog wilt inzien.
 3. Gebruikers vinden het overzicht via **Ketentest → Deelname** in de bovenbalk.
 4. Per **flow** (niet per los scenario) ziet een organisatie een compacte matrix: één kolom per betrokken organisatie, met een status (✅ wil testen, ❌ wil niet testen, ⏳ nog geen keuze). Een organisatie is "betrokken" bij een flow zodra ze bij minimaal één activiteit van minimaal één scenario in die flow verantwoordelijk of acceptant zijn.
 5. Elke gebruiker mag de keuze invullen, wijzigen **of weer wissen** (terug naar "nog geen keuze") namens de **eigen** organisatie (beheerders mogen dit namens elke organisatie). Bij "niet testen" is een reden verplicht.
 6. Gewone gebruikers zien alleen de flows waar hun eigen organisatie bij betrokken is; beheerders zien alle flows.
 7. Per flow wordt automatisch bepaald of deze **wordt uitgevoerd** (iedereen wil), **niet wordt uitgevoerd** (niemand wil), **verdeeld** is (sommigen wel, sommigen niet), of nog **wacht op input**.
-8. Beheerders kunnen per flow een **doel** vastleggen (via het ✏️-icoon in de flowlijst op de Flow-pagina). Dit doel en de lijst van onderliggende scenario's (codes) worden automatisch getoond bij elke flow op de Deelname-pagina, zodat gebruikers meteen begrijpen waar ze een keuze over maken. Voer hiervoor eenmalig `flows-doel-setup.sql` uit in de Supabase SQL Editor.
+8. Beheerders kunnen per flow een **doel** vastleggen (via het ✏️-icoon in de flowlijst op de Flow-pagina). Dit doel en de lijst van onderliggende scenario's (codes) worden automatisch getoond bij elke flow op de Deelname-pagina, zodat gebruikers meteen begrijpen waar ze een keuze over maken. Voer hiervoor eenmalig `sql/flows-doel-setup.sql` uit in de Supabase SQL Editor.
 
 Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-app zelf (`app.html`).
 
@@ -130,7 +130,7 @@ Dit overzicht is puur informatief: het beïnvloedt (nog) niets in de ketentest-a
 
 De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Dat is vervangen door aparte, benoembare canvassen ("flows"): elk kaartje dat als **start** wordt gemarkeerd hoort voortaan bij zijn eigen flow.
 
-1. Voer eenmalig `flows-setup.sql` uit in de Supabase **SQL Editor**. Dit voegt de tabel `flows` toe en een `flow_id`-kolom aan `flow_nodes` en `flow_edges`.
+1. Voer eenmalig `sql/flows-setup.sql` uit in de Supabase **SQL Editor**. Dit voegt de tabel `flows` toe en een `flow_id`-kolom aan `flow_nodes` en `flow_edges`.
 2. Open daarna de **Flow**-pagina als beheerder. Bij het eerste bezoek per ketentest migreert de app **automatisch**: bestaande startkaartjes (en alles wat daar transitief mee verbonden was) worden opgesplitst in aparte flows, genoemd naar het startscenario. Kaartjes die nergens bij een start hoorden komen in een verzamelflow "Overige kaartjes" terecht — er gaat dus niets verloren. Dit gebeurt maar één keer; hierna beheer je flows gewoon zelf.
 3. In de linkerkolom kies je met welke flow (canvas) je werkt. Beheerders kunnen daar ook een nieuwe flow aanmaken (✏️ om te hernoemen, 🗑 om te verwijderen).
 4. "Scenario's toevoegen" in de linkerkolom voegt een scenario toe aan de **geselecteerde** flow. Een scenario kan (net als voorheen) maar op één canvas tegelijk staan.
@@ -140,7 +140,7 @@ De Flow-pagina werkte voorheen met één groot, gedeeld canvas per ketentest. Da
 
 Beheerders kunnen nu bij het aanmaken van een gebruiker zelf een **tijdelijk wachtwoord** invoeren (in plaats van een uitnodigingsmail te versturen):
 
-1. Voer eenmalig `users-force-password-setup.sql` uit in de Supabase SQL Editor. Dit voegt het veld `must_change_password` toe aan `users`.
+1. Voer eenmalig `sql/users-force-password-setup.sql` uit in de Supabase SQL Editor. Dit voegt het veld `must_change_password` toe aan `users`.
 2. Bij **Beheer → Gebruikers → Gebruiker uitnodigen** vul je naast de gebruikersgegevens ook een tijdelijk wachtwoord in (of klik op "🎲 Genereer" voor een willekeurig wachtwoord). Geef dit tijdelijke wachtwoord zelf door aan de gebruiker (telefonisch, persoonlijk, etc.) — er wordt geen e-mail meer verstuurd.
 3. Zodra die gebruiker voor het eerst inlogt met het tijdelijke wachtwoord, wordt die **automatisch doorgestuurd** naar een scherm om direct een eigen wachtwoord te kiezen — pas daarna kan de rest van de applicatie gebruikt worden. Het tijdelijke wachtwoord werkt vanaf dat moment niet meer (het is overschreven door het zelfgekozen wachtwoord).
 
@@ -160,7 +160,7 @@ Op het inlogscherm staat nu een link **"Wachtwoord vergeten?"**. Een gebruiker d
 
 De ketentest-keuze is verplaatst van een dropdown in de navigatiebalk naar het **inlogscherm**, en beheerders kunnen nu per gebruiker bepalen welke ketentest(en) die gebruiker mag zien:
 
-1. Voer eenmalig `user-ketentest-access-setup.sql` uit in de Supabase SQL Editor. Dit voegt de koppeltabel `user_ketentest_access` toe.
+1. Voer eenmalig `sql/user-ketentest-access-setup.sql` uit in de Supabase SQL Editor. Dit voegt de koppeltabel `user_ketentest_access` toe.
 2. Bij **Beheer → Gebruikers** kun je per gebruiker (elke rol, óók Beheerder — zie de aparte sectie hieronder) aanvinken tot welke ketentesten die toegang heeft.
 3. Na het inloggen:
    - Heeft een gebruiker toegang tot **precies 1** ketentest, dan komt die er automatisch in terecht (geen extra stap).
@@ -180,7 +180,7 @@ De **"Dashboard"-link** in de navigatiebalk stond op alle pagina's altijd zichtb
 
 Tot nu toe zagen beheerders automatisch **alle** ketentesten, zonder koppeling. Dat is veranderd: **ook beheerders** moeten nu, net als gewone gebruikers, expliciet aan minimaal 1 ketentest gekoppeld worden via Beheer → Gebruikers.
 
-1. Voer eenmalig `user-ketentest-access-admins-setup.sql` uit in de Supabase SQL Editor. **Dit is een belangrijke stap** — dit script koppelt alle bestaande beheerders eenmalig aan alle bestaande ketentesten, zodat niemand zichzelf per ongeluk buitensluit door deze wijziging. Sla deze stap niet over.
+1. Voer eenmalig `sql/user-ketentest-access-admins-setup.sql` uit in de Supabase SQL Editor. **Dit is een belangrijke stap** — dit script koppelt alle bestaande beheerders eenmalig aan alle bestaande ketentesten, zodat niemand zichzelf per ongeluk buitensluit door deze wijziging. Sla deze stap niet over.
 2. Vanaf nu geldt bij het aanmaken van een nieuwe gebruiker de eis van minimaal 1 gekoppelde ketentest voor **elke rol**, dus ook bij het aanmaken van een nieuwe beheerder.
 3. Maakt een beheerder zelf een **nieuwe ketentest** aan (Beheer → Ketentesten), dan krijgt die persoon daar automatisch toegang toe — anders zou je een ketentest aanmaken waar je zelf nog niet in kunt werken.
 4. Voor overige beheerders die toegang tot een nieuwe ketentest nodig hebben, moet dat nog los ingesteld worden via Beheer → Gebruikers (dit gebeurt niet automatisch voor iedereen).
@@ -194,7 +194,7 @@ Elke ketentest heeft nu een verplicht **model**: **Netwerkmodel** of **Estafette
 - **Netwerkmodel** → "Notificaties" in het Ketentest-menu (zoals al bestond).
 - **Estafettemodel** → "Berichten" in het Ketentest-menu (nieuw, zie hieronder) — "Notificaties" is dan niet zichtbaar.
 
-1. Voer eenmalig `ketentest-model-setup.sql` uit in de Supabase SQL Editor. Bestaande ketentesten krijgen automatisch **Netwerkmodel** (de enige soort tot nu toe) — loop ze na en zet de juiste ketentesten handmatig op Estafettemodel via Beheer → Ketentesten.
+1. Voer eenmalig `sql/ketentest-model-setup.sql` uit in de Supabase SQL Editor. Bestaande ketentesten krijgen automatisch **Netwerkmodel** (de enige soort tot nu toe) — loop ze na en zet de juiste ketentesten handmatig op Estafettemodel via Beheer → Ketentesten.
 2. Nieuwe pagina `berichten.html`: een alleen-lezen overzicht van alle gevonden berichtcodes in de actieve ketentest, met per code de scenario's waarin die voorkomt als klikbare links (zie hieronder voor de bijbehorende beheerfunctionaliteit).
 3. **Structurele fix**: dit werkte eerder via twee links die er allebei al stonden en met JavaScript getoond/verborgen werden — kwetsbaar voor precies dit soort weergaveproblemen. Nu bouwt de pagina altijd maar **één** van de twee links dynamisch op in een lege plek (`#navNotifBerichtenSlot`); de andere bestaat dan simpelweg niet in de pagina, in plaats van "verborgen" te zijn.
 4. **Werkelijke onderliggende oorzaak gevonden en gefixt**: een CSS-regel in `css/style.css` forceerde `display: flex !important` op élke link binnen een menu-dropdown. Een CSS `!important`-regel wint altijd van een gewone inline stijl — waardoor JavaScript's `style.display = 'none'` voor verborgen menu-items (zoals "Testscenario's", "Dashboard", en voorheen ook "Notificaties"/"Berichten") in de praktijk **genegeerd** werd, en die items dus altijd zichtbaar bleven ondanks dat de code ze correct probeerde te verbergen. Dit trof niet alleen Notificaties/Berichten, maar in principe elk rolafhankelijk menu-item. Verholpen door `!important` alleen van de `display`-eigenschap te verwijderen (de rest van die regel blijft ongewijzigd).
@@ -206,7 +206,7 @@ Elke ketentest heeft nu een verplicht **model**: **Netwerkmodel** of **Estafette
 
 Naast Notificaties staat er nu ook een **Berichten**-tab onder Beheer, specifiek voor Estafettemodel-ketentesten. In tegenstelling tot notificaties (die je met een vrije naam aanmaakt) zijn berichten altijd al automatisch herkende codes — deze tab laat je per gevonden code een **naam en documentatie toevoegen**, zichtbaar voor iedereen bij Ketentest → Berichten via een "Details"-knop.
 
-1. Voer eenmalig `bericht-definities-setup.sql` uit in de Supabase SQL Editor, en daarna ook `bericht-definities-naam-setup.sql`. Dit laatste voegt het verplichte **naam**-veld toe (de beheerder vult dit zelf in — de code dient alleen nog als aanvullend gegeven, niet als weergavenaam) en verwijdert het trigger-veld (dat kenmerk is niet van toepassing op berichten, in tegenstelling tot notificaties).
+1. Voer eenmalig `sql/bericht-definities-setup.sql` uit in de Supabase SQL Editor, en daarna ook `sql/bericht-definities-naam-setup.sql`. Dit laatste voegt het verplichte **naam**-veld toe (de beheerder vult dit zelf in — de code dient alleen nog als aanvullend gegeven, niet als weergavenaam) en verwijdert het trigger-veld (dat kenmerk is niet van toepassing op berichten, in tegenstelling tot notificaties).
 2. Beheer → Berichten toont bovenaan een lijst met **nog niet-gedocumenteerde** berichtcodes die al wél in de activiteiten voorkomen — één klik erop opent direct het toevoegformulier met de code al ingevuld (naam vul je zelf aan).
 3. Net als bij Notificaties: lezen mag iedereen, aanmaken/wijzigen/verwijderen alleen beheerders (afgedwongen via RLS, niet alleen verborgen knoppen).
 
@@ -216,26 +216,26 @@ Naast Notificaties staat er nu ook een **Berichten**-tab onder Beheer, specifiek
 
 Drie aanvullingen om de ketentestmonitor gecontroleerd te kunnen vrijgeven:
 
-1. **Laatste login per gebruiker** — voer eenmalig `users-last-login-setup.sql` uit. Dit voegt een beveiligde functie toe die (alleen voor beheerders) het laatste inlogmoment per gebruiker ophaalt uit Supabase Auth. Zichtbaar als nieuwe kolom bij **Beheer → Gebruikers**.
-2. **Startmoment per ketentest** — voer eenmalig `ketentest-start-setup.sql` uit. Bij **Beheer → Ketentesten** kun je nu per ketentest een start-datum/tijd instellen. Zolang dat moment niet is bereikt, kunnen gewone gebruikers (en managers) geen activiteiten op OK/NOK zetten — ze zien in plaats daarvan wanneer de test start. Beheerders zijn hiervan altijd uitgezonderd, zodat je zelf kunt voorbereiden/testen. Laat je dit veld leeg, dan geldt (zoals voorheen) geen enkele beperking.
-   - Voer daarnaast `ketentest-start-trigger-setup.sql` uit: dit maakt de beperking ook **databasezijdig** hard (via een trigger op `activity_results`), zodat ze niet meer te omzeilen is door de pagina te manipuleren. Zie de sectie hieronder voor details.
-3. **Logboek** — voer eenmalig `activity-log-setup.sql` uit. Onder **Beheer → Logboek** zie je de laatste 300 handelingen binnen de actieve ketentest: wie een resultaat (OK/NOK) heeft gezet, en wie een deelname-keuze heeft gemaakt of gewist, met tijdstip en details. Filterbaar per type handeling.
+1. **Laatste login per gebruiker** — voer eenmalig `sql/users-last-login-setup.sql` uit. Dit voegt een beveiligde functie toe die (alleen voor beheerders) het laatste inlogmoment per gebruiker ophaalt uit Supabase Auth. Zichtbaar als nieuwe kolom bij **Beheer → Gebruikers**.
+2. **Startmoment per ketentest** — voer eenmalig `sql/ketentest-start-setup.sql` uit. Bij **Beheer → Ketentesten** kun je nu per ketentest een start-datum/tijd instellen. Zolang dat moment niet is bereikt, kunnen gewone gebruikers (en managers) geen activiteiten op OK/NOK zetten — ze zien in plaats daarvan wanneer de test start. Beheerders zijn hiervan altijd uitgezonderd, zodat je zelf kunt voorbereiden/testen. Laat je dit veld leeg, dan geldt (zoals voorheen) geen enkele beperking.
+   - Voer daarnaast `sql/ketentest-start-trigger-setup.sql` uit: dit maakt de beperking ook **databasezijdig** hard (via een trigger op `activity_results`), zodat ze niet meer te omzeilen is door de pagina te manipuleren. Zie de sectie hieronder voor details.
+3. **Logboek** — voer eenmalig `sql/activity-log-setup.sql` uit. Onder **Beheer → Logboek** zie je de laatste 300 handelingen binnen de actieve ketentest: wie een resultaat (OK/NOK) heeft gezet, en wie een deelname-keuze heeft gemaakt of gewist, met tijdstip en details. Filterbaar per type handeling.
 
 ---
 
 ## Startmoment ook databasezijdig afgedwongen (nieuw)
 
-Bovenop de client-side blokkade in `app.html` (die blijft ongewijzigd bestaan voor een nette gebruikerservaring) voegt `ketentest-start-trigger-setup.sql` een **databasetrigger** toe op `activity_results`. Die weigert het aanmaken/wijzigen van een resultaat zolang `ketentests.start_op` nog niet bereikt is — ook als iemand de website zelf zou proberen te manipuleren. Beheerders zijn hiervan altijd uitgezonderd. De foutmelding van de trigger wordt in `app.html` netjes getoond (net zoals de bestaande "vorige activiteit moet eerst op OK"-regel dat al deed).
+Bovenop de client-side blokkade in `app.html` (die blijft ongewijzigd bestaan voor een nette gebruikerservaring) voegt `sql/ketentest-start-trigger-setup.sql` een **databasetrigger** toe op `activity_results`. Die weigert het aanmaken/wijzigen van een resultaat zolang `ketentests.start_op` nog niet bereikt is — ook als iemand de website zelf zou proberen te manipuleren. Beheerders zijn hiervan altijd uitgezonderd. De foutmelding van de trigger wordt in `app.html` netjes getoond (net zoals de bestaande "vorige activiteit moet eerst op OK"-regel dat al deed).
 
-Voer hiervoor eenmalig `ketentest-start-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `ketentest-start-setup.sql` al eerder is gedraaid).
+Voer hiervoor eenmalig `sql/ketentest-start-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `sql/ketentest-start-setup.sql` al eerder is gedraaid).
 
 ---
 
 ## Logboek databasezijdig vastgelegd (nieuw)
 
-Het logboek (Beheer → Logboek) werd voorheen vanuit de browser zelf weggeschreven, in een try/catch — bij een verbindingsprobleem werd een handeling dan stilzwijgend niet gelogd. `activity-log-trigger-setup.sql` voegt triggers toe op `activity_results` en `flow_participation` die dit automatisch en betrouwbaar doen, ongeacht wat de browser doet. De client-side logging-code in `app.html` en `deelname.html` is verwijderd om dubbele logregels te voorkomen.
+Het logboek (Beheer → Logboek) werd voorheen vanuit de browser zelf weggeschreven, in een try/catch — bij een verbindingsprobleem werd een handeling dan stilzwijgend niet gelogd. `sql/activity-log-trigger-setup.sql` voegt triggers toe op `activity_results` en `flow_participation` die dit automatisch en betrouwbaar doen, ongeacht wat de browser doet. De client-side logging-code in `app.html` en `deelname.html` is verwijderd om dubbele logregels te voorkomen.
 
-Voer hiervoor eenmalig `activity-log-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `activity-log-setup.sql` al eerder is gedraaid). Het Logboek-scherm zelf blijft er identiek uitzien.
+Voer hiervoor eenmalig `sql/activity-log-trigger-setup.sql` uit in de Supabase SQL Editor (vereist dat `sql/activity-log-setup.sql` al eerder is gedraaid). Het Logboek-scherm zelf blijft er identiek uitzien.
 
 ---
 
@@ -276,7 +276,7 @@ De PDF-exports blijven ongewijzigd: die bevatten nog steeds alle onderdelen in �
 
 Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar er hing geen vervolgproces aan vast. Dat is nu opgelost met een compleet opvolgingsproces:
 
-1. Voer eenmalig `nok-opvolging-setup.sql` uit in de Supabase SQL Editor. Dit voegt een voortgangsstatus, een eigenaar (organisatie) en tijdstippen toe aan elk NOK-resultaat.
+1. Voer eenmalig `sql/nok-opvolging-setup.sql` uit in de Supabase SQL Editor. Dit voegt een voortgangsstatus, een eigenaar (organisatie) en tijdstippen toe aan elk NOK-resultaat.
 2. **Pop-up bij NOK**: klik je op de knop NOK bij een activiteit, dan verschijnt er nu een pop-up waarin je **verplicht een reden** invult en de **eigenaar van de oplossing** kiest (standaard de verantwoordelijke organisatie van die activiteit, aan te passen indien nodig). Eenmaal geregistreerd is de NOK-knop uitgeschakeld (zie hieronder wanneer die weer actief wordt).
 3. **Voortgangsstatus**: elke NOK doorloopt Nieuw → In behandeling → Opgelost, wacht op hertest → Hertest OK. De laatste status wordt **automatisch** gezet zodra de activiteit na een NOK weer op OK gezet wordt (geen handmatige actie nodig) — dat is ook het moment waarop de doorlooptijd wordt vastgelegd.
 4. **Signalering**: gebruikers zien bovenin de Ketentest-pagina een rode badge ("⚠ X openstaande NOK's") zodra er NOK's aan hún organisatie zijn toegewezen die nog niet zijn opgelost. Een klik erop springt naar de eerste openstaande NOK.
@@ -286,7 +286,7 @@ Tot nu toe was een NOK een "dood eindpunt" — je zag 'm op het Dashboard, maar 
 
 ## NOK-opvolging: rechten, toegang en uitbreiding (nieuw)
 
-1. Voer eenmalig `nok-notities-en-rechten-setup.sql` uit in de Supabase SQL Editor (vereist dat `nok-opvolging-setup.sql` al gedraaid is). Dit voegt een notities-tabel toe én legt databasezijdig vast wie de NOK-opvolging mag muteren.
+1. Voer eenmalig `sql/nok-notities-en-rechten-setup.sql` uit in de Supabase SQL Editor (vereist dat `sql/nok-opvolging-setup.sql` al gedraaid is). Dit voegt een notities-tabel toe én legt databasezijdig vast wie de NOK-opvolging mag muteren.
 2. **Knop uitschakelen**: eenmaal een NOK geregistreerd, kan die niet meer worden "uitgezet" door nogmaals op de NOK-knop te klikken — die knop is dan uitgeschakeld. De enige weg vooruit is een hertest: de activiteit op OK zetten.
 3. **Toegang via het Ketentest-menu**: het overzicht "NOK-opvolging" is nu, naast Beheer, ook bereikbaar voor Gebruikers en Managers via het menu-item Ketentest.
 4. **Rechten op organisatieniveau**: alleen gebruikers van de organisatie die als eigenaar van een NOK is ingesteld (of een beheerder) mogen de status, eigenaar en opmerkingen van díe NOK muteren. Iedereen kan alle NOK's altijd lezen. Dit is niet alleen in het scherm afgedwongen, maar ook databasezijdig via een trigger — de natuurlijke hertest-actie (de acceptant zet de activiteit na een NOK weer op OK) blijft daarbij altijd mogelijk, ongeacht welke organisatie eigenaar is.
@@ -310,7 +310,7 @@ Geen SQL-wijziging nodig voor deze ronde.
 
 Dit is een fundamentele uitbreiding: in plaats van 1 NOK-status per activiteit kan een activiteit nu een **reeks bevindingen** doorlopen (een NOK, opgelost, hertest mislukt opnieuw, weer een NOK, enzovoort) — alle onderling gekoppeld en zichtbaar.
 
-1. Voer eenmalig `bevindingen-setup.sql` uit in de Supabase SQL Editor (vereist dat de eerdere NOK-migraties al gedraaid zijn). Dit voegt een nieuwe tabel `bevindingen` toe, die nu de bron van waarheid is voor NOK-opvolging (in plaats van de velden direct op `activity_results`).
+1. Voer eenmalig `sql/bevindingen-setup.sql` uit in de Supabase SQL Editor (vereist dat de eerdere NOK-migraties al gedraaid zijn). Dit voegt een nieuwe tabel `bevindingen` toe, die nu de bron van waarheid is voor NOK-opvolging (in plaats van de velden direct op `activity_results`).
 2. **Uniek nummer per bevinding**: elke geregistreerde NOK krijgt automatisch een nummer, getoond als "B1", "B2", enzovoort — als eerste kolom van het overzicht, oplopend per ketentest.
 3. **Status vergrendeld na Opgelost**: eenmaal op "Opgelost, wacht op hertest" gezet, kan de status van die bevinding niet meer worden aangepast (dit is ook databasezijdig afgedwongen) — behalve de automatische afronding naar "Hertest OK" die het systeem zelf zet. Opmerkingen toevoegen blijft wel altijd mogelijk.
 4. **Doorklikken naar scenario**: de scenario-code/titel in het overzicht is nu een klikbare link die het scenario opent in Ketentest → Testscenario's.
@@ -354,6 +354,7 @@ Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwer
 2. **Visuele stappenketen (stepper) per scenario**: elke activiteit als bolletje in volgorde, met kleur voor status (groen = OK, rood = NOK, blauw omrand = nu actueel, grijs = moet nog wachten) en de betrokken organisatie eronder — in één oogopslag zien waar een scenario vaststaat en bij wie.
 3. **Signaleringsbadge "acties voor jou"**: een blauwe badge in de navigatiebalk op elke pagina (naast de NOK-badge), die live het aantal scenario's toont dat nu voor de eigen organisatie klaarstaat. Klikken springt naar Mijn acties.
 4. **Dashboard: "Wie is nu aan zet?"**: nieuwe kaart op het Dashboard die per organisatie toont bij hoeveel scenario's de bal nú bij hen ligt, en bij hoeveel scenario's ze straks nog een activiteit te gaan hebben — voor beheerders in één oogopslag zichtbaar welke partij de hele keten op dit moment ophoudt.
+5. **Houdt rekening met het startmoment van de ketentest**: staat het startmoment (Beheer → Ketentesten) nog in de toekomst, dan toont Mijn acties een duidelijke melding dat de test nog niet gestart is — "Nu te doen" heet dan "Klaar om te starten" en maakt expliciet dat beoordelen (OK/NOK) pas kan zodra de test daadwerkelijk gestart is. Ook de signaleringsbadge blijft tot die tijd verborgen. Geldt niet voor beheerders, die al voor de startdatum kunnen werken.
 
 ---
 
@@ -387,8 +388,8 @@ Dit is bewust een **statische lijst** (geen database), rechtstreeks bijgehouden 
 
 Elke flow heeft nu een **verplicht, uniek nummer** (uniek binnen de ketentest — twee ketentesten mogen wel dezelfde nummers gebruiken), zodat flows voor alle testende partijen makkelijker te herkennen zijn.
 
-1. Voer eenmalig `flows-nummer-setup.sql` uit in de Supabase SQL Editor. Dit voegt de kolom `nummer` toe én nummert bestaande flows automatisch (op naam, per ketentest, beginnend bij 1) — er hoeft dus niets handmatig ingevuld te worden voordat het veld verplicht wordt.
-2. Voer daarna ook `flows-nummer-alfanumeriek-setup.sql` uit: dit maakt het nummer **alfanumeriek** (bijv. "F1" of "3A" mag ook, niet alleen een geheel getal).
+1. Voer eenmalig `sql/flows-nummer-setup.sql` uit in de Supabase SQL Editor. Dit voegt de kolom `nummer` toe én nummert bestaande flows automatisch (op naam, per ketentest, beginnend bij 1) — er hoeft dus niets handmatig ingevuld te worden voordat het veld verplicht wordt.
+2. Voer daarna ook `sql/flows-nummer-alfanumeriek-setup.sql` uit: dit maakt het nummer **alfanumeriek** (bijv. "F1" of "3A" mag ook, niet alleen een geheel getal).
 2. Bij **Ketentest → Flow** kan een beheerder het nummer aanpassen via het ✏️-icoon (met controle op uniekheid). Nieuwe flows krijgen automatisch het eerstvolgende beschikbare nummer.
 3. Het nummer staat voortaan vóór de naam, overal waar de flownaam wordt getoond: de Flow-pagina zelf, Deelname, het Dashboard (schermen én PDF-exports), en de gastweergave.
 4. Flows worden overal **dynamisch gesorteerd op dit nummer** (alfabetisch, dus "F01-05" komt vóór "F01-10") — op de Flow-pagina, bij Deelname, en op het Dashboard.
@@ -409,8 +410,8 @@ Dezelfde flow-badge (🔗 Flow + nummer) is ook toegevoegd aan **Ketentest → T
 
 Bij **Beheer → Notificaties** (beide subtabbladen, "Beheren" en het hernoemde "Gebruikt in scenario's"):
 
-1. Voer eenmalig `notificaties-doelgroep-setup.sql` uit in de Supabase SQL Editor. Dit voegt een doelgroep toe (Zorgaanbieder/Zorgkantoor) aan elke notificatie; bestaande notificaties krijgen automatisch "Zorgaanbieder" — pas dit zo nodig aan.
-2. Voer daarna ook `notificaties-doelgroep-herstel.sql` uit: dit herstelt de doelgroep van bestaande notificaties automatisch op basis van de naam (bevat de naam "zorgkantoor" → doelgroep Zorgkantoor, bevat de naam "zorgaanbieder" → doelgroep Zorgaanbieder). Het script toont aan het eind ook een lijst van notificaties waarvan de naam geen van beide bevat, zodat je die handmatig kunt nalopen.
+1. Voer eenmalig `sql/notificaties-doelgroep-setup.sql` uit in de Supabase SQL Editor. Dit voegt een doelgroep toe (Zorgaanbieder/Zorgkantoor) aan elke notificatie; bestaande notificaties krijgen automatisch "Zorgaanbieder" — pas dit zo nodig aan.
+2. Voer daarna ook `sql/notificaties-doelgroep-herstel.sql` uit: dit herstelt de doelgroep van bestaande notificaties automatisch op basis van de naam (bevat de naam "zorgkantoor" → doelgroep Zorgkantoor, bevat de naam "zorgaanbieder" → doelgroep Zorgaanbieder). Het script toont aan het eind ook een lijst van notificaties waarvan de naam geen van beide bevat, zodat je die handmatig kunt nalopen.
 2. Notificaties worden nu overal getoond in een vaste volgorde: **Nieuw → Gewijzigd → Verwijderd → Informatief**.
 3. Beide subtabbladen hebben nu aparte tabbladen **Zorgaanbieder / Zorgkantoor** om te filteren.
 4. "Gebruik in scenario's" heet nu **"Gebruikt in scenario's"**.
@@ -424,14 +425,14 @@ Daarnaast is de **flow-badge bij Ketentest → Testscenario's** (`app.html`) nu 
 
 Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (beide subtabbladen, inclusief de scan en de klikbare scenario-links) — bereikbaar via een nieuwe link "Notificaties" in het **Ketentest**-menu, op elke pagina. Dit is **alleen-lezen**: de knop "Notificatie toevoegen" en de bewerk-/verwijderknoppen zijn voor hen niet zichtbaar, en de onderliggende functies weigeren ook actief als iemand dit zou proberen te omzeilen.
 
-1. Voer eenmalig `notificaties-rls-setup.sql` uit in de Supabase SQL Editor. Dit legt databasezijdig vast dat iedereen notificaties mag lezen, maar alleen beheerders ze mogen aanmaken/wijzigen/verwijderen — een harde grens, los van de verborgen knoppen in het scherm.
+1. Voer eenmalig `sql/notificaties-rls-setup.sql` uit in de Supabase SQL Editor. Dit legt databasezijdig vast dat iedereen notificaties mag lezen, maar alleen beheerders ze mogen aanmaken/wijzigen/verwijderen — een harde grens, los van de verborgen knoppen in het scherm.
 2. Gewone gebruikers zien op deze pagina **alleen** de Notificaties-tab; andere tabbladen (Organisaties, Gebruikers, Ketentesten, Logboek) blijven voor hen ontoegankelijk.
 
 ---
 
 ## Notificaties uitgebreid met Documentatie en Trigger (nieuw)
 
-1. Voer eenmalig `notificaties-documentatie-trigger-setup.sql` uit in de Supabase SQL Editor. Dit voegt twee optionele tekstvelden toe aan elke notificatie: **Documentatie** en **Trigger**.
+1. Voer eenmalig `sql/notificaties-documentatie-trigger-setup.sql` uit in de Supabase SQL Editor. Dit voegt twee optionele tekstvelden toe aan elke notificatie: **Documentatie** en **Trigger**.
 2. Beheerders vullen deze in via de bewerk-modal bij Beheer → Notificaties; beide velden zijn zichtbaar voor iedereen (beheerder én gebruiker) als extra kolommen in het overzicht.
 3. Het subtabblad "Beheren" heet nu **"Overzicht"**.
 
@@ -447,38 +448,48 @@ Gewone gebruikers (niet-beheerders) hebben nu ook toegang tot **Notificaties** (
 ├── admin.html            Beheerderspanel
 ├── dashboard.html        Dashboard met voortgang en statistieken
 ├── deelname.html         Overzicht: wie gaat welk scenario testen
+├── mijn-acties.html      Voortgang: persoonlijke acties + stepper per scenario
 ├── flow.html / flow-gast.html   Flow-weergave
+├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
 ├── gast.html              Alleen-lezen overzicht voor externen
+├── releasenotes.html     Overzicht van alle functionele wijzigingen
 ├── css/
 │   └── style.css         Gedeelde stijlen
 ├── js/
-│   └── supabase-config.js  Configuratie (URL + key invullen)
-├── supabase-setup.sql    Database setup script (basis)
-├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit (legacy, scenario-niveau)
-├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
-├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
-├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
-├── flows-nummer-setup.sql Database uitbreiding: verplicht, uniek nummer per flow
-├── flows-nummer-alfanumeriek-setup.sql Database uitbreiding: flownummer alfanumeriek maken
-├── notificaties-doelgroep-setup.sql Database uitbreiding: doelgroep per notificatie
-├── notificaties-doelgroep-herstel.sql Database data-fix: doelgroep herstellen op basis van naam
-├── notificaties-rls-setup.sql Database beveiliging: notificaties lezen voor iedereen, muteren alleen beheerders
-├── notificaties-documentatie-trigger-setup.sql Database uitbreiding: documentatie- en trigger-veld per notificatie
-├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
-├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
-├── user-ketentest-access-admins-setup.sql Database data-fix: bestaande beheerders koppelen aan alle ketentesten
-├── ketentest-model-setup.sql Database uitbreiding: model (Netwerkmodel/Estafettemodel) per ketentest
-├── bericht-definities-setup.sql Database uitbreiding: documentatie/trigger per berichtcode
-├── bericht-definities-naam-setup.sql Database aanpassing: naam-veld toevoegen, trigger-veld verwijderen
-├── nok-opvolging-setup.sql Database uitbreiding: NOK-opvolgingsproces (status, eigenaar, tijdstippen)
-├── nok-notities-en-rechten-setup.sql Database uitbreiding: NOK-notities + rechten op organisatieniveau
-├── bevindingen-setup.sql Database herontwerp: bevindingen-tabel (nummering, koppeling, statuslock)
-├── berichten.html        Overzicht van automatisch herkende berichtcodes (voor Estafettemodel-ketentesten)
-├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
-├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
-├── ketentest-start-trigger-setup.sql Database uitbreiding: startmoment ook hard afgedwongen (trigger)
-├── activity-log-setup.sql     Database uitbreiding: logboek van gebruikershandelingen
-├── activity-log-trigger-setup.sql Database uitbreiding: logboek databasezijdig (triggers)
+│   └── supabase-config.js  Configuratie (URL + key invullen) + gedeelde helperfuncties
+├── sql/                  Alle database-scripts (voer uit in de Supabase SQL Editor, in de volgorde die hieronder relevant is)
+│   ├── supabase-setup.sql    Database setup script (basis)
+│   ├── deelname-setup.sql    Database uitbreiding voor deelname-functionaliteit (legacy, scenario-niveau)
+│   ├── flow-deelname-setup.sql Database uitbreiding voor deelname op flow-niveau (huidige opzet)
+│   ├── flows-setup.sql       Database uitbreiding voor losse flows (canvassen)
+│   ├── flows-doel-setup.sql  Database uitbreiding: doel-veld per flow
+│   ├── flows-nummer-setup.sql Database uitbreiding: verplicht, uniek nummer per flow
+│   ├── flows-nummer-alfanumeriek-setup.sql Database uitbreiding: flownummer alfanumeriek maken
+│   ├── notificaties-doelgroep-setup.sql Database uitbreiding: doelgroep per notificatie
+│   ├── notificaties-doelgroep-herstel.sql Database data-fix: doelgroep herstellen op basis van naam
+│   ├── notificaties-rls-setup.sql Database beveiliging: notificaties lezen voor iedereen, muteren alleen beheerders
+│   ├── notificaties-documentatie-trigger-setup.sql Database uitbreiding: documentatie- en trigger-veld per notificatie
+│   ├── users-force-password-setup.sql  Database uitbreiding: verplichte wachtwoordwijziging
+│   ├── user-ketentest-access-setup.sql Database uitbreiding: ketentesttoegang per gebruiker
+│   ├── user-ketentest-access-admins-setup.sql Database data-fix: bestaande beheerders koppelen aan alle ketentesten
+│   ├── ketentest-model-setup.sql Database uitbreiding: model (Netwerkmodel/Estafettemodel) per ketentest
+│   ├── bericht-definities-setup.sql Database uitbreiding: documentatie/trigger per berichtcode
+│   ├── bericht-definities-naam-setup.sql Database aanpassing: naam-veld toevoegen, trigger-veld verwijderen
+│   ├── nok-opvolging-setup.sql Database uitbreiding: NOK-opvolgingsproces (status, eigenaar, tijdstippen)
+│   ├── nok-notities-en-rechten-setup.sql Database uitbreiding: NOK-notities + rechten op organisatieniveau
+│   ├── nok-notities-fix-not-null.sql Database bugfix: verplichting op activity_result_id verwijderd
+│   ├── bevindingen-setup.sql Database herontwerp: bevindingen-tabel (nummering, koppeling, statuslock)
+│   ├── users-last-login-setup.sql Database uitbreiding: laatste login per gebruiker
+│   ├── ketentest-start-setup.sql   Database uitbreiding: startmoment per ketentest
+│   ├── ketentest-start-trigger-setup.sql Database uitbreiding: startmoment ook hard afgedwongen (trigger)
+│   ├── activity-log-setup.sql     Database uitbreiding: logboek van gebruikershandelingen
+│   ├── activity-log-trigger-setup.sql Database uitbreiding: logboek databasezijdig (triggers)
+│   ├── diagnose-ketentest-toegang.sql   Hulpscript: diagnose van ketentesttoegang (alleen SELECT)
+│   ├── dump-ketentest.sql               Hulpscript: SQL-dump van 1 ketentest genereren
+│   ├── diagnose-sc2-024-activiteiten.sql Hulpscript: activiteiten van 1 scenario bekijken (alleen SELECT)
+│   ├── dubbele-activiteiten-opruimen.sql Hulpscript: dubbele activiteiten (zelfde volgnummer) opsporen en opruimen
+│   ├── diagnose-flow-organisaties.sql   Hulpscript: organisatiekoppeling per flow controleren (alleen SELECT)
+│   └── oude-nok-opruimen.sql            Hulpscript: verweesde NOK's van vóór het bevindingen-herontwerp opruimen
 └── README.md             Deze handleiding
 ```
 

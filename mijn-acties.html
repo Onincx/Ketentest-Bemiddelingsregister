@@ -109,8 +109,13 @@
       <p style="font-size:14px;">Er is nog geen ketentest aangemaakt of toegewezen.</p>
     </div>
 
+    <div id="notStartedBanner" style="display:none; background:#fef3c7; border:1px solid #fcd34d; color:#92400e; border-radius:var(--radius-lg); padding:14px 18px; margin-bottom:18px; align-items:center; gap:10px; font-size:13.5px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span id="notStartedBannerText"></span>
+    </div>
+
     <div class="ma-tabs" id="maTabs" style="display:none;">
-      <div class="ma-tab active" data-bucket="nu_te_doen" onclick="setMaFilter('nu_te_doen', this)">✅ Nu te doen <span class="ma-count" id="maCountNu">0</span></div>
+      <div class="ma-tab active" data-bucket="nu_te_doen" onclick="setMaFilter('nu_te_doen', this)"><span id="maNuTabLabel">✅ Nu te doen</span> <span class="ma-count" id="maCountNu">0</span></div>
       <div class="ma-tab" data-bucket="wachtend" onclick="setMaFilter('wachtend', this)">⏳ Wachten op andere partij <span class="ma-count" id="maCountWacht">0</span></div>
       <div class="ma-tab" data-bucket="afgerond" onclick="setMaFilter('afgerond', this)">🏁 Afgerond <span class="ma-count" id="maCountAf">0</span></div>
     </div>
@@ -119,7 +124,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=31"></script>
+  <script src="js/supabase-config.js?v=32"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
     let scenarios = [], activities = [], results = {}, orgs = [];
@@ -174,9 +179,25 @@
       results = {};
       (resultData || []).forEach(r => { results[r.activity_id] = r; });
 
+      renderNotStartedBanner();
       computeMijnActiesStatussen();
       renderMaTabsCount();
       renderMaList();
+    }
+
+    // Is deze ketentest voor deze (niet-beheerder) gebruiker nog niet
+    // gestart? Zelfde bepaling als op de Testscenario's-pagina — daar
+    // kunnen dan ook nog geen OK/NOK's gezet worden.
+    function isNotStartedYet() {
+      return !!(activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin');
+    }
+
+    function renderNotStartedBanner() {
+      const banner = document.getElementById('notStartedBanner');
+      if (!isNotStartedYet()) { banner.style.display = 'none'; return; }
+      const datum = new Date(activeKetentest.start_op).toLocaleString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+      document.getElementById('notStartedBannerText').textContent = `Deze ketentest start pas op ${datum}. De acties hieronder laten vast zien wat je te wachten staat, maar staan nog niet écht open — beoordelen (OK/NOK) kan pas zodra de test is gestart.`;
+      banner.style.display = 'flex';
     }
 
     function getResult(activityId) {
@@ -224,6 +245,9 @@
       document.getElementById('maCountNu').textContent = counts.nu_te_doen;
       document.getElementById('maCountWacht').textContent = counts.wachtend;
       document.getElementById('maCountAf').textContent = counts.afgerond;
+
+      const nuTabLabel = document.getElementById('maNuTabLabel');
+      if (nuTabLabel) nuTabLabel.textContent = isNotStartedYet() ? '⏰ Klaar om te starten' : '✅ Nu te doen';
     }
 
     function setMaFilter(bucket, el) {
@@ -242,7 +266,7 @@
       const rows = maScenarioStatussen.filter(x => x.bucket === maBucket);
       if (!rows.length) {
         const teksten = {
-          nu_te_doen: 'Niets te doen — je bent overal bij, maar niets staat op dit moment voor jou klaar. 🎉',
+          nu_te_doen: isNotStartedYet() ? 'Niets klaar om te starten — je bent overal bij, maar niets komt als eerste aan de beurt.' : 'Niets te doen — je bent overal bij, maar niets staat op dit moment voor jou klaar. 🎉',
           wachtend: 'Je wacht nergens op — mooi zo!',
           afgerond: 'Nog niets afgerond.',
         };
@@ -252,12 +276,20 @@
 
       el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket }) => {
         let statusLine = '';
+        const notStarted = isNotStartedYet();
         if (bucket === 'nu_te_doen' && bottleneck) {
           const isAcceptant = bottleneck.acceptant_org_id === myOrgId;
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' — <span style="color:var(--danger); font-weight:700;">⚠ staat op NOK</span>' : '';
-          statusLine = isAcceptant
-            ? `<span class="ma-status-nu">✅ Nu te doen: beoordeel "${esc(bottleneck.description || '')}"</span>${nokIndicatie}`
-            : `<span class="ma-status-nu">✅ Nu te doen: zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd</span>${nokIndicatie}`;
+          if (notStarted) {
+            const datum = new Date(activeKetentest.start_op).toLocaleDateString('nl-NL');
+            statusLine = isAcceptant
+              ? `<span class="ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum}): beoordeel dan "${esc(bottleneck.description || '')}"</span>`
+              : `<span class="ma-status-wacht">⏰ Klaar om te starten (vanaf ${datum}): zorg dan dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd</span>`;
+          } else {
+            statusLine = isAcceptant
+              ? `<span class="ma-status-nu">✅ Nu te doen: beoordeel "${esc(bottleneck.description || '')}"</span>${nokIndicatie}`
+              : `<span class="ma-status-nu">✅ Nu te doen: zorg dat "${esc(bottleneck.description || '')}" wordt verstuurd/uitgevoerd</span>${nokIndicatie}`;
+          }
         } else if (bucket === 'wachtend' && bottleneck) {
           const wachtOrg = orgById(bottleneck.acceptant_org_id);
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' (staat op NOK, wacht op oplossing)' : '';
