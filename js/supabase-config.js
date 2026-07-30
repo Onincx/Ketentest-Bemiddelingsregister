@@ -211,6 +211,14 @@ async function refreshMijnActiesBadge(orgId) {
   const result = await ensureActiveKetentest();
   if (!result) { badge.style.display = 'none'; return; }
 
+  // Vóór de startdatum staat er voor niet-beheerders nog niets écht
+  // open — laat de badge dan niet ten onrechte iets suggereren.
+  const isAdmin = typeof currentProfile !== 'undefined' && currentProfile?.role === 'admin';
+  if (result.active.start_op && new Date(result.active.start_op) > new Date() && !isAdmin) {
+    badge.style.display = 'none';
+    return;
+  }
+
   const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', result.active.id);
   const scenarioIds = (scenarioData || []).map(s => s.id);
   if (!scenarioIds.length) { badge.style.display = 'none'; return; }
