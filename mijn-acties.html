@@ -128,7 +128,7 @@
   <script src="js/supabase-config.js?v=32"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
-    let scenarios = [], activities = [], results = {}, orgs = [];
+    let scenarios = [], activities = [], results = {}, orgs = [], scenarioFlowMap = {};
     let maBucket = 'nu_te_doen';
     let maScenarioStatussen = [];
 
@@ -169,17 +169,24 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [{ data: orgData }, { data: activityData }, { data: resultData }] = await Promise.all([
+      const [{ data: orgData }, { data: activityData }, { data: resultData }, { data: flowData }, { data: flowNodeData }] = await Promise.all([
         sb.from('organisations').select('*'),
         scenarioIds.length
           ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
           : Promise.resolve({ data: [] }),
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
+        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
       ]);
       orgs = orgData || [];
       activities = activityData || [];
       results = {};
       (resultData || []).forEach(r => { results[r.activity_id] = r; });
+
+      const flowById = {};
+      (flowData || []).forEach(f => { flowById[f.id] = f; });
+      scenarioFlowMap = {};
+      (flowNodeData || []).forEach(n => { if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id]; });
 
       renderNotStartedBanner();
       computeMijnActiesStatussen();
@@ -303,7 +310,10 @@
         return `<div class="ma-card">
           <div class="ma-card-header">
             <div>
-              <div class="ma-scenario-title"><a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a></div>
+              <div class="ma-scenario-title">
+                <a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a>
+                ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
+              </div>
               <div class="ma-status-line">${statusLine}</div>
             </div>
             <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
