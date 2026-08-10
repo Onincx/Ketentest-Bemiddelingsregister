@@ -939,7 +939,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=32"></script>
+  <script src="js/supabase-config.js?v=33"></script>
   <script>
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let currentProfile = null, currentUser = null;
@@ -2397,21 +2397,11 @@
     }
 
     function generateTempPassword() {
-      const words = ['Kentest','Regio','Zorgketen','Bemiddel','Toets','Scenario','Vlucht','Rivier','Beemd','Wolken'];
-      const word = words[Math.floor(Math.random() * words.length)];
-      const num = Math.floor(1000 + Math.random() * 9000);
-      const symbols = ['!','#','$','%','&','*'];
-      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-      document.getElementById('userTempPassword').value = `${word}${num}${symbol}`;
+      document.getElementById('userTempPassword').value = genereerSterkTijdelijkWachtwoord();
     }
 
     function generateResetPassword() {
-      const words = ['Kentest','Regio','Zorgketen','Bemiddel','Toets','Scenario','Vlucht','Rivier','Beemd','Wolken'];
-      const word = words[Math.floor(Math.random() * words.length)];
-      const num = Math.floor(1000 + Math.random() * 9000);
-      const symbols = ['!','#','$','%','&','*'];
-      const symbol = symbols[Math.floor(Math.random() * symbols.length)];
-      document.getElementById('userResetPassword').value = `${word}${num}${symbol}`;
+      document.getElementById('userResetPassword').value = genereerSterkTijdelijkWachtwoord();
     }
 
     // Stelt via de Edge Function 'reset-user-password' een nieuw
