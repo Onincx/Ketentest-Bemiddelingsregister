@@ -3204,7 +3204,27 @@
       document.getElementById('confirmMsg').textContent = acts.length
         ? `De ${acts.length} bestaande activiteit(en) van dit scenario schuiven één plek op (huidige #1 wordt #2, enz.), en er komt een nieuwe activiteit 1 met de tekst van Instructie/Wanneer. Doorgaan?`
         : `Er komt een nieuwe activiteit 1 met de tekst van Instructie/Wanneer. Doorgaan?`;
-      document.getElementById('confirmBtn').onclick = async () => {
+
+      const confirmBtn = document.getElementById('confirmBtn');
+      const modalEl = document.getElementById('modalConfirm');
+      confirmBtn.textContent = 'Doorgaan';
+      confirmBtn.classList.remove('btn-danger');
+      confirmBtn.classList.add('btn-primary');
+
+      // Zet de knop weer terug naar de standaard ("Verwijderen") zodra
+      // deze modal sluit, ongeacht hoe — zodat andere (verwijder-)
+      // bevestigingen elders niet per ongeluk deze tekst/kleur overnemen.
+      const observer = new MutationObserver(() => {
+        if (modalEl.style.display === 'none') {
+          confirmBtn.textContent = 'Verwijderen';
+          confirmBtn.classList.remove('btn-primary');
+          confirmBtn.classList.add('btn-danger');
+          observer.disconnect();
+        }
+      });
+      observer.observe(modalEl, { attributes: true, attributeFilter: ['style'] });
+
+      confirmBtn.onclick = async () => {
         closeModal('modalConfirm');
         // Van hoog naar laag ophogen, om een eventuele unieke-combinatie
         // botsing (scenario + volgnummer) tijdens het opschuiven te
