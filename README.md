@@ -370,6 +370,8 @@ Bij Beheer → Testscenario's staat nu, als een scenario een Instructie of Wanne
 
 Bestaande resultaten en NOK's van de overige activiteiten blijven gewoon gekoppeld (die hangen aan het activiteit-ID, niet aan het volgnummer) — het opschuiven is dus veilig. Geen SQL-wijziging nodig.
 
+**Blokkade tegen herhaald gebruik**: eenmaal gebruikt voor een scenario, verdwijnt de knop en verschijnt in plaats daarvan een vinkje "Wanneer is al als activiteit 1 toegevoegd" — zo kan dit niet per ongeluk nogmaals voor hetzelfde scenario gedaan worden (wat anders dubbele eerste activiteiten zou opleveren). Voer hiervoor eenmalig `sql/wanneer-activiteit-blokkade-setup.sql` uit.
+
 ---
 
 ## Export bij Testscenario's uitgebreid met Gegeven/Wanneer (nieuw)

@@ -2708,7 +2708,11 @@
           </div>
           <div class="section-card-body" id="sc-${s.id}" style="display:none;">
             <p style="font-size:13px; color:var(--text-muted); margin-bottom:16px">${s.description || ''}</p>
-            ${(s.instructie || s.wanneer) ? `<div style="margin-bottom:14px;"><button class="btn btn-outline btn-sm" onclick="zetWanneerOmInActiviteit('${s.id}')" title="Voegt de tekst van 'Instructie'/'Wanneer' toe als nieuwe eerste activiteit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Wanneer → activiteit 1</button></div>` : ''}
+            ${(s.instructie || s.wanneer) ? (
+              s.wanneer_activiteit_toegevoegd
+                ? `<div style="margin-bottom:14px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Wanneer is al als activiteit 1 toegevoegd</div>`
+                : `<div style="margin-bottom:14px;"><button class="btn btn-outline btn-sm" onclick="zetWanneerOmInActiviteit('${s.id}')" title="Voegt de tekst van 'Instructie'/'Wanneer' toe als nieuwe eerste activiteit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Wanneer → activiteit 1</button></div>`
+            ) : ''}
             ${acts.length ? `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <label style="font-size:13px; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer;">
@@ -3194,6 +3198,10 @@
     async function zetWanneerOmInActiviteit(scenarioId) {
       const s = scenarios.find(x => x.id === scenarioId);
       if (!s) return;
+      if (s.wanneer_activiteit_toegevoegd) {
+        showAlert('Voor dit scenario is Wanneer al eerder als activiteit 1 toegevoegd.', 'error');
+        return;
+      }
       const tekst = s.instructie || s.wanneer;
       if (!tekst) {
         showAlert('Dit scenario heeft geen Instructie of Wanneer-tekst om te gebruiken.', 'error');
@@ -3232,6 +3240,8 @@
         for (const a of acts) {
           await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
         }
+        await sb.from('scenarios').update({ wanneer_activiteit_toegevoegd: true }).eq('id', scenarioId);
+        await loadScenarios();
         await loadActivities(); renderScenarios();
 
         openAddActivity(scenarioId);
