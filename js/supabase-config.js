@@ -177,6 +177,37 @@ async function fetchAllRows(queryBuilderFn, batchSize = 1000) {
   return { data: allRows, error: null };
 }
 
+// Genereert een sterk, maar nog wel voorleesbaar tijdelijk wachtwoord:
+// twee verschillende woorden uit een ruime lijst + een 5-cijferig
+// getal + 1 van 10 symbolen (~2,3 miljard combinaties). Gebruikt
+// crypto.getRandomValues() (cryptografisch veilige willekeur) in
+// plaats van Math.random().
+function genereerSterkTijdelijkWachtwoord() {
+  const words = [
+    'Kentest', 'Regio', 'Zorgketen', 'Bemiddel', 'Toets', 'Scenario', 'Vlucht', 'Rivier', 'Beemd', 'Wolken',
+    'Kompas', 'Anker', 'Baken', 'Duin', 'Fjord', 'Gletsjer', 'Haven', 'IJsberg', 'Krater', 'Lagune',
+    'Meridiaan', 'Noorden', 'Oester', 'Piek', 'Ravijn', 'Steiger', 'Terras', 'Vallei', 'Wadden', 'Zenit',
+    'Bergpas', 'Delta', 'Estuarium', 'Fontein', 'Golfslag', 'Heuvel', 'Inham', 'Jachthaven', 'Kanaal', 'Landtong',
+    'Moeras', 'Oase', 'Plateau', 'Rotswand', 'Stroomversnelling', 'Getij', 'Uiterwaard', 'Vaargeul', 'Waterval', 'Zandbank',
+  ];
+  const symbols = ['!', '#', '$', '%', '&', '*', '?', '+', '=', '@'];
+
+  const randInt = (max) => {
+    const arr = new Uint32Array(1);
+    crypto.getRandomValues(arr);
+    return arr[0] % max;
+  };
+
+  const word1 = words[randInt(words.length)];
+  let word2 = words[randInt(words.length)];
+  while (word2 === word1) word2 = words[randInt(words.length)];
+
+  const num = 10000 + randInt(90000); // 5 cijfers
+  const symbol = symbols[randInt(symbols.length)];
+
+  return `${word1}${word2}${num}${symbol}`;
+}
+
 async function refreshGlobalNokBadge(orgId) {
   const badge = document.getElementById('nokBadge');
   if (!badge) return;
