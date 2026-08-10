@@ -107,6 +107,20 @@
       </button>
     </div>
 
+    <div id="simControls" style="display:none; background:#f5f3ff; border:1px solid #ddd6fe; border-radius:var(--radius-lg); padding:14px 18px; margin-bottom:18px;">
+      <div style="display:flex; align-items:center; gap:14px; flex-wrap:wrap;">
+        <button class="btn btn-sm" id="simToggleBtn" style="background:#ffffff; border:1px solid #7c3aed; color:#7c3aed;" onclick="toggleSimulatie()">🧪 Simulatiemodus aanzetten</button>
+        <div id="simOrgPicker" style="display:none; align-items:center; gap:8px;">
+          <label style="font-size:12.5px; color:#5b21b6; font-weight:600;">Simuleer als organisatie:</label>
+          <select id="simOrgSelect" onchange="kiesSimOrg(this.value)" style="font-size:13px; padding:5px 8px; border:1px solid #ddd6fe; border-radius:6px;">
+            <option value="">— kies een organisatie —</option>
+          </select>
+          <button class="btn btn-outline btn-sm" onclick="resetSimulatie()">↺ Reset simulatie</button>
+        </div>
+      </div>
+      <p style="font-size:11.5px; color:#5b21b6; margin-top:8px;">Alleen zichtbaar voor beheerders. Wijzigingen hier worden <strong>nergens opgeslagen</strong> — puur om de teksten en logica van deze pagina te controleren, ook als de ketentest nog niet écht gestart is.</p>
+    </div>
+
     <div id="noKetentestState" style="display:none;" class="empty-state">
       <p style="font-size:14px;">Er is nog geen ketentest aangemaakt of toegewezen.</p>
     </div>
@@ -133,6 +147,17 @@
     let maBucket = 'nu_te_doen';
     let maScenarioStatussen = [];
 
+    // Simulatiemodus (alleen beheerders): laat een volledige flow
+    // doorlopen zoals een gekozen organisatie die zou zien, zonder dat
+    // er ook maar iets naar de database wordt geschreven. Handig om de
+    // teksten/logica te controleren terwijl de ketentest nog niet
+    // (echt) gestart is.
+    let simuleren = false;
+    let simOrgId = null;
+    let simResults = {}; // activity_id -> 'ok' | 'nok', puur lokaal
+
+    function effectieveOrgId() { return simuleren ? simOrgId : myOrgId; }
+
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     (async () => {
@@ -147,6 +172,7 @@
       document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
+        document.getElementById('simControls').style.display = '';
       }
       const scenariosSlot = document.getElementById('navScenariosSlot');
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
@@ -190,6 +216,65 @@
       (flowNodeData || []).forEach(n => { if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id]; });
 
       renderNotStartedBanner();
+      vulSimOrgSelect();
+      computeMijnActiesStatussen();
+      renderMaTabsCount();
+      renderMaList();
+    }
+
+    function vulSimOrgSelect() {
+      const select = document.getElementById('simOrgSelect');
+      if (!select || select.dataset.gevuld) return;
+      const gesorteerd = [...orgs].sort((a, b) => a.name.localeCompare(b.name, 'nl'));
+      select.innerHTML = '<option value="">— kies een organisatie —</option>' +
+        gesorteerd.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+      select.dataset.gevuld = '1';
+    }
+
+    function toggleSimulatie() {
+      simuleren = !simuleren;
+      const btn = document.getElementById('simToggleBtn');
+      const picker = document.getElementById('simOrgPicker');
+      if (simuleren) {
+        btn.textContent = '🧪 Simulatiemodus uitzetten';
+        btn.style.background = '#7c3aed';
+        btn.style.color = '#fff';
+        picker.style.display = 'flex';
+      } else {
+        btn.textContent = '🧪 Simulatiemodus aanzetten';
+        btn.style.background = '#ffffff';
+        btn.style.color = '#7c3aed';
+        picker.style.display = 'none';
+        simOrgId = null;
+        simResults = {};
+        document.getElementById('simOrgSelect').value = '';
+      }
+      renderNotStartedBanner();
+      computeMijnActiesStatussen();
+      renderMaTabsCount();
+      renderMaList();
+    }
+
+    function kiesSimOrg(orgId) {
+      simOrgId = orgId || null;
+      simResults = {};
+      computeMijnActiesStatussen();
+      renderMaTabsCount();
+      renderMaList();
+    }
+
+    function resetSimulatie() {
+      simResults = {};
+      computeMijnActiesStatussen();
+      renderMaTabsCount();
+      renderMaList();
+    }
+
+    // Zet lokaal (niet-opgeslagen) een resultaat voor een activiteit,
+    // om te simuleren dat de keten verder komt. Schrijft nooit naar de
+    // database.
+    function simZetResultaat(activityId, resultaat) {
+      simResults[activityId] = resultaat;
       computeMijnActiesStatussen();
       renderMaTabsCount();
       renderMaList();
@@ -199,6 +284,7 @@
     // gestart? Zelfde bepaling als op de Testscenario's-pagina — daar
     // kunnen dan ook nog geen OK/NOK's gezet worden.
     function isNotStartedYet() {
+      if (simuleren) return false;
       return !!(activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin');
     }
 
@@ -211,6 +297,7 @@
     }
 
     function getResult(activityId) {
+      if (simuleren) return simResults[activityId] || 'open';
       return results[activityId]?.result || 'open';
     }
 
@@ -222,11 +309,12 @@
 
     function computeMijnActiesStatussen() {
       maScenarioStatussen = [];
-      if (!myOrgId) return;
+      const orgId = effectieveOrgId();
+      if (!orgId) return;
 
       scenarios.forEach(s => {
         const acts = scenarioActivitiesSorted(s.id);
-        const mijnActs = acts.filter(a => a.organisation_id === myOrgId || a.acceptant_org_id === myOrgId);
+        const mijnActs = acts.filter(a => a.organisation_id === orgId || a.acceptant_org_id === orgId);
         if (!mijnActs.length) return;
 
         const bottleneck = acts.find(a => getResult(a.id) !== 'ok') || null;
@@ -269,8 +357,11 @@
 
     function renderMaList() {
       const el = document.getElementById('maList');
-      if (!myOrgId) {
-        el.innerHTML = '<div class="empty-state"><p>Je account is niet aan een organisatie gekoppeld.</p></div>';
+      const orgId = effectieveOrgId();
+      if (!orgId) {
+        el.innerHTML = simuleren
+          ? '<div class="empty-state"><p>Kies hierboven een organisatie om te simuleren.</p></div>'
+          : '<div class="empty-state"><p>Je account is niet aan een organisatie gekoppeld.</p></div>';
         return;
       }
       const rows = maScenarioStatussen.filter(x => x.bucket === maBucket);
@@ -290,7 +381,7 @@
         const notStarted = isNotStartedYet();
         const isEersteActiviteit = !!(bottleneck && acts.length && bottleneck.id === acts[0].id);
         if (bucket === 'nu_te_doen' && bottleneck) {
-          const isAcceptant = bottleneck.acceptant_org_id === myOrgId;
+          const isAcceptant = bottleneck.acceptant_org_id === orgId;
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' — <span style="color:var(--danger); font-weight:700;">⚠ staat op NOK</span>' : '';
           // Bij de eerste activiteit van het scenario tonen we, als
           // ingevuld, de instructie van het scenario zelf (afgeleid van
@@ -316,6 +407,13 @@
           statusDetail = `Jouw deel van dit scenario is afgerond.`;
         }
 
+        const simKnoppen = (simuleren && bottleneck) ? `
+          <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+            <span style="font-size:11px; color:#7c3aed; font-weight:700;">🧪 Simuleer:</span>
+            <button class="btn btn-outline btn-sm" style="border-color:#16a34a; color:#16a34a;" onclick="simZetResultaat('${bottleneck.id}','ok')">OK zetten</button>
+            <button class="btn btn-outline btn-sm" style="border-color:#dc2626; color:#dc2626;" onclick="simZetResultaat('${bottleneck.id}','nok')">NOK zetten</button>
+          </div>` : '';
+
         return `<div class="ma-card">
           <span class="ma-status-badge-corner">${statusBadge}</span>
           <div class="ma-scenario-title">
@@ -323,22 +421,23 @@
             ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
           </div>
           <div class="ma-status-line">${statusDetail}</div>
+          ${simKnoppen}
           <div style="margin-top:12px; margin-bottom:14px;">
             <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
           </div>
-          ${renderStepper(acts, bottleneck)}
+          ${renderStepper(acts, bottleneck, orgId)}
         </div>`;
       }).join('');
     }
 
-    function renderStepper(acts, bottleneck) {
+    function renderStepper(acts, bottleneck, orgId) {
       return `<div class="ma-stepper">` + acts.map((a, i) => {
         const result = getResult(a.id);
         const isBottleneck = bottleneck && bottleneck.id === a.id;
         const dotClass = result === 'ok' ? 'done' : result === 'nok' ? 'nok' : (isBottleneck ? 'now' : 'pending');
         const dotContent = result === 'ok' ? '✓' : result === 'nok' ? '✕' : String(a.sort_order);
         const accOrg = orgById(a.acceptant_org_id);
-        const isMine = a.organisation_id === myOrgId || a.acceptant_org_id === myOrgId;
+        const isMine = a.organisation_id === orgId || a.acceptant_org_id === orgId;
         const lineDone = i > 0 && getResult(acts[i - 1].id) === 'ok' ? 'done' : '';
         return `${i > 0 ? `<div class="ma-step-line ${lineDone}"></div>` : ''}
           <div class="ma-step" title="${esc(a.description || '')}">
