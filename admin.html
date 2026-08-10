@@ -795,10 +795,11 @@
           <label>Activiteit <span style="color:var(--danger)">*</span></label>
           <input type="text" id="activityDesc" placeholder="Omschrijving van de activiteit">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="activityAcceptantGroup">
           <label>Acceptant <span style="color:var(--text-muted); font-weight:400;">(mag OK/NOK zetten)</span></label>
           <select id="activityAcceptant"><option value="">Selecteer organisatie...</option></select>
         </div>
+        <p id="activityGeenAcceptantNotice" style="display:none; font-size:12px; color:var(--text-muted); margin:-8px 0 14px;">Deze activiteit komt voort uit "Wanneer" en heeft daarom geen acceptant — de verantwoordelijke organisatie zet 'm zelf op OK/NOK.</p>
         <div class="form-group">
           <label>Volgorde</label>
           <input type="number" id="activityOrder" value="1" min="1">
@@ -3190,6 +3191,7 @@
 
     // ---- ACTIVITIES ----
     let activeScenarioId = null;
+    let activiteitZonderAcceptant = false;
 
     // Schuift de bestaande activiteiten van een scenario één plek op en
     // opent de "activiteit toevoegen"-modal, vooringevuld met de tekst
@@ -3244,21 +3246,24 @@
         await loadScenarios();
         await loadActivities(); renderScenarios();
 
-        openAddActivity(scenarioId);
+        openAddActivity(scenarioId, true);
         document.getElementById('activityOrder').value = 1;
         document.getElementById('activityDesc').value = tekst;
-        showAlert('Bestaande activiteiten opgeschoven. Vul hieronder de verantwoordelijke en acceptant in en sla op.', 'success', 'alertActivity');
+        showAlert('Bestaande activiteiten opgeschoven. Vul hieronder de verantwoordelijke organisatie in en sla op.', 'success', 'alertActivity');
       };
       openModal('modalConfirm');
     }
 
 
-    function openAddActivity(scenarioId) {
+    function openAddActivity(scenarioId, zonderAcceptant = false) {
       activeScenarioId = scenarioId;
+      activiteitZonderAcceptant = zonderAcceptant;
       document.getElementById('activityId').value = '';
       document.getElementById('activityScenarioId').value = scenarioId;
       document.getElementById('activityOrg').value = '';
       document.getElementById('activityAcceptant').value = '';
+      document.getElementById('activityAcceptantGroup').style.display = zonderAcceptant ? 'none' : '';
+      document.getElementById('activityGeenAcceptantNotice').style.display = zonderAcceptant ? '' : 'none';
       // Bereken het volgende unieke nummer: hoogste bestaande + 1
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       const maxOrder = acts.reduce((max, a) => Math.max(max, a.sort_order || 0), 0);
@@ -3270,12 +3275,15 @@
     function editActivity(id) {
       const a = activities.find(x => x.id === id);
       activeScenarioId = a.scenario_id;
+      activiteitZonderAcceptant = !a.acceptant_org_id;
       document.getElementById('activityId').value = a.id;
       document.getElementById('activityScenarioId').value = a.scenario_id;
       document.getElementById('activityDesc').value = a.description || '';
       document.getElementById('activityOrg').value = a.organisation_id || '';
       document.getElementById('activityAcceptant').value = a.acceptant_org_id || '';
       document.getElementById('activityOrder').value = a.sort_order;
+      document.getElementById('activityAcceptantGroup').style.display = activiteitZonderAcceptant ? 'none' : '';
+      document.getElementById('activityGeenAcceptantNotice').style.display = activiteitZonderAcceptant ? '' : 'none';
       document.getElementById('modalActivityTitle').textContent = 'Activiteit bewerken';
       openModal('modalActivity');
     }
@@ -3288,6 +3296,11 @@
       const acceptant_org_id = document.getElementById('activityAcceptant').value || null;
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
       if (!description) { showAlert('Vul de activiteit in.', 'error', 'alertActivity'); return; }
+      if (!organisation_id) { showAlert('Kies een verantwoordelijke organisatie.', 'error', 'alertActivity'); return; }
+      if (!activiteitZonderAcceptant && !acceptant_org_id) {
+        showAlert('Kies een acceptant (alleen de activiteit die voortkomt uit "Wanneer" heeft geen acceptant).', 'error', 'alertActivity');
+        return;
+      }
 
       // Controleer of het nummer al in gebruik is binnen dit scenario
       const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);

@@ -687,7 +687,11 @@
           const r = results[a.id] || {};
           const bevinding = latestBevindingByActivity[a.id] || null;
           const isAcceptant = a.acceptant_org?.id === myOrgId;
-          const canEdit = isAcceptant || currentProfile?.role === 'admin';
+          // Een activiteit zonder acceptant (bijv. voortgekomen uit
+          // "Wanneer") wordt door de verantwoordelijke organisatie zelf
+          // bevestigd — anders zou niemand 'm ooit kunnen afronden.
+          const isVerantwZonderAcceptant = !a.acceptant_org_id && a.organisations?.id === myOrgId;
+          const canEdit = isAcceptant || isVerantwZonderAcceptant || currentProfile?.role === 'admin';
           const orgName = a.organisations?.name || '';
           const orgCode = a.organisations?.code || '';
           const accName = a.acceptant_org?.name || '';

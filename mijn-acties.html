@@ -398,7 +398,7 @@
             statusDetail = actieTekst + nokIndicatie;
           }
         } else if (bucket === 'wachtend' && bottleneck) {
-          const wachtOrg = orgById(bottleneck.acceptant_org_id);
+          const wachtOrg = orgById(bottleneck.acceptant_org_id) || orgById(bottleneck.organisation_id);
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' (staat op NOK, wacht op oplossing)' : '';
           statusBadge = `<span class="ma-status-badge ma-status-wacht">⏳ Wachten op andere partij</span>`;
           statusDetail = `Wacht op ${wachtOrg ? esc(wachtOrg.name) : 'een andere partij'} — "${esc(bottleneck.description || '')}"${nokIndicatie}`;
@@ -436,7 +436,7 @@
         const isBottleneck = bottleneck && bottleneck.id === a.id;
         const dotClass = result === 'ok' ? 'done' : result === 'nok' ? 'nok' : (isBottleneck ? 'now' : 'pending');
         const dotContent = result === 'ok' ? '✓' : result === 'nok' ? '✕' : String(a.sort_order);
-        const accOrg = orgById(a.acceptant_org_id);
+        const accOrg = orgById(a.acceptant_org_id) || orgById(a.organisation_id);
         const isMine = a.organisation_id === orgId || a.acceptant_org_id === orgId;
         const lineDone = i > 0 && getResult(acts[i - 1].id) === 'ok' ? 'done' : '';
         return `${i > 0 ? `<div class="ma-step-line ${lineDone}"></div>` : ''}

@@ -372,6 +372,8 @@ Bestaande resultaten en NOK's van de overige activiteiten blijven gewoon gekoppe
 
 **Blokkade tegen herhaald gebruik**: eenmaal gebruikt voor een scenario, verdwijnt de knop en verschijnt in plaats daarvan een vinkje "Wanneer is al als activiteit 1 toegevoegd" — zo kan dit niet per ongeluk nogmaals voor hetzelfde scenario gedaan worden (wat anders dubbele eerste activiteiten zou opleveren). Voer hiervoor eenmalig `sql/wanneer-activiteit-blokkade-setup.sql` uit.
 
+**Geen acceptant nodig**: de activiteit die op deze manier wordt aangemaakt, vraagt bewust alleen om een **verantwoordelijke** organisatie — geen acceptant, want de "Wanneer"-gebeurtenis wordt niet door een andere partij bevestigd. Bij alle overige activiteiten (los toegevoegd, bewerkt, of via Tabel importeren) blijven verantwoordelijke én acceptant beide verplicht. Om dit te laten werken bevestigt (OK/NOK) bij een activiteit zonder acceptant voortaan de **verantwoordelijke organisatie zelf** — anders zou zo'n activiteit nooit afgerond kunnen worden.
+
 ---
 
 ## Export bij Testscenario's uitgebreid met Gegeven/Wanneer (nieuw)
