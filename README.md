@@ -359,6 +359,19 @@ Nieuwe functionaliteit om gebruikers te ondersteunen zodra een ketentest daadwer
 
 ---
 
+## "Wanneer" omzetten naar de eerste activiteit (nieuw)
+
+Achtergrond: een scenario heeft een "Gegeven" en een "Wanneer" (de gebeurtenis die het scenario in gang zet), gevolgd door activiteiten die in vaste volgorde gebeuren. Bij Voortgang werd tot nu toe de **eerste activiteit** als allereerste stap behandeld — maar eigenlijk hoort de "Wanneer"-gebeurtenis zélf daarvóór, als de échte eerste stap.
+
+Bij Beheer → Testscenario's staat nu, als een scenario een Instructie of Wanneer-tekst heeft, een knop **"Wanneer → activiteit 1"**. Deze:
+1. Schuift de bestaande activiteiten van dat scenario één plek op (huidige #1 wordt #2, enzovoort).
+2. Maakt een nieuwe activiteit 1 aan, met de tekst van Instructie (of anders Wanneer) alvast ingevuld als omschrijving.
+3. Opent meteen de bewerk-modal, zodat je alleen nog de verantwoordelijke en acceptant hoeft te kiezen en op te slaan.
+
+Bestaande resultaten en NOK's van de overige activiteiten blijven gewoon gekoppeld (die hangen aan het activiteit-ID, niet aan het volgnummer) — het opschuiven is dus veilig. Geen SQL-wijziging nodig.
+
+---
+
 ## Export bij Testscenario's uitgebreid met Gegeven/Wanneer (nieuw)
 
 De export-knoppen bij Ketentest → Testscenario's (Excel/CSV en PDF) tonen nu ook de velden **Gegeven** en **Wanneer** van elk scenario:
