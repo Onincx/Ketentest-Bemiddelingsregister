@@ -650,7 +650,7 @@
       <div class="modal-body">
         <input type="hidden" id="userId">
         <div class="form-group">
-          <label>E-mailadres</label>
+          <label>E-mailadres <span style="color:var(--text-muted); font-weight:400;">(automatisch afgeleid van de inlognaam)</span></label>
           <input type="email" id="userEmail" placeholder="naam@organisatie.nl">
         </div>
         <div class="form-group">
@@ -658,9 +658,9 @@
           <input type="text" id="userName" placeholder="Voor- en achternaam">
         </div>
         <div class="form-group">
-          <label>Inlognaam <span style="color:var(--text-muted); font-weight:400;">(voorbereiding op inloggen zonder e-mailadres — nog niet actief)</span></label>
+          <label>Inlognaam</label>
           <div style="display:flex; gap:8px;">
-            <input type="text" id="userUsername" placeholder="voornaam.achternaam" style="flex:1;">
+            <input type="text" id="userUsername" placeholder="voornaam.achternaam" style="flex:1;" oninput="syncUserEmailFromUsername()">
             <button type="button" class="btn btn-outline btn-sm" onclick="genereerInlognaamVoorstel()">🎲 Genereer</button>
           </div>
         </div>
@@ -2397,11 +2397,24 @@
       </tr>`).join('');
     }
 
+    // Bij een NIEUWE gebruiker is er geen echt e-mailadres meer nodig —
+    // het e-mailveld wordt automatisch afgeleid van de inlognaam
+    // (hetzelfde schijn-adresformaat dat de migratie naar
+    // inlognaam-login gebruikt: '<inlognaam>@ketentest.invalid').
+    // Verandert niets bij het bewerken van een bestaande gebruiker
+    // (userId ingevuld) — dat e-mailveld blijft uitgeschakeld en
+    // ongewijzigd.
+    function syncUserEmailFromUsername() {
+      if (document.getElementById('userId').value) return; // bestaande gebruiker: niet aanraken
+      const username = document.getElementById('userUsername').value.trim();
+      document.getElementById('userEmail').value = username ? `${username}@ketentest.invalid` : '';
+    }
+
     function openNewUserModal() {
       editUserRequestToken++; // eventueel nog lopend editUser()-verzoek ongeldig maken
       document.getElementById('userId').value = '';
       document.getElementById('userEmail').value = '';
-      document.getElementById('userEmail').disabled = false;
+      document.getElementById('userEmail').disabled = true;
       document.getElementById('userName').value = '';
       document.getElementById('userUsername').value = '';
       document.getElementById('userOrg').value = '';
@@ -2446,6 +2459,7 @@
         .replace(/[^a-z0-9]/g, '');
       const voorstel = `${normaliseer(voornaam)}.${normaliseer(achternaam)}`;
       document.getElementById('userUsername').value = voorstel;
+      syncUserEmailFromUsername();
     }
 
     function generateResetPassword() {
@@ -2641,7 +2655,10 @@
       const role = document.getElementById('userRole').value;
       const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
 
-      if (!email) { showAlert('Vul een e-mailadres in.', 'error', 'alertUser'); return; }
+      if (!email) {
+        showAlert(id ? 'Vul een e-mailadres in.' : 'Vul een inlognaam in (het e-mailadres wordt daar automatisch van afgeleid).', 'error', 'alertUser');
+        return;
+      }
       if (!id && !selectedKetentestIds.length) {
         showAlert('Koppel minimaal 1 ketentest aan deze gebruiker.', 'error', 'alertUser');
         return;
