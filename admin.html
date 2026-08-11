@@ -130,6 +130,18 @@
 
     <!-- TAB: Gebruikers -->
     <div id="tab-users" style="display:none;">
+      <div id="migratiePaneel" style="display:none; background:#eef2ff; border:1px solid #c7d2fe; border-radius:var(--radius-lg); padding:16px 18px; margin-bottom:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <p style="font-weight:700; color:#3730a3; margin-bottom:2px;">Fase 3: overstap naar inlognaam-login</p>
+            <p style="font-size:12.5px; color:#4338ca;" id="migratieStatusTekst">Bezig met controleren...</p>
+          </div>
+          <button class="btn btn-primary btn-sm" id="migreerAllenBtn" onclick="migreerAlleGebruikers()" style="white-space:nowrap;">Migreer alle gebruikers</button>
+        </div>
+        <div id="migratieRapport" style="margin-top:10px; font-size:12.5px;"></div>
+        <p style="font-size:11px; color:#4338ca; margin-top:10px;">Dit vervangt het opgeslagen e-mailadres van elke gebruiker (met een inlognaam) door een niet-herleidbaar schijn-adres. Wachtwoorden blijven ongewijzigd. Doe dit <strong>pas</strong> nadat je alle inlognamen hebt gecontroleerd en gecommuniceerd — en zet <strong>daarna pas</strong> de inlogpagina om (zie <code>sql/inlognaam-fase3-inlogpagina.md</code>).</p>
+      </div>
+
       <div class="page-header">
         <div class="page-header-left">
           <h1>Gebruikers</h1>
@@ -2349,6 +2361,7 @@
 
     // ---- USERS ----
     function renderUsers() {
+      renderMigratiePaneel();
       const tb = document.getElementById('userTable');
       const orgSel = document.getElementById('userOrg');
       orgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
@@ -2446,6 +2459,79 @@
     // wachtwoord Supabase's service-role-sleutel vereist — die mag
     // nooit in de browser-code staan. Zie sql/reset-user-password-edge-function.md
     // voor installatie-instructies.
+    // Toont hoeveel gebruikers (met een inlognaam) nog een echt
+    // e-mailadres hebben, en of de migratieknop actief mag zijn.
+    function renderMigratiePaneel() {
+      const paneel = document.getElementById('migratiePaneel');
+      if (!paneel) return;
+
+      const metInlognaam = users.filter(u => u.username);
+      const nogNietGemigreerd = metInlognaam.filter(u => !(u.email || '').endsWith('@ketentest.invalid'));
+      const zonderInlognaam = users.filter(u => !u.username);
+
+      if (!users.length) { paneel.style.display = 'none'; return; }
+      paneel.style.display = '';
+
+      const statusEl = document.getElementById('migratieStatusTekst');
+      const btn = document.getElementById('migreerAllenBtn');
+
+      if (nogNietGemigreerd.length === 0) {
+        statusEl.textContent = `Alle ${metInlognaam.length} gebruikers met een inlognaam zijn al gemigreerd. ${zonderInlognaam.length ? `Let op: ${zonderInlognaam.length} gebruiker(s) hebben nog geen inlognaam.` : 'Je kunt nu de inlogpagina omzetten.'}`;
+        btn.disabled = true;
+        btn.textContent = 'Niets te migreren';
+      } else {
+        statusEl.textContent = `${nogNietGemigreerd.length} van de ${metInlognaam.length} gebruikers met een inlognaam nog niet gemigreerd.${zonderInlognaam.length ? ` (${zonderInlognaam.length} gebruiker(s) hebben nog geen inlognaam en worden overgeslagen.)` : ''}`;
+        btn.disabled = false;
+        btn.textContent = `Migreer ${nogNietGemigreerd.length} gebruiker(s)`;
+      }
+    }
+
+    async function migreerAlleGebruikers() {
+      const metInlognaam = users.filter(u => u.username && !(u.email || '').endsWith('@ketentest.invalid'));
+      if (!metInlognaam.length) return;
+
+      if (!confirm(`Weet je zeker dat je ${metInlognaam.length} gebruiker(s) wilt migreren naar inlognaam-login? Hun e-mailadres wordt vervangen door een schijn-adres. Dit kan niet automatisch worden teruggedraaid.`)) {
+        return;
+      }
+
+      const btn = document.getElementById('migreerAllenBtn');
+      btn.disabled = true;
+      const rapportEl = document.getElementById('migratieRapport');
+      rapportEl.innerHTML = '';
+
+      const { data: { session } } = await sb.auth.getSession();
+      let gelukt = 0, mislukt = 0;
+      const fouten = [];
+
+      for (const u of metInlognaam) {
+        btn.textContent = `Bezig... (${gelukt + mislukt + 1}/${metInlognaam.length})`;
+        try {
+          const response = await fetch(`${SUPABASE_URL}/functions/v1/migrate-to-username-login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+            body: JSON.stringify({ userId: u.id }),
+          });
+          const result = await response.json();
+          if (!response.ok) {
+            mislukt++;
+            fouten.push(`${u.name || u.email}: ${result?.error || response.statusText}`);
+          } else {
+            gelukt++;
+          }
+        } catch (e) {
+          mislukt++;
+          fouten.push(`${u.name || u.email}: ${e.message}`);
+        }
+      }
+
+      rapportEl.innerHTML = `<p style="color:#166534; font-weight:600;">✓ ${gelukt} gebruiker(s) succesvol gemigreerd.</p>` +
+        (fouten.length ? `<p style="color:var(--danger); font-weight:600; margin-top:6px;">✗ ${fouten.length} mislukt:</p><ul style="margin:4px 0 0 18px; color:var(--danger);">${fouten.map(f => `<li>${f}</li>`).join('')}</ul>` : '');
+
+      await loadUsers();
+      renderUsers();
+      renderMigratiePaneel();
+    }
+
     async function resetUserPassword() {
       const userId = document.getElementById('userId').value;
       const newPassword = document.getElementById('userResetPassword').value;
