@@ -145,8 +145,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>E-mail</th><th>Naam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th>Laatst ingelogd</th><th></th></tr></thead>
-            <tbody id="userTable"><tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>E-mail</th><th>Naam</th><th>Inlognaam</th><th>Organisatie</th><th>Rol</th><th>Status</th><th>Laatst ingelogd</th><th></th></tr></thead>
+            <tbody id="userTable"><tr><td colspan="8" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -644,6 +644,13 @@
         <div class="form-group">
           <label>Naam <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
           <input type="text" id="userName" placeholder="Voor- en achternaam">
+        </div>
+        <div class="form-group">
+          <label>Inlognaam <span style="color:var(--text-muted); font-weight:400;">(voorbereiding op inloggen zonder e-mailadres — nog niet actief)</span></label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="userUsername" placeholder="voornaam.achternaam" style="flex:1;">
+            <button type="button" class="btn btn-outline btn-sm" onclick="genereerInlognaamVoorstel()">🎲 Genereer</button>
+          </div>
         </div>
         <div class="form-group">
           <label>Organisatie</label>
@@ -2355,16 +2362,17 @@
         : users;
 
       if (!users.length) {
-        tb.innerHTML = '<tr><td colspan="7"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="8"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><p>Nog geen gebruikers uitgenodigd.</p></div></td></tr>';
         return;
       }
       if (!filtered.length) {
-        tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><p>Geen gebruikers gevonden voor "${term}".</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>Geen gebruikers gevonden voor "${term}".</p></div></td></tr>`;
         return;
       }
       tb.innerHTML = filtered.map(u => `<tr>
         <td>${u.email}</td>
         <td>${u.name || '—'}</td>
+        <td style="font-family:monospace; font-size:12px; color:var(--text-muted);">${u.username || '—'}</td>
         <td>${u.organisations?.name ? `<span class="org-badge">${u.organisations.name}</span>` : '—'}</td>
         <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : u.role === 'manager' ? 'Manager' : 'Gebruiker'}</span></td>
         <td><span class="badge ${u.activated ? 'badge-ok' : 'badge-open'}">${u.activated ? 'Actief' : 'Uitgenodigd'}</span></td>
@@ -2382,6 +2390,7 @@
       document.getElementById('userEmail').value = '';
       document.getElementById('userEmail').disabled = false;
       document.getElementById('userName').value = '';
+      document.getElementById('userUsername').value = '';
       document.getElementById('userOrg').value = '';
       document.getElementById('userRole').value = 'user';
       document.getElementById('userTempPassword').value = '';
@@ -2398,6 +2407,32 @@
 
     function generateTempPassword() {
       document.getElementById('userTempPassword').value = genereerSterkTijdelijkWachtwoord();
+    }
+
+    // Stelt een inlognaam voor op basis van het ingevulde naamveld:
+    // voornaam.achternaam, kleine letters, zonder toevoegingen tussen
+    // haakjes (bijv. "(ZIN)") en zonder diakrieten. Puur een voorstel —
+    // de beheerder kan het altijd nog aanpassen vóór het opslaan.
+    function genereerInlognaamVoorstel() {
+      const naam = document.getElementById('userName').value.trim();
+      if (!naam) {
+        showAlert('Vul eerst een naam in.', 'error', 'alertUser');
+        return;
+      }
+      const schoneNaam = naam.replace(/\([^)]*\)/g, '').trim().replace(/\s+/g, ' ');
+      const delen = schoneNaam.split(' ').filter(Boolean);
+      if (!delen.length) {
+        showAlert('Kon geen inlognaam afleiden van deze naam.', 'error', 'alertUser');
+        return;
+      }
+      const voornaam = delen[0];
+      const achternaam = delen[delen.length - 1];
+      const normaliseer = (s) => s
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // diakrieten weg
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+      const voorstel = `${normaliseer(voornaam)}.${normaliseer(achternaam)}`;
+      document.getElementById('userUsername').value = voorstel;
     }
 
     function generateResetPassword() {
@@ -2476,6 +2511,7 @@
       document.getElementById('userId').value = u.id;
       document.getElementById('userEmail').value = u.email;
       document.getElementById('userName').value = u.name || '';
+      document.getElementById('userUsername').value = u.username || '';
       document.getElementById('userOrg').value = u.organisation_id || '';
       document.getElementById('userRole').value = u.role || 'user';
       document.getElementById('userEmail').disabled = true;
@@ -2514,6 +2550,7 @@
       const id = document.getElementById('userId').value;
       const email = document.getElementById('userEmail').value.trim();
       const name = document.getElementById('userName').value.trim();
+      const username = document.getElementById('userUsername').value.trim() || null;
       const orgId = document.getElementById('userOrg').value;
       const role = document.getElementById('userRole').value;
       const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
@@ -2530,7 +2567,12 @@
 
       if (id) {
         // Update bestaand profiel
-        await sb.from('users').update({ name, organisation_id: orgId || null, role }).eq('id', id);
+        const { error: updateError } = await sb.from('users').update({ name, organisation_id: orgId || null, role, username }).eq('id', id);
+        if (updateError) {
+          showAlert(updateError.message.includes('users_username_key') ? 'Deze inlognaam is al in gebruik door een andere gebruiker.' : ('Fout bij opslaan: ' + updateError.message), 'error', 'alertUser');
+          btn.disabled = false; btn.textContent = 'Opslaan';
+          return;
+        }
       } else {
         const tempPassword = document.getElementById('userTempPassword').value;
         if (!tempPassword || tempPassword.length < 8) {
@@ -2568,7 +2610,7 @@
         targetUserId = signUpData?.user?.id;
         if (targetUserId) {
           await sb.from('users').upsert({
-            id: targetUserId, email, name, organisation_id: orgId || null, role,
+            id: targetUserId, email, name, organisation_id: orgId || null, role, username,
             activated: false, must_change_password: true,
           });
         }
