@@ -2480,7 +2480,13 @@
       if (!paneel) return;
 
       const metInlognaam = users.filter(u => u.username);
-      const nogNietGemigreerd = metInlognaam.filter(u => !(u.email || '').endsWith('@ketentest.invalid'));
+      // Een gebruiker is pas écht gemigreerd als het e-mailadres exact
+      // overeenkomt met de HUIDIGE inlognaam. Is de inlognaam achteraf
+      // gewijzigd (bijv. gecorrigeerd door een beheerder), dan wijkt
+      // het e-mailadres nog af van de nieuwe inlognaam — dat telt dus
+      // als "nog niet gemigreerd", ook al eindigt het wel op
+      // '@ketentest.invalid'.
+      const nogNietGemigreerd = metInlognaam.filter(u => u.email !== `${u.username}@ketentest.invalid`);
       const zonderInlognaam = users.filter(u => !u.username);
 
       if (!users.length) { paneel.style.display = 'none'; return; }
@@ -2501,7 +2507,7 @@
     }
 
     async function migreerAlleGebruikers() {
-      const metInlognaam = users.filter(u => u.username && !(u.email || '').endsWith('@ketentest.invalid'));
+      const metInlognaam = users.filter(u => u.username && u.email !== `${u.username}@ketentest.invalid`);
       if (!metInlognaam.length) return;
 
       if (!confirm(`Weet je zeker dat je ${metInlognaam.length} gebruiker(s) wilt migreren naar inlognaam-login? Hun e-mailadres wordt vervangen door een schijn-adres. Dit kan niet automatisch worden teruggedraaid.`)) {
@@ -2670,11 +2676,40 @@
 
       if (id) {
         // Update bestaand profiel
+        const bestaandeGebruiker = users.find(u => u.id === id);
+        const wasGemigreerd = bestaandeGebruiker && (bestaandeGebruiker.email || '').endsWith('@ketentest.invalid');
+
         const { error: updateError } = await sb.from('users').update({ name, organisation_id: orgId || null, role, username }).eq('id', id);
         if (updateError) {
           showAlert(updateError.message.includes('users_username_key') ? 'Deze inlognaam is al in gebruik door een andere gebruiker.' : ('Fout bij opslaan: ' + updateError.message), 'error', 'alertUser');
           btn.disabled = false; btn.textContent = 'Opslaan';
           return;
+        }
+
+        // Was deze gebruiker al gemigreerd naar inlognaam-login, en is de
+        // inlognaam zojuist gewijzigd? Dan wijkt het opgeslagen
+        // schijn-e-mailadres nu af van de nieuwe inlognaam, waardoor de
+        // gebruiker niet meer zou kunnen inloggen. Synchroniseer dit
+        // automatisch opnieuw via dezelfde Edge Function als de migratie.
+        if (wasGemigreerd && username && bestaandeGebruiker.email !== `${username}@ketentest.invalid`) {
+          try {
+            const { data: { session } } = await sb.auth.getSession();
+            const response = await fetch(`${SUPABASE_URL}/functions/v1/migrate-to-username-login`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+              body: JSON.stringify({ userId: id }),
+            });
+            if (!response.ok) {
+              const result = await response.json();
+              showAlert('Let op: gebruiker opgeslagen, maar het inlogadres kon niet automatisch worden bijgewerkt (' + (result?.error || response.statusText) + '). Migreer deze gebruiker opnieuw via het migratiepaneel.', 'error', 'alertUser');
+              btn.disabled = false; btn.textContent = 'Opslaan';
+              return;
+            }
+          } catch (e) {
+            showAlert('Let op: gebruiker opgeslagen, maar het inlogadres kon niet automatisch worden bijgewerkt. Migreer deze gebruiker opnieuw via het migratiepaneel.', 'error', 'alertUser');
+            btn.disabled = false; btn.textContent = 'Opslaan';
+            return;
+          }
         }
       } else {
         const tempPassword = document.getElementById('userTempPassword').value;
