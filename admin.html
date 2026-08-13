@@ -1786,8 +1786,7 @@
         else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
         return `<tr>
           <td style="white-space:nowrap;">
-            <button class="btn btn-outline btn-icon" style="width:30px; height:30px; margin-right:4px;" onclick="verplaatsKenmerk('${k.id}', -1)" title="Omhoog" ${i === 0 ? 'disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
-            <button class="btn btn-outline btn-icon" style="width:30px; height:30px;" onclick="verplaatsKenmerk('${k.id}', 1)" title="Omlaag" ${i === KENMERKDEFINITIES.length - 1 ? 'disabled' : ''}><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+            <input type="number" value="${k.volgorde ?? 0}" style="width:64px; text-align:center;" onchange="wijzigKenmerkVolgorde('${k.id}', this.value)" title="Volgordenummer — lager = eerder in de lijst">
           </td>
           <td><strong>${esc(k.naam)}</strong></td>
           <td>${KENMERK_VELDTYPE_LABELS[k.veldtype] || k.veldtype}</td>
@@ -1802,26 +1801,16 @@
 
     // Wisselt de volgorde van dit kenmerk met de buur erboven/eronder
     // (richting: -1 = omhoog, 1 = omlaag) en slaat beide direct op.
-    async function verplaatsKenmerk(id, richting) {
+    // Zet het volgordenummer van dit kenmerk direct op de door de
+    // beheerder ingetypte waarde. Simpeler en voorspelbaarder dan
+    // twee nummers verwisselen — vooral omdat kenmerken die nog nooit
+    // een eigen volgorde kregen, allemaal op dezelfde waarde (0)
+    // konden staan.
+    async function wijzigKenmerkVolgorde(id, waarde) {
       if (!window.isPageAdmin) return;
-      const idx = KENMERKDEFINITIES.findIndex(k => k.id === id);
-      const buurIdx = idx + richting;
-      if (idx === -1 || buurIdx < 0 || buurIdx >= KENMERKDEFINITIES.length) return;
-
-      const huidige = KENMERKDEFINITIES[idx];
-      const buur = KENMERKDEFINITIES[buurIdx];
-      // Zorg dat de twee volgordewaarden altijd verschillend zijn, ook
-      // als ze toevallig nog gelijk stonden (bijv. allebei 0).
-      const huidigeVolgorde = huidige.volgorde ?? idx;
-      const buurVolgorde = buur.volgorde ?? buurIdx;
-      const nieuweHuidige = huidigeVolgorde === buurVolgorde ? buurIdx : buurVolgorde;
-      const nieuweBuur = huidigeVolgorde === buurVolgorde ? idx : huidigeVolgorde;
-
-      await Promise.all([
-        sb.from('kenmerk_definities').update({ volgorde: nieuweHuidige }).eq('id', huidige.id),
-        sb.from('kenmerk_definities').update({ volgorde: nieuweBuur }).eq('id', buur.id),
-      ]);
-
+      const volgorde = parseInt(waarde);
+      if (isNaN(volgorde)) return;
+      await sb.from('kenmerk_definities').update({ volgorde }).eq('id', id);
       await loadKenmerkDefinities();
     }
 
@@ -1885,7 +1874,11 @@
         const res = await sb.from('kenmerk_definities').update(payload).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('kenmerk_definities').insert({ ...payload, ketentest_id: activeKetentest.id });
+        // Nieuw kenmerk: zet 'm automatisch achteraan (hoogste bestaande
+        // volgorde + 1), zodat niet alles op dezelfde waarde (0) blijft
+        // staan — dat maakte handmatig herordenen eerder onvoorspelbaar.
+        const hoogsteVolgorde = KENMERKDEFINITIES.reduce((max, k) => Math.max(max, k.volgorde ?? 0), -1);
+        const res = await sb.from('kenmerk_definities').insert({ ...payload, ketentest_id: activeKetentest.id, volgorde: hoogsteVolgorde + 1 });
         dbError = res.error;
       }
 
