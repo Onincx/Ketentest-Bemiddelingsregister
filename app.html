@@ -250,8 +250,11 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=33"></script>
   <script>
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
+    let kenmerkDefinities = [], scenarioKenmerkKoppelingen = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
     let activeFilter = 'all';
     let activeKetentest = null;
     const autosaveTimers = {};
@@ -321,17 +324,26 @@
 
       if (!scenarioIds.length) {
         activities = []; results = {}; flowNodes = []; flowEdges = []; scenarioFlowMap = {}; latestBevindingByActivity = {};
+        kenmerkDefinities = []; scenarioKenmerkKoppelingen = []; scenarioKenmerkWaarden = []; zorgkantoorcodes = [];
         return;
       }
 
-      const [a, r, fn, fe, fl, bv] = await Promise.all([
+      const [a, r, fn, fe, fl, bv, kd, kk, kw, zk] = await Promise.all([
         fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to)),
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
         fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }).range(from, to)),
+        sb.from('kenmerk_definities').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde'),
+        fetchAllRows((from, to) => sb.from('scenario_kenmerk_koppelingen').select('*').in('scenario_id', scenarioIds).range(from, to)),
+        fetchAllRows((from, to) => sb.from('scenario_kenmerk_waarden').select('*').in('scenario_id', scenarioIds).range(from, to)),
+        sb.from('organisatie_zorgkantoorcodes').select('*'),
       ]);
+      kenmerkDefinities = kd.data || [];
+      scenarioKenmerkKoppelingen = kk.data || [];
+      scenarioKenmerkWaarden = kw.data || [];
+      zorgkantoorcodes = zk.data || [];
       flowNodes = fn.data || [];
       flowEdges = fe.data || [];
       scenarioFlowMap = {};
@@ -360,6 +372,125 @@
     // Clientnaam = code van het scenario dat in dezelfde flow als "start"
     // is gemarkeerd. Zit een scenario niet in een flow (of is er geen start
     // gemarkeerd), dan is de clientnaam gewoon de eigen scenariocode.
+    // Is de organisatie van de ingelogde gebruiker betrokken (verantw.
+    // of acceptant van minstens 1 activiteit) bij dit scenario? Puur
+    // voor de weergave — de database (RLS) is de echte grens.
+    function isBetrokkenBijScenario(scenarioId) {
+      const myOrgId = currentProfile?.organisation_id;
+      if (!myOrgId) return false;
+      return activities.some(a => a.scenario_id === scenarioId && (a.organisation_id === myOrgId || a.acceptant_org_id === myOrgId));
+    }
+
+    // Elfproef-controle voor een BSN (of vergelijkbaar 9-cijferig
+    // nummer): som van cijfer × gewicht (9..2, dan -1 voor het laatste
+    // cijfer) moet deelbaar zijn door 11.
+    function klopElfproef(waarde) {
+      const cijfers = String(waarde).replace(/\D/g, '');
+      if (cijfers.length !== 9) return false;
+      let som = 0;
+      for (let i = 0; i < 8; i++) som += parseInt(cijfers[i]) * (9 - i);
+      som += parseInt(cijfers[8]) * -1;
+      return som % 11 === 0;
+    }
+
+    function renderScenarioKenmerkenForm(scenarioId) {
+      const koppelingen = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId);
+      if (!koppelingen.length) return '';
+
+      const definities = koppelingen
+        .map(k => kenmerkDefinities.find(d => d.id === k.kenmerk_definitie_id))
+        .filter(Boolean);
+      if (!definities.length) return '';
+
+      const waarden = {};
+      scenarioKenmerkWaarden.filter(w => w.scenario_id === scenarioId).forEach(w => { waarden[w.kenmerk_definitie_id] = w.waarde; });
+
+      const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
+
+      // Voor het 'zorgkantoorcode'-veldtype: bepaal de verantwoordelijke
+      // organisatie van de eerste activiteit (= de 'Wanneer' van dit
+      // scenario) en toon alleen codes die daarbij horen.
+      const eersteActiviteit = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
+      const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
+      const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
+
+      const velden = definities.map(d => {
+        const huidigeWaarde = waarden[d.id] || '';
+        let input = '';
+        if (d.veldtype === 'tekst') {
+          input = `<input type="text" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        } else if (d.veldtype === 'numeriek') {
+          input = `<input type="text" inputmode="numeric" data-kenmerk-id="${d.id}" data-lengte="${d.validatie_lengte || ''}" data-elfproef="${d.validatie_elfproef ? '1' : '0'}" maxlength="${d.validatie_lengte || 20}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        } else if (d.veldtype === 'datum') {
+          input = `<input type="date" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        } else if (d.veldtype === 'keuzelijst') {
+          const opties = (d.keuzelijst_waarden || []).map(w => `<option value="${esc(w)}" ${w === huidigeWaarde ? 'selected' : ''}>${esc(w)}</option>`).join('');
+          input = `<select data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`;
+        } else if (d.veldtype === 'zorgkantoorcode') {
+          const opties = relevanteZkCodes.map(z => `<option value="${esc(z.code)}" ${z.code === huidigeWaarde ? 'selected' : ''}>${esc(z.code)}</option>`).join('');
+          input = relevanteZkCodes.length
+            ? `<select data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`
+            : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">Geen zorgkantoorcodes bekend voor de verantwoordelijke organisatie</span>`;
+        }
+        return `<div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:4px;">${esc(d.naam)}</label>
+          ${input}
+        </div>`;
+      }).join('');
+
+      return `<div style="margin:16px 0; padding:16px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Functionele kenmerken</p>
+          ${betrokken ? `<button class="btn btn-sm btn-primary" onclick="saveScenarioKenmerken('${scenarioId}')">Opslaan</button>` : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>'}
+        </div>
+        <div id="kenmerkenAlert-${scenarioId}" class="alert" style="display:none; margin-bottom:10px;"></div>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+          ${velden}
+        </div>
+      </div>`;
+    }
+
+    async function saveScenarioKenmerken(scenarioId) {
+      const alertId = `kenmerkenAlert-${scenarioId}`;
+      const inputs = document.querySelectorAll(`#detail-panel-${scenarioId} [data-kenmerk-id]`);
+
+      // Client-side validatie vóór opslaan
+      for (const el of inputs) {
+        const waarde = el.value.trim();
+        if (!waarde) continue;
+        if (el.dataset.lengte) {
+          const lengte = parseInt(el.dataset.lengte);
+          if (!/^\d+$/.test(waarde) || waarde.length !== lengte) {
+            showAlert(`Vul een numerieke waarde van exact ${lengte} cijfers in.`, 'error', alertId);
+            return;
+          }
+          if (el.dataset.elfproef === '1' && !klopElfproef(waarde)) {
+            showAlert('Dit nummer voldoet niet aan de elfproef — controleer het BSN.', 'error', alertId);
+            return;
+          }
+        }
+      }
+
+      const { data: { user } } = await sb.auth.getUser();
+      const rows = [...inputs].map(el => ({
+        scenario_id: scenarioId,
+        kenmerk_definitie_id: el.dataset.kenmerkId,
+        waarde: el.value.trim() || null,
+        updated_by: user?.id || null,
+        updated_at: new Date().toISOString(),
+      }));
+
+      const { error } = await sb.from('scenario_kenmerk_waarden').upsert(rows, { onConflict: 'scenario_id,kenmerk_definitie_id' });
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', alertId); return; }
+
+      rows.forEach(r => {
+        const idx = scenarioKenmerkWaarden.findIndex(w => w.scenario_id === r.scenario_id && w.kenmerk_definitie_id === r.kenmerk_definitie_id);
+        if (idx >= 0) scenarioKenmerkWaarden[idx] = r; else scenarioKenmerkWaarden.push(r);
+      });
+
+      showAlert('Kenmerken opgeslagen.', 'success', alertId);
+    }
+
     function getClientnaam(scenarioId) {
       const node = flowNodes.find(n => n.scenario_id === scenarioId);
       const s = scenarios.find(x => x.id === scenarioId);
@@ -819,6 +950,7 @@
               ${s.gegeven ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Gegeven</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.gegeven + '</p></div>' : ''}
               ${s.wanneer ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Wanneer</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.wanneer + '</p></div>' : ''}
             </div>` : ''}
+          ${renderScenarioKenmerkenForm(s.id)}
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
         </div>`;
 

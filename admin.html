@@ -62,6 +62,7 @@
         <a href="admin.html?tab=users" data-tab="users" onclick="return navTab('users', event)">Gebruikers</a>
         <a href="admin.html?tab=notifications" data-tab="notifications" onclick="return navTab('notifications', event)">Notificaties</a>
         <a href="admin.html?tab=berichten" data-tab="berichten" onclick="return navTab('berichten', event)">Berichten</a>
+        <a href="admin.html?tab=kenmerken" data-tab="kenmerken" onclick="return navTab('kenmerken', event)">Functionele kenmerken</a>
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
         <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
         <a href="admin.html?tab=nok" data-tab="nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
@@ -512,6 +513,109 @@
         </div>
       </div>
     </div>
+
+    <div id="tab-kenmerken" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Functionele kenmerken</h1>
+          <p>Definieer herbruikbare velden (bijv. Clientnaam, AGB-code, Leveringsvorm) die je vervolgens per scenario kunt koppelen, zodat betrokken organisaties er de daadwerkelijke waarden bij invullen.</p>
+        </div>
+        <button class="btn btn-primary" onclick="openNewKenmerkModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Kenmerk toevoegen
+        </button>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <p class="eyebrow" style="margin-bottom:10px;">Zorgkantoorcodes per organisatie</p>
+        <div class="card" style="padding:16px 20px;">
+          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
+            <div style="flex:1; min-width:200px;">
+              <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Organisatie</label>
+              <select id="zkCodeOrg" style="width:100%;"><option value="">Selecteer organisatie...</option></select>
+            </div>
+            <div style="flex:1; min-width:160px;">
+              <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Code</label>
+              <input type="text" id="zkCodeWaarde" placeholder="bijv. 8080">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="voegZorgkantoorcodeToe()">Toevoegen</button>
+          </div>
+          <div id="zkCodeLijst" style="margin-top:14px; display:flex; flex-wrap:wrap; gap:8px;"></div>
+        </div>
+      </div>
+
+      <p class="eyebrow" style="margin-bottom:10px;">Kenmerk-definities</p>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Naam</th><th>Veldtype</th><th>Validatie</th><th></th></tr></thead>
+            <tbody id="kenmerkDefTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: functionele kenmerken koppelen aan een scenario -->
+  <div class="modal-overlay" id="modalKenmerkKoppel" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerkKoppel')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Functionele kenmerken koppelen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKenmerkKoppel')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kenmerkKoppelScenarioId">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Vink aan welke kenmerken bij dit scenario ingevuld moeten kunnen worden.</p>
+        <div id="kenmerkKoppelLijst"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKenmerkKoppel')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKenmerkKoppeling()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: kenmerk toevoegen/bewerken -->
+  <div class="modal-overlay" id="modalKenmerk" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerk')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalKenmerkTitle">Kenmerk toevoegen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKenmerk')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kenmerkDefId">
+        <div class="form-group">
+          <label>Naam <span style="color:var(--danger);">*</span></label>
+          <input type="text" id="kenmerkNaam" placeholder="bijv. AGB-code">
+        </div>
+        <div class="form-group">
+          <label>Veldtype <span style="color:var(--danger);">*</span></label>
+          <select id="kenmerkVeldtype" onchange="toggleKenmerkVeldtypeOpties()">
+            <option value="tekst">Tekst</option>
+            <option value="numeriek">Numeriek (met vaste lengte)</option>
+            <option value="datum">Datum</option>
+            <option value="keuzelijst">Keuzelijst (vaste waarden)</option>
+            <option value="zorgkantoorcode">Zorgkantoorcode (slim, o.b.v. verantwoordelijke organisatie)</option>
+          </select>
+        </div>
+        <div class="form-group" id="kenmerkNumeriekOpties" style="display:none;">
+          <label>Exacte lengte <span style="color:var(--text-muted); font-weight:400;">(bijv. 8 voor AGB-code, 9 voor BSN)</span></label>
+          <input type="number" id="kenmerkValidatieLengte" min="1" placeholder="bijv. 8">
+          <label style="display:flex; align-items:center; gap:8px; margin-top:10px; font-weight:400;">
+            <input type="checkbox" id="kenmerkElfproef" style="width:auto;"> Elfproef toepassen (voor BSN)
+          </label>
+        </div>
+        <div class="form-group" id="kenmerkKeuzelijstOpties" style="display:none;">
+          <label>Keuzemogelijkheden <span style="color:var(--text-muted); font-weight:400;">(één per regel)</span></label>
+          <textarea id="kenmerkKeuzelijstWaarden" placeholder="Optie 1&#10;Optie 2&#10;Optie 3" style="min-height:100px;"></textarea>
+        </div>
+        <div id="alertKenmerk" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKenmerk')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKenmerkDefinitie()">Opslaan</button>
+      </div>
+    </div>
   </div>
 
   <!-- Modal: bericht toevoegen/bewerken -->
@@ -767,7 +871,7 @@
           <input type="text" id="scenarioTitle" placeholder="Beschrijvende naam van het scenario">
         </div>
         <div class="form-group">
-          <label>Omschrijving</label>
+          <label>Doel scenario</label>
           <textarea id="scenarioDesc" placeholder="Wat wordt er in dit scenario getest?"></textarea>
         </div>
         <div class="form-group">
@@ -960,6 +1064,8 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=33"></script>
   <script>
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
+
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let currentProfile = null, currentUser = null;
     let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
@@ -1035,7 +1141,7 @@
       }
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok'];
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken'];
 
       if (!window.isPageAdmin) {
         // Gewone gebruikers mogen alleen Notificaties of NOK-opvolging
@@ -1054,8 +1160,20 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadScenarioKenmerkKoppelingen(), loadZorgkantoorcodes()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
+    }
+
+    // Welke kenmerk-definities gelden voor welk scenario. Eén keer
+    // geladen bij initialisatie; het beheerscherm bij een scenario
+    // ververst dit lokaal na het opslaan van een wijziging.
+    let scenarioKenmerkKoppelingen = [];
+    async function loadScenarioKenmerkKoppelingen() {
+      if (!scenarios.length) { scenarioKenmerkKoppelingen = []; return; }
+      const scenarioIds = scenarios.map(s => s.id);
+      const { data, error } = await fetchAllRows((from, to) => sb.from('scenario_kenmerk_koppelingen').select('*').in('scenario_id', scenarioIds).range(from, to));
+      if (error) { console.error('loadScenarioKenmerkKoppelingen error:', error); scenarioKenmerkKoppelingen = []; return; }
+      scenarioKenmerkKoppelingen = data || [];
     }
 
     async function loadScenarioFlowMap() {
@@ -1116,7 +1234,7 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
@@ -1147,6 +1265,7 @@
       // pagina berichten.html).
       if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok') return false;
       showTab(tab);
+      if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); }
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
     }
@@ -1578,6 +1697,240 @@
         showAlert('Bericht verwijderd.', 'success');
       };
       openModal('modalConfirm');
+    }
+
+    // Toont, in het uitgeklapte scenario, welke functionele kenmerken
+    // aan dit scenario zijn gekoppeld, met een knop om dit aan te
+    // passen (checklist uit alle beschikbare kenmerk-definities).
+    function renderFunctioneleKenmerkenKoppeling(scenarioId) {
+      const gekoppeld = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId);
+      const gekoppeldeIds = new Set(gekoppeld.map(k => k.kenmerk_definitie_id));
+      const namen = KENMERKDEFINITIES.filter(d => gekoppeldeIds.has(d.id)).map(d => d.naam);
+
+      if (!KENMERKDEFINITIES.length) {
+        return `<div style="margin-bottom:14px; font-size:12px; color:var(--text-muted);">Nog geen kenmerk-definities aangemaakt (Beheer → Functionele kenmerken).</div>`;
+      }
+
+      return `<div style="margin-bottom:14px; padding:12px 14px; background:var(--surface); border-radius:8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
+          <div style="font-size:13px;">
+            <strong>Functionele kenmerken:</strong>
+            ${namen.length ? esc(namen.join(', ')) : '<span style="color:var(--text-muted);">geen gekoppeld</span>'}
+          </div>
+          <button class="btn btn-outline btn-sm" onclick="openKenmerkKoppelModal('${scenarioId}')">Aanpassen</button>
+        </div>
+      </div>`;
+    }
+
+    function openKenmerkKoppelModal(scenarioId) {
+      if (!window.isPageAdmin) return;
+      if (!KENMERKDEFINITIES.length) {
+        showAlert('Maak eerst kenmerk-definities aan bij Beheer → Functionele kenmerken.', 'error');
+        return;
+      }
+      document.getElementById('kenmerkKoppelScenarioId').value = scenarioId;
+      const gekoppeldeIds = new Set(scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId).map(k => k.kenmerk_definitie_id));
+      document.getElementById('kenmerkKoppelLijst').innerHTML = KENMERKDEFINITIES.map(d => `
+        <label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-weight:400;">
+          <input type="checkbox" value="${d.id}" ${gekoppeldeIds.has(d.id) ? 'checked' : ''} style="width:auto;">
+          <span>${esc(d.naam)} <span style="color:var(--text-muted); font-size:12px;">(${KENMERK_VELDTYPE_LABELS[d.veldtype] || d.veldtype})</span></span>
+        </label>`).join('');
+      openModal('modalKenmerkKoppel');
+    }
+
+    async function saveKenmerkKoppeling() {
+      if (!window.isPageAdmin) return;
+      const scenarioId = document.getElementById('kenmerkKoppelScenarioId').value;
+      const geselecteerd = [...document.querySelectorAll('#kenmerkKoppelLijst input:checked')].map(cb => cb.value);
+      const huidig = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId).map(k => k.kenmerk_definitie_id);
+
+      const toeTeVoegen = geselecteerd.filter(id => !huidig.includes(id));
+      const teVerwijderen = huidig.filter(id => !geselecteerd.includes(id));
+
+      if (toeTeVoegen.length) {
+        await sb.from('scenario_kenmerk_koppelingen').insert(toeTeVoegen.map(kenmerk_definitie_id => ({ scenario_id: scenarioId, kenmerk_definitie_id })));
+      }
+      if (teVerwijderen.length) {
+        await sb.from('scenario_kenmerk_koppelingen').delete().eq('scenario_id', scenarioId).in('kenmerk_definitie_id', teVerwijderen);
+      }
+
+      closeModal('modalKenmerkKoppel');
+      await loadScenarioKenmerkKoppelingen();
+      renderScenarios();
+      showAlert('Kenmerken bijgewerkt voor dit scenario.', 'success');
+    }
+
+
+    let KENMERKDEFINITIES = [];
+    let ZORGKANTOORCODES = [];
+    const KENMERK_VELDTYPE_LABELS = { tekst: 'Tekst', numeriek: 'Numeriek', datum: 'Datum', keuzelijst: 'Keuzelijst', zorgkantoorcode: 'Zorgkantoorcode (slim)' };
+
+    async function loadKenmerkDefinities() {
+      if (!activeKetentest) { KENMERKDEFINITIES = []; return; }
+      const { data, error } = await sb.from('kenmerk_definities').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde').order('naam');
+      if (error) { console.error('loadKenmerkDefinities error:', error); KENMERKDEFINITIES = []; return; }
+      KENMERKDEFINITIES = data || [];
+      renderKenmerkDefTable();
+    }
+
+    function renderKenmerkDefTable() {
+      const tb = document.getElementById('kenmerkDefTable');
+      if (!tb) return;
+      if (!KENMERKDEFINITIES.length) {
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen kenmerken gedefinieerd.</p></div></td></tr>';
+        return;
+      }
+      tb.innerHTML = KENMERKDEFINITIES.map(k => {
+        let validatie = '—';
+        if (k.veldtype === 'numeriek') validatie = `${k.validatie_lengte || '?'} cijfers${k.validatie_elfproef ? ' + elfproef' : ''}`;
+        else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
+        return `<tr>
+          <td><strong>${esc(k.naam)}</strong></td>
+          <td>${KENMERK_VELDTYPE_LABELS[k.veldtype] || k.veldtype}</td>
+          <td style="color:var(--text-muted); font-size:13px;">${validatie}</td>
+          <td style="text-align:right;">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="editKenmerkDefinitie('${k.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteKenmerkDefinitie('${k.id}','${esc(k.naam)}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function toggleKenmerkVeldtypeOpties() {
+      const type = document.getElementById('kenmerkVeldtype').value;
+      document.getElementById('kenmerkNumeriekOpties').style.display = type === 'numeriek' ? '' : 'none';
+      document.getElementById('kenmerkKeuzelijstOpties').style.display = type === 'keuzelijst' ? '' : 'none';
+    }
+
+    function openNewKenmerkModal() {
+      if (!window.isPageAdmin) return;
+      document.getElementById('kenmerkDefId').value = '';
+      document.getElementById('kenmerkNaam').value = '';
+      document.getElementById('kenmerkVeldtype').value = 'tekst';
+      document.getElementById('kenmerkValidatieLengte').value = '';
+      document.getElementById('kenmerkElfproef').checked = false;
+      document.getElementById('kenmerkKeuzelijstWaarden').value = '';
+      toggleKenmerkVeldtypeOpties();
+      document.getElementById('modalKenmerkTitle').textContent = 'Kenmerk toevoegen';
+      document.getElementById('alertKenmerk').style.display = 'none';
+      openModal('modalKenmerk');
+    }
+
+    function editKenmerkDefinitie(id) {
+      if (!window.isPageAdmin) return;
+      const k = KENMERKDEFINITIES.find(x => x.id === id);
+      if (!k) return;
+      document.getElementById('kenmerkDefId').value = k.id;
+      document.getElementById('kenmerkNaam').value = k.naam;
+      document.getElementById('kenmerkVeldtype').value = k.veldtype;
+      document.getElementById('kenmerkValidatieLengte').value = k.validatie_lengte || '';
+      document.getElementById('kenmerkElfproef').checked = !!k.validatie_elfproef;
+      document.getElementById('kenmerkKeuzelijstWaarden').value = (k.keuzelijst_waarden || []).join('\n');
+      toggleKenmerkVeldtypeOpties();
+      document.getElementById('modalKenmerkTitle').textContent = 'Kenmerk bewerken';
+      document.getElementById('alertKenmerk').style.display = 'none';
+      openModal('modalKenmerk');
+    }
+
+    async function saveKenmerkDefinitie() {
+      if (!window.isPageAdmin) return;
+      const id = document.getElementById('kenmerkDefId').value;
+      const naam = document.getElementById('kenmerkNaam').value.trim();
+      const veldtype = document.getElementById('kenmerkVeldtype').value;
+      if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKenmerk'); return; }
+
+      const payload = { naam, veldtype, validatie_lengte: null, validatie_elfproef: false, keuzelijst_waarden: null };
+      if (veldtype === 'numeriek') {
+        const lengte = parseInt(document.getElementById('kenmerkValidatieLengte').value);
+        if (!lengte || lengte < 1) { showAlert('Vul een geldige lengte in (bijv. 8 voor AGB-code).', 'error', 'alertKenmerk'); return; }
+        payload.validatie_lengte = lengte;
+        payload.validatie_elfproef = document.getElementById('kenmerkElfproef').checked;
+      } else if (veldtype === 'keuzelijst') {
+        const waarden = document.getElementById('kenmerkKeuzelijstWaarden').value.split('\n').map(v => v.trim()).filter(Boolean);
+        if (!waarden.length) { showAlert('Vul minimaal 1 keuzemogelijkheid in.', 'error', 'alertKenmerk'); return; }
+        payload.keuzelijst_waarden = waarden;
+      }
+
+      let dbError;
+      if (id) {
+        const res = await sb.from('kenmerk_definities').update(payload).eq('id', id);
+        dbError = res.error;
+      } else {
+        const res = await sb.from('kenmerk_definities').insert({ ...payload, ketentest_id: activeKetentest.id });
+        dbError = res.error;
+      }
+
+      if (dbError) { showAlert('Fout bij opslaan: ' + dbError.message, 'error', 'alertKenmerk'); return; }
+
+      closeModal('modalKenmerk');
+      await loadKenmerkDefinities();
+      showAlert('Kenmerk opgeslagen.', 'success');
+    }
+
+    function deleteKenmerkDefinitie(id, naam) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = `Kenmerk "${naam}" verwijderen? Dit verwijdert ook alle reeds ingevulde waarden en koppelingen bij scenario's.`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kenmerk_definities').delete().eq('id', id);
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message); closeModal('modalConfirm'); return; }
+        closeModal('modalConfirm');
+        await loadKenmerkDefinities();
+        showAlert('Kenmerk verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
+    }
+
+    // ---- ZORGKANTOORCODES ----
+    async function loadZorgkantoorcodes() {
+      const { data, error } = await sb.from('organisatie_zorgkantoorcodes').select('*, organisations(name)').order('code');
+      if (error) { console.error('loadZorgkantoorcodes error:', error); ZORGKANTOORCODES = []; return; }
+      ZORGKANTOORCODES = data || [];
+      renderZorgkantoorcodes();
+      vulZkCodeOrgSelect();
+    }
+
+    function vulZkCodeOrgSelect() {
+      const select = document.getElementById('zkCodeOrg');
+      if (!select) return;
+      const gesorteerd = [...orgs].sort((a, b) => a.name.localeCompare(b.name, 'nl'));
+      select.innerHTML = '<option value="">Selecteer organisatie...</option>' + gesorteerd.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+    }
+
+    function renderZorgkantoorcodes() {
+      const el = document.getElementById('zkCodeLijst');
+      if (!el) return;
+      if (!ZORGKANTOORCODES.length) {
+        el.innerHTML = '<p style="color:var(--text-muted); font-size:13px;">Nog geen zorgkantoorcodes toegevoegd.</p>';
+        return;
+      }
+      el.innerHTML = ZORGKANTOORCODES.map(z => `
+        <span style="display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:100px; padding:5px 8px 5px 14px; font-size:13px;">
+          <strong style="font-family:monospace;">${esc(z.code)}</strong>
+          <span style="color:var(--text-muted);">${esc(z.organisations?.name || '—')}</span>
+          <button class="btn btn-ghost btn-icon" style="width:22px; height:22px;" onclick="verwijderZorgkantoorcode('${z.id}')" title="Verwijderen"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </span>`).join('');
+    }
+
+    async function voegZorgkantoorcodeToe() {
+      if (!window.isPageAdmin) return;
+      const orgId = document.getElementById('zkCodeOrg').value;
+      const code = document.getElementById('zkCodeWaarde').value.trim();
+      if (!orgId || !code) { showAlert('Kies een organisatie en vul een code in.', 'error'); return; }
+      const { error } = await sb.from('organisatie_zorgkantoorcodes').insert({ organisation_id: orgId, code });
+      if (error) {
+        showAlert(error.code === '23505' ? 'Deze code bestaat al bij deze organisatie.' : ('Fout bij toevoegen: ' + error.message), 'error');
+        return;
+      }
+      document.getElementById('zkCodeWaarde').value = '';
+      await loadZorgkantoorcodes();
+      showAlert('Zorgkantoorcode toegevoegd.', 'success');
+    }
+
+    async function verwijderZorgkantoorcode(id) {
+      if (!window.isPageAdmin) return;
+      const { error } = await sb.from('organisatie_zorgkantoorcodes').delete().eq('id', id);
+      if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+      await loadZorgkantoorcodes();
     }
 
     // ---- NOK-OPVOLGING (nu gebaseerd op de tabel 'bevindingen') ----
@@ -2884,6 +3237,7 @@
                 ? `<div style="margin-bottom:14px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Wanneer is al als activiteit 1 toegevoegd</div>`
                 : `<div style="margin-bottom:14px;"><button class="btn btn-outline btn-sm" onclick="zetWanneerOmInActiviteit('${s.id}')" title="Voegt de tekst van 'Instructie'/'Wanneer' toe als nieuwe eerste activiteit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Wanneer → activiteit 1</button></div>`
             ) : ''}
+            ${renderFunctioneleKenmerkenKoppeling(s.id)}
             ${acts.length ? `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <label style="font-size:13px; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer;">
