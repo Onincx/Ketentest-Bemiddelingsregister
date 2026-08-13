@@ -395,12 +395,11 @@
 
     function renderScenarioKenmerkenForm(scenarioId) {
       const koppelingen = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId);
-      if (!koppelingen.length) return '';
 
       const definities = koppelingen
         .map(k => kenmerkDefinities.find(d => d.id === k.kenmerk_definitie_id))
-        .filter(Boolean);
-      if (!definities.length) return '';
+        .filter(Boolean)
+        .sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
 
       const waarden = {};
       scenarioKenmerkWaarden.filter(w => w.scenario_id === scenarioId).forEach(w => { waarden[w.kenmerk_definitie_id] = w.waarde; });
@@ -413,6 +412,14 @@
       const eersteActiviteit = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
       const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
+
+      // Clientnaam staat altijd vooraan, als alleen-lezen veld — dit is
+      // een afgeleide waarde (scenariocode van het startscenario van de
+      // flow), geen los in te vullen kenmerk.
+      const clientnaamVeld = `<div>
+          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:4px;">Clientnaam</label>
+          <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:6px 10px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
+        </div>`;
 
       const velden = definities.map(d => {
         const huidigeWaarde = waarden[d.id] || '';
@@ -441,10 +448,11 @@
       return `<div style="margin:16px 0; padding:16px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Functionele kenmerken</p>
-          ${betrokken ? `<button class="btn btn-sm btn-primary" onclick="saveScenarioKenmerken('${scenarioId}')">Opslaan</button>` : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>'}
+          ${definities.length ? (betrokken ? `<button class="btn btn-sm btn-primary" onclick="saveScenarioKenmerken('${scenarioId}')">Opslaan</button>` : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>') : ''}
         </div>
         <div id="kenmerkenAlert-${scenarioId}" class="alert" style="display:none; margin-bottom:10px;"></div>
         <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
+          ${clientnaamVeld}
           ${velden}
         </div>
       </div>`;
@@ -932,16 +940,10 @@
           <button onclick="toggleScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
         </div>
         <div style="padding:0 20px 16px; overflow-x:auto;">
-          <div style="display:flex; gap:12px; align-items:center; margin:10px 0 4px; flex-wrap:wrap;">
-            <div style="display:flex; align-items:center; gap:6px;">
-              <span style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Clientnaam</span>
-              <span style="font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:2px 8px; font-family:monospace;">${getClientnaam(s.id)}</span>
-            </div>
-            ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px; cursor:pointer;" onclick="window.location.href='flow.html'" title="Bekijk in Flow">
+          ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px; margin:10px 0 4px; cursor:pointer; width:fit-content;" onclick="window.location.href='flow.html'" title="Bekijk in Flow">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#39870c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               <span style="font-size:11px; font-weight:600; color:#39870c;">Onderdeel van flow</span>
             </div>` : ''}
-          </div>
           ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:8px 0;">${s.description}</p>` : ''}
           ${renderNotifLabels(getScenarioNotificaties(s.id), s.id)}
           ${renderBerichtLabels(getScenarioBerichten(s.id))}

@@ -548,8 +548,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Naam</th><th>Veldtype</th><th>Validatie</th><th></th></tr></thead>
-            <tbody id="kenmerkDefTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Volgorde</th><th>Naam</th><th>Veldtype</th><th>Validatie</th><th></th></tr></thead>
+            <tbody id="kenmerkDefTable"><tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1777,14 +1777,18 @@
       const tb = document.getElementById('kenmerkDefTable');
       if (!tb) return;
       if (!KENMERKDEFINITIES.length) {
-        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen kenmerken gedefinieerd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Nog geen kenmerken gedefinieerd.</p></div></td></tr>';
         return;
       }
-      tb.innerHTML = KENMERKDEFINITIES.map(k => {
+      tb.innerHTML = KENMERKDEFINITIES.map((k, i) => {
         let validatie = '—';
         if (k.veldtype === 'numeriek') validatie = `${k.validatie_lengte || '?'} cijfers${k.validatie_elfproef ? ' + elfproef' : ''}`;
         else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
         return `<tr>
+          <td style="white-space:nowrap;">
+            <button class="btn btn-ghost btn-icon" style="width:22px; height:22px;" onclick="verplaatsKenmerk('${k.id}', -1)" title="Omhoog" ${i === 0 ? 'disabled' : ''}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg></button>
+            <button class="btn btn-ghost btn-icon" style="width:22px; height:22px;" onclick="verplaatsKenmerk('${k.id}', 1)" title="Omlaag" ${i === KENMERKDEFINITIES.length - 1 ? 'disabled' : ''}><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></button>
+          </td>
           <td><strong>${esc(k.naam)}</strong></td>
           <td>${KENMERK_VELDTYPE_LABELS[k.veldtype] || k.veldtype}</td>
           <td style="color:var(--text-muted); font-size:13px;">${validatie}</td>
@@ -1794,6 +1798,31 @@
           </td>
         </tr>`;
       }).join('');
+    }
+
+    // Wisselt de volgorde van dit kenmerk met de buur erboven/eronder
+    // (richting: -1 = omhoog, 1 = omlaag) en slaat beide direct op.
+    async function verplaatsKenmerk(id, richting) {
+      if (!window.isPageAdmin) return;
+      const idx = KENMERKDEFINITIES.findIndex(k => k.id === id);
+      const buurIdx = idx + richting;
+      if (idx === -1 || buurIdx < 0 || buurIdx >= KENMERKDEFINITIES.length) return;
+
+      const huidige = KENMERKDEFINITIES[idx];
+      const buur = KENMERKDEFINITIES[buurIdx];
+      // Zorg dat de twee volgordewaarden altijd verschillend zijn, ook
+      // als ze toevallig nog gelijk stonden (bijv. allebei 0).
+      const huidigeVolgorde = huidige.volgorde ?? idx;
+      const buurVolgorde = buur.volgorde ?? buurIdx;
+      const nieuweHuidige = huidigeVolgorde === buurVolgorde ? buurIdx : buurVolgorde;
+      const nieuweBuur = huidigeVolgorde === buurVolgorde ? idx : huidigeVolgorde;
+
+      await Promise.all([
+        sb.from('kenmerk_definities').update({ volgorde: nieuweHuidige }).eq('id', huidige.id),
+        sb.from('kenmerk_definities').update({ volgorde: nieuweBuur }).eq('id', buur.id),
+      ]);
+
+      await loadKenmerkDefinities();
     }
 
     function toggleKenmerkVeldtypeOpties() {
