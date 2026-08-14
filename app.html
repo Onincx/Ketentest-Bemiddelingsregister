@@ -372,6 +372,27 @@
       });
     }
 
+    // Is de organisatie van de ingelogde gebruiker betrokken (verantw.
+    // of acceptant van minstens 1 activiteit) bij dit scenario? Puur
+    // voor de weergave — de database (RLS) is de echte grens.
+    function isBetrokkenBijScenario(scenarioId) {
+      const myOrgId = currentProfile?.organisation_id;
+      if (!myOrgId) return false;
+      return activities.some(a => a.scenario_id === scenarioId && (a.organisation_id === myOrgId || a.acceptant_org_id === myOrgId));
+    }
+
+    // Elfproef-controle voor een BSN (of vergelijkbaar 9-cijferig
+    // nummer): som van cijfer × gewicht (9..2, dan -1 voor het laatste
+    // cijfer) moet deelbaar zijn door 11.
+    function klopElfproef(waarde) {
+      const cijfers = String(waarde).replace(/\D/g, '');
+      if (cijfers.length !== 9) return false;
+      let som = 0;
+      for (let i = 0; i < 8; i++) som += parseInt(cijfers[i]) * (9 - i);
+      som += parseInt(cijfers[8]) * -1;
+      return som % 11 === 0;
+    }
+
     // Vindt (indien aanwezig) de 'algemeen'-instantie van dit scenario
     // — die bestaat maar 1x per scenario en wordt pas echt aangemaakt
     // zodra er voor het eerst iets in wordt opgeslagen.
