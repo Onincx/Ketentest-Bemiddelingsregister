@@ -460,15 +460,24 @@
 
     function renderAlgemeneKenmerken(scenarioId) {
       const definities = kenmerkDefinities.filter(d => d.groep === 'algemeen').sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
-      const instantie = getAlgemeenInstantie(scenarioId);
-      const waarden = instantie ? getWaardenVoorInstantie(instantie.id) : {};
       const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
 
-      const editKey = `algemeen-${scenarioId}`;
-      const isNieuw = !heeftIngevuldeWaarden(waarden);
-      const inBewerkModus = isNieuw || kenmerkEditMode.has(editKey);
+      // 'Algemeen' hoort altijd bij het startscenario van de flow — bij
+      // alle andere scenario's in diezelfde flow wordt het alleen
+      // getoond (nooit een eigen kopie, nooit hier te bewerken). Zit
+      // een scenario niet in een flow, dan is het scenario zelf de bron.
+      const startScenarioId = getStartScenarioId(scenarioId);
+      const bronScenarioId = startScenarioId || scenarioId;
+      const isBron = bronScenarioId === scenarioId;
 
-      const eersteActiviteit = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
+      const instantie = getAlgemeenInstantie(bronScenarioId);
+      const waarden = instantie ? getWaardenVoorInstantie(instantie.id) : {};
+      const isNieuw = !heeftIngevuldeWaarden(waarden);
+
+      const editKey = `algemeen-${bronScenarioId}`;
+      const inBewerkModus = isBron && (isNieuw || kenmerkEditMode.has(editKey));
+
+      const eersteActiviteit = activities.filter(a => a.scenario_id === bronScenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
       const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
@@ -477,16 +486,27 @@
           <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:5px 9px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
         </div>`;
 
+      // Niet het startscenario, en bij het startscenario is nog niets
+      // ingevuld: dan valt hier ook nog niets te tonen of te doen.
+      if (definities.length && !isBron && isNieuw) {
+        const startCode = scenarios.find(s => s.id === bronScenarioId)?.code || '';
+        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
+          <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
+          <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">Nog niet ingevuld bij het startscenario${startCode ? ` (${esc(startCode)})` : ''} van deze flow.</p>
+        </div>`;
+      }
+
       // Compacte modus (data al ingevuld): alles op één dunne regel —
-      // label, Clientnaam, velden en het potlood-icoontje samen.
+      // label, Clientnaam, velden en (alleen bij het startscenario
+      // zelf) het potlood-icoontje samen.
       if (definities.length && !inBewerkModus) {
-        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
             <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
             <span style="font-size:12px;"><span style="color:var(--text-muted);">Clientnaam:</span> <strong style="font-family:monospace; margin-left:3px;">${getClientnaam(scenarioId)}</strong></span>
             ${renderKenmerkCompact(definities, waarden)}
           </div>
-          ${betrokken ? `<button class="btn btn-ghost btn-sm btn-icon" style="flex-shrink:0;" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>` : ''}
+          ${(betrokken && isBron) ? `<button class="btn btn-ghost btn-sm btn-icon" style="flex-shrink:0;" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>` : ''}
         </div>`;
       }
 
@@ -500,17 +520,17 @@
         actieKnoppen = betrokken
           ? `<div style="display:flex; gap:8px;">
               ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
-              <button class="btn btn-sm btn-primary" onclick="saveAlgemeneKenmerken('${scenarioId}')">Opslaan</button>
+              <button class="btn btn-sm btn-primary" onclick="saveAlgemeneKenmerken('${bronScenarioId}')">Opslaan</button>
             </div>`
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen</p>
+          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
           ${actieKnoppen}
         </div>
-        <div id="kenmerkenAlert-algemeen-${scenarioId}" class="alert" style="display:none; margin-bottom:8px;"></div>
+        <div id="kenmerkenAlert-algemeen-${bronScenarioId}" class="alert" style="display:none; margin-bottom:8px;"></div>
         ${inhoud}
       </div>`;
     }
@@ -541,14 +561,53 @@
       const definities = kenmerkDefinities.filter(d => d.groep === groep).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
       if (!definities.length) return '';
 
-      const instanties = scenarioKenmerkInstanties
+      const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
+
+      const eigenInstanties = scenarioKenmerkInstanties
         .filter(i => i.scenario_id === scenarioId && i.groep === groep)
         .sort((a, b) => a.volgnummer - b.volgnummer);
 
-      const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
+      let weergaveInstanties = eigenInstanties;
+      let geerfdVan = null;
+      let kanToevoegen = true;
+      let blokkeerBericht = null;
 
-      const blokken = instanties.map(inst => {
+      if (!eigenInstanties.length) {
+        const bronScenarioId = vindVoorgangerMetData(scenarioId, groep);
+        if (bronScenarioId) {
+          geerfdVan = bronScenarioId;
+          weergaveInstanties = scenarioKenmerkInstanties
+            .filter(i => i.scenario_id === bronScenarioId && i.groep === groep)
+            .sort((a, b) => a.volgnummer - b.volgnummer);
+        } else if (!isStartVanFlow(scenarioId) && isInFlow(scenarioId)) {
+          // Geen enkel eerder scenario in deze flow heeft hier al iets
+          // voor ingevuld — dan kan dit scenario ook nog niet beginnen.
+          kanToevoegen = false;
+          const startId = getStartScenarioId(scenarioId);
+          const startCode = startId ? (scenarios.find(s => s.id === startId)?.code || '') : '';
+          blokkeerBericht = `Kan hier nog niet worden ingevuld — vul dit eerst in bij een eerder scenario in deze flow${startCode ? `, te beginnen bij ${esc(startCode)}` : ''}.`;
+        }
+      }
+
+      const blokken = weergaveInstanties.map(inst => {
         const waarden = getWaardenVoorInstantie(inst.id);
+
+        // Geërfde data (nog geen eigen kopie bij dit scenario): altijd
+        // compact tonen. Potlood/prullenbak maken bij klikken eerst een
+        // eigen kopie aan (fork) en passen die vervolgens aan.
+        if (geerfdVan) {
+          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #eddca0;">
+            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">
+              <strong style="font-size:12px; white-space:nowrap; color:var(--text-muted);">${titel} ${inst.volgnummer} <span style="font-weight:400; font-style:italic;">(geërfd)</span></strong>
+              ${renderKenmerkCompact(definities, waarden)}
+            </div>
+            ${betrokken ? `<div style="display:flex; gap:2px; flex-shrink:0;">
+                <button class="btn btn-ghost btn-sm btn-icon" onclick="bewerkGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Bewerken (maakt een eigen kopie bij dit scenario)">${ICOON_POTLOOD}</button>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Verwijderen (maakt een eigen kopie bij dit scenario)">${ICOON_PRULLENBAK}</button>
+              </div>` : ''}
+          </div>`;
+        }
+
         const isNieuw = !heeftIngevuldeWaarden(waarden);
         const inBewerkModus = isNieuw || kenmerkEditMode.has(inst.id);
 
@@ -589,15 +648,21 @@
       const ingangsdatumDef = definities.find(d => d.naam.toLowerCase().includes('ingangsdatum'));
       const einddatumDef = definities.find(d => d.naam.toLowerCase().includes('einddatum'));
       const tijdlijn = (ingangsdatumDef && einddatumDef)
-        ? renderTijdlijn(instanties, ingangsdatumDef.id, einddatumDef.id, titel)
+        ? renderTijdlijn(weergaveInstanties, ingangsdatumDef.id, einddatumDef.id, titel)
+        : '';
+
+      const geerfdMelding = geerfdVan
+        ? `<p style="font-size:11px; color:var(--text-muted); font-style:italic; margin:0 0 8px;">Toont de gegevens van een eerder scenario in deze flow — pas iets aan om hier een eigen versie van te maken.</p>`
         : '';
 
       return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
-          ${betrokken ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
+          ${(betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
         </div>
-        ${blokken || `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen ${titel.toLowerCase()} toegevoegd.</p>`}
+        ${geerfdMelding}
+        ${blokkeerBericht ? `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">${blokkeerBericht}</p>` : ''}
+        ${blokken || (blokkeerBericht ? '' : `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen ${titel.toLowerCase()} toegevoegd.</p>`)}
         ${tijdlijn}
       </div>`;
     }
@@ -641,7 +706,78 @@
       </div>`;
     }
 
+    // Kopieert een reeks bron-instanties (met hun waarden) naar nieuwe,
+    // eigen instanties bij het doelscenario. Geeft een mapping terug
+    // van oude → nieuwe instantie, of null als er iets misging.
+    async function forkKenmerkenNaarScenario(doelScenarioId, bronInstanties, groep) {
+      const { data: { user } } = await sb.auth.getUser();
+      const mapping = {};
+      for (const bronInst of bronInstanties) {
+        const { data: nieuweInst, error } = await sb.from('scenario_kenmerk_instanties')
+          .insert({ scenario_id: doelScenarioId, groep, volgnummer: bronInst.volgnummer, created_by: user?.id || null })
+          .select().single();
+        if (error) { showAlert('Fout bij aanmaken eigen kopie: ' + error.message, 'error'); return null; }
+        scenarioKenmerkInstanties.push(nieuweInst);
+
+        const bronWaarden = getWaardenVoorInstantie(bronInst.id);
+        const rows = Object.entries(bronWaarden)
+          .filter(([, waarde]) => waarde)
+          .map(([kenmerk_definitie_id, waarde]) => ({
+            instantie_id: nieuweInst.id, kenmerk_definitie_id, waarde,
+            updated_by: user?.id || null, updated_at: new Date().toISOString(),
+          }));
+        if (rows.length) {
+          const { error: waardenError } = await sb.from('scenario_kenmerk_waarden').insert(rows);
+          if (waardenError) { showAlert('Fout bij kopiëren van waarden: ' + waardenError.message, 'error'); return null; }
+          rows.forEach(r => scenarioKenmerkWaarden.push(r));
+        }
+        mapping[bronInst.id] = nieuweInst;
+      }
+      return mapping;
+    }
+
+    async function bewerkGeerfdeInstantie(scenarioId, groep, instantieId) {
+      const bronScenarioId = vindVoorgangerMetData(scenarioId, groep);
+      if (!bronScenarioId) return;
+      const bronInstanties = scenarioKenmerkInstanties.filter(i => i.scenario_id === bronScenarioId && i.groep === groep);
+      const mapping = await forkKenmerkenNaarScenario(scenarioId, bronInstanties, groep);
+      if (!mapping) return;
+      const nieuweInst = mapping[instantieId];
+      if (nieuweInst) kenmerkEditMode.add(nieuweInst.id);
+      rerenderScenario(scenarioId);
+    }
+
+    async function verwijderGeerfdeInstantie(scenarioId, groep, instantieId) {
+      if (!confirm('Dit blok verwijderen? Dit maakt een eigen kopie van deze gegevens bij dit scenario aan (het eerdere scenario blijft ongewijzigd), zonder dit ene blok.')) return;
+      const bronScenarioId = vindVoorgangerMetData(scenarioId, groep);
+      if (!bronScenarioId) return;
+      const bronInstanties = scenarioKenmerkInstanties.filter(i => i.scenario_id === bronScenarioId && i.groep === groep);
+      const mapping = await forkKenmerkenNaarScenario(scenarioId, bronInstanties, groep);
+      if (!mapping) return;
+      const teVerwijderen = mapping[instantieId];
+      if (teVerwijderen) {
+        const { error } = await sb.from('scenario_kenmerk_instanties').delete().eq('id', teVerwijderen.id);
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        scenarioKenmerkInstanties = scenarioKenmerkInstanties.filter(i => i.id !== teVerwijderen.id);
+        scenarioKenmerkWaarden = scenarioKenmerkWaarden.filter(w => w.instantie_id !== teVerwijderen.id);
+      }
+      rerenderScenario(scenarioId);
+    }
+
     async function voegBlokToe(scenarioId, groep) {
+      const eigenInstanties = scenarioKenmerkInstanties.filter(i => i.scenario_id === scenarioId && i.groep === groep);
+      if (!eigenInstanties.length) {
+        // Nog geen eigen data: als er wel geërfde data is, eerst die
+        // volledig kopiëren, zodat het nieuwe blok een aanvulling wordt
+        // op wat al zichtbaar was (i.p.v. dat de geërfde data verdwijnt).
+        const bronScenarioId = vindVoorgangerMetData(scenarioId, groep);
+        if (bronScenarioId) {
+          const bronInstanties = scenarioKenmerkInstanties.filter(i => i.scenario_id === bronScenarioId && i.groep === groep);
+          const mapping = await forkKenmerkenNaarScenario(scenarioId, bronInstanties, groep);
+          if (!mapping) return;
+        }
+      }
+
       const bestaande = scenarioKenmerkInstanties.filter(i => i.scenario_id === scenarioId && i.groep === groep);
       const volgnummer = bestaande.length ? Math.max(...bestaande.map(i => i.volgnummer)) + 1 : 1;
       const { data: { user } } = await sb.auth.getUser();
@@ -732,6 +868,51 @@
 
       const startScenario = scenarios.find(x => x.id === startNode.scenario_id);
       return startScenario?.code || s?.code || '';
+    }
+
+    // Vindt het startscenario van de flow waar dit scenario deel van
+    // uitmaakt (of null als dit scenario niet in een flow zit). Wordt
+    // gebruikt voor het 'Algemeen'-blok, dat altijd 1-op-1 het
+    // startscenario volgt.
+    function getStartScenarioId(scenarioId) {
+      const node = flowNodes.find(n => n.scenario_id === scenarioId);
+      if (!node || !node.flow_id) return null;
+      const startNode = flowNodes.find(n => n.flow_id === node.flow_id && n.is_start);
+      return startNode ? startNode.scenario_id : null;
+    }
+
+    // Loopt van dit scenario terug door de flow (via de edges) en
+    // geeft het dichtstbijzijnde vóórliggende scenario terug dat zelf
+    // al kenmerk-instanties heeft in de opgegeven groep. Gebruikt een
+    // brede zoektocht (BFS) zodat het ook bij vertakkingen werkt; bij
+    // meerdere even-dichtbije voorgangers met data wordt de eerst
+    // gevonden gebruikt.
+    function vindVoorgangerMetData(scenarioId, groep) {
+      const node = flowNodes.find(n => n.scenario_id === scenarioId);
+      if (!node || !node.flow_id) return null;
+
+      const bezocht = new Set([node.id]);
+      let laag = flowEdges.filter(e => e.to_id === node.id).map(e => e.from_id);
+
+      while (laag.length) {
+        const volgendeLaag = [];
+        for (const nodeId of laag) {
+          if (bezocht.has(nodeId)) continue;
+          bezocht.add(nodeId);
+          const voorgangerNode = flowNodes.find(n => n.id === nodeId);
+          if (!voorgangerNode) continue;
+          const heeftEigenData = scenarioKenmerkInstanties.some(i => i.scenario_id === voorgangerNode.scenario_id && i.groep === groep);
+          if (heeftEigenData) return voorgangerNode.scenario_id;
+          flowEdges.filter(e => e.to_id === nodeId).forEach(e => volgendeLaag.push(e.from_id));
+        }
+        laag = volgendeLaag;
+      }
+      return null;
+    }
+
+    function isStartVanFlow(scenarioId) {
+      const node = flowNodes.find(n => n.scenario_id === scenarioId);
+      return !!(node && node.is_start);
     }
 
     function isInFlow(scenarioId) {

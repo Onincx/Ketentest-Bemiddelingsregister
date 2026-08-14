@@ -386,7 +386,17 @@ Geen SQL-wijziging nodig.
 
 ---
 
-## Nieuw tijdelijk wachtwoord instellen voor bestaande gebruikers (nieuw)
+## Functionele kenmerken stromen mee door een flow (nieuw)
+
+De functionele kenmerken (Algemeen, Toewijzing, Regierol) hoeven niet bij elk scenario in een flow opnieuw te worden ingevuld:
+
+- **Algemeen** (Clientnaam, BSN, Verantwoordelijk Zorgkantoor) hoort altijd bij het **startscenario** van de flow. Bij alle andere scenario's in dezelfde flow wordt het alleen getoond (met de tekst "van startscenario"), nooit daar te bewerken. Is het nog niet ingevuld bij het startscenario, dan zie je bij latere scenario's een melding daarover.
+- **Toewijzing** en **Regierol** "erven" van het dichtstbijzijnde eerdere scenario in de flow dat er al eigen gegevens voor heeft. Zo'n geërfd blok wordt getoond met het label "(geërfd)".
+  - Klik je op het potlood- of prullenbak-icoon bij een geërfd blok, dan wordt er automatisch een **eigen kopie** van alle geërfde gegevens bij dít scenario aangemaakt (het eerdere scenario blijft ongewijzigd), waarna je wijziging op die kopie wordt toegepast.
+  - Klik je op "+ Toewijzing toevoegen" (of Regierol) terwijl er nog geërfde data staat, dan wordt eerst diezelfde kopie gemaakt, en komt het nieuwe blok daar achteraan.
+  - Heeft **geen enkel eerder scenario** in de flow hier al iets voor ingevuld (en is dit scenario niet zelf het startscenario), dan is toevoegen geblokkeerd, met een melding welk scenario als eerste ingevuld moet worden.
+
+Geen aparte SQL-migratie nodig — dit werkt met de bestaande tabellen.
 
 Werkt het tijdelijke wachtwoord van een gebruiker niet meer (bijv. te lang gewacht met de eerste keer inloggen), dan kan een beheerder nu handmatig een nieuw tijdelijk wachtwoord instellen — zonder e-mail, direct in de tool.
 
