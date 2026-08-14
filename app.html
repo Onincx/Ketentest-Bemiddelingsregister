@@ -255,6 +255,11 @@
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
+    // Welke blokken staan in bewerkmodus? Sleutel is de instantie-id,
+    // of 'algemeen-<scenarioId>' voor het algemene blok. Puur
+    // UI-state, niet opgeslagen — een blok met al ingevulde waarden
+    // toont standaard compact (alleen-lezen).
+    const kenmerkEditMode = new Set();
     let activeFilter = 'all';
     let activeKetentest = null;
     const autosaveTimers = {};
@@ -430,33 +435,77 @@
     }
 
     // ---- ALGEMEEN (Clientnaam + vaste velden, 1x per scenario) ----
+    // Pictogrammen voor bewerken/verwijderen, hergebruikt op meerdere plekken.
+    const ICOON_POTLOOD = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const ICOON_PRULLENBAK = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>`;
+
+    // Compacte, alleen-lezen weergave van een reeks kenmerk-waarden
+    // (label: waarde, naast elkaar).
+    function renderKenmerkCompact(definities, waarden) {
+      return definities.map(d => `<div style="font-size:13px;">
+          <span style="color:var(--text-muted);">${esc(d.naam)}:</span>
+          <strong style="margin-left:4px;">${waarden[d.id] ? esc(waarden[d.id]) : '—'}</strong>
+        </div>`).join('');
+    }
+
+    function heeftIngevuldeWaarden(waarden) {
+      return Object.values(waarden).some(w => w);
+    }
+
+    function toggleKenmerkEditMode(key, scenarioId, aan) {
+      if (aan) kenmerkEditMode.add(key); else kenmerkEditMode.delete(key);
+      rerenderScenario(scenarioId);
+    }
+
     function renderAlgemeneKenmerken(scenarioId) {
       const definities = kenmerkDefinities.filter(d => d.groep === 'algemeen').sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
       const instantie = getAlgemeenInstantie(scenarioId);
       const waarden = instantie ? getWaardenVoorInstantie(instantie.id) : {};
       const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
 
+      const editKey = `algemeen-${scenarioId}`;
+      const isNieuw = !heeftIngevuldeWaarden(waarden);
+      const inBewerkModus = isNieuw || kenmerkEditMode.has(editKey);
+
       const eersteActiviteit = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
       const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
-      const clientnaamVeld = `<div>
+      const clientnaamVeldEdit = `<div>
           <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:4px;">Clientnaam</label>
           <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:6px 10px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
         </div>`;
 
-      const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, relevanteZkCodes)).join('');
+      let inhoud, actieKnoppen;
+      if (!definities.length) {
+        inhoud = clientnaamVeldEdit;
+        actieKnoppen = '';
+      } else if (inBewerkModus) {
+        const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, relevanteZkCodes)).join('');
+        inhoud = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">${clientnaamVeldEdit}${velden}</div>`;
+        actieKnoppen = betrokken
+          ? `<div style="display:flex; gap:8px;">
+              ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
+              <button class="btn btn-sm btn-primary" onclick="saveAlgemeneKenmerken('${scenarioId}')">Opslaan</button>
+            </div>`
+          : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
+      } else {
+        inhoud = `<div style="display:flex; flex-wrap:wrap; gap:8px 24px; align-items:center;">
+          <span style="font-size:13px;"><span style="color:var(--text-muted);">Clientnaam:</span> <strong style="font-family:monospace;">${getClientnaam(scenarioId)}</strong></span>
+          ${renderKenmerkCompact(definities, waarden)}
+        </div>`;
+        actieKnoppen = betrokken
+          ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>`
+          : '';
+      }
 
       return `<div style="margin:16px 0; padding:16px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen</p>
-          ${definities.length ? (betrokken ? `<button class="btn btn-sm btn-primary" onclick="saveAlgemeneKenmerken('${scenarioId}')">Opslaan</button>` : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>') : ''}
+          ${actieKnoppen}
         </div>
         <div id="kenmerkenAlert-algemeen-${scenarioId}" class="alert" style="display:none; margin-bottom:10px;"></div>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">
-          ${clientnaamVeld}
-          ${velden}
-        </div>
+        ${inhoud}
       </div>`;
     }
 
@@ -477,6 +526,8 @@
       }
 
       await slaWaardenOp(instantie.id, inputs, alertId);
+      kenmerkEditMode.delete(`algemeen-${scenarioId}`);
+      rerenderScenario(scenarioId);
     }
 
     // ---- HERHAALBARE BLOKKEN (Toewijzing / Regierol) ----
@@ -492,17 +543,33 @@
 
       const blokken = instanties.map(inst => {
         const waarden = getWaardenVoorInstantie(inst.id);
-        const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
+        const isNieuw = !heeftIngevuldeWaarden(waarden);
+        const inBewerkModus = isNieuw || kenmerkEditMode.has(inst.id);
+
+        let inhoud, actieKnoppen;
+        if (inBewerkModus) {
+          const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
+          inhoud = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px;">${velden}</div>`;
+          actieKnoppen = betrokken ? `<div style="display:flex; gap:8px;">
+              ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',false)">Annuleren</button>` : ''}
+              <button class="btn btn-sm btn-outline" onclick="saveBlokInstantie('${inst.id}')">Opslaan</button>
+              <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')">Verwijderen</button>
+            </div>` : '';
+        } else {
+          inhoud = `<div style="display:flex; flex-wrap:wrap; gap:8px 24px; align-items:center;">${renderKenmerkCompact(definities, waarden)}</div>`;
+          actieKnoppen = betrokken ? `<div style="display:flex; gap:4px;">
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>
+              <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')" title="Verwijderen">${ICOON_PRULLENBAK}</button>
+            </div>` : '';
+        }
+
         return `<div style="border:1px solid #dce6f2; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <strong style="font-size:13px;">${titel} ${inst.volgnummer}</strong>
-            ${betrokken ? `<div style="display:flex; gap:8px;">
-              <button class="btn btn-sm btn-outline" onclick="saveBlokInstantie('${inst.id}')">Opslaan</button>
-              <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')">Verwijderen</button>
-            </div>` : ''}
+            ${actieKnoppen}
           </div>
           <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px;">${velden}</div>
+          ${inhoud}
         </div>`;
       }).join('');
 
@@ -569,6 +636,7 @@
       const { data, error } = await sb.from('scenario_kenmerk_instanties').insert({ scenario_id: scenarioId, groep, volgnummer, created_by: user?.id || null }).select().single();
       if (error) { showAlert('Fout bij toevoegen: ' + error.message, 'error'); return; }
       scenarioKenmerkInstanties.push(data);
+      kenmerkEditMode.add(data.id); // nieuw blok opent meteen in bewerkmodus
       rerenderScenario(scenarioId);
     }
 
@@ -578,16 +646,20 @@
       if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
       scenarioKenmerkInstanties = scenarioKenmerkInstanties.filter(i => i.id !== instantieId);
       scenarioKenmerkWaarden = scenarioKenmerkWaarden.filter(w => w.instantie_id !== instantieId);
+      kenmerkEditMode.delete(instantieId);
       rerenderScenario(scenarioId);
     }
 
     async function saveBlokInstantie(instantieId) {
       const wrap = document.querySelector(`[data-instantie-id="${instantieId}"]`);
       if (!wrap) return;
+      const scenarioId = wrap.dataset.scenarioId;
       const alertId = `kenmerkenAlert-${instantieId}`;
       const inputs = wrap.querySelectorAll('[data-kenmerk-id]');
       if (!valideerVelden(inputs, alertId)) return;
       await slaWaardenOp(instantieId, inputs, alertId);
+      kenmerkEditMode.delete(instantieId);
+      rerenderScenario(scenarioId);
     }
 
     function valideerVelden(inputs, alertId) {
