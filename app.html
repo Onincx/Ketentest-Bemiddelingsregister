@@ -480,7 +480,7 @@
       // Compacte modus (data al ingevuld): alles op één dunne regel —
       // label, Clientnaam, velden en het potlood-icoontje samen.
       if (definities.length && !inBewerkModus) {
-        return `<div style="margin:8px 0; padding:8px 14px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
             <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
             <span style="font-size:12px;"><span style="color:var(--text-muted);">Clientnaam:</span> <strong style="font-family:monospace; margin-left:3px;">${getClientnaam(scenarioId)}</strong></span>
@@ -505,7 +505,7 @@
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen</p>
           ${actieKnoppen}
@@ -555,7 +555,7 @@
         // Compact (al ingevuld, niet in bewerking): één dunne regel met
         // titel, velden en iconen samen — geen apart kader/kop nodig.
         if (!inBewerkModus) {
-          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #dce6f2;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
+          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #eddca0;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
             <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">
               <strong style="font-size:12px; white-space:nowrap;">${titel} ${inst.volgnummer}</strong>
               ${renderKenmerkCompact(definities, waarden)}
@@ -575,7 +575,7 @@
             <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')">Verwijderen</button>
           </div>` : '';
 
-        return `<div style="border:1px solid #dce6f2; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
+        return `<div style="border:1px solid #eddca0; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <strong style="font-size:13px;">${titel} ${inst.volgnummer}</strong>
             ${actieKnoppen}
@@ -592,7 +592,7 @@
         ? renderTijdlijn(instanties, ingangsdatumDef.id, einddatumDef.id, titel)
         : '';
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
           ${betrokken ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
@@ -635,7 +635,7 @@
         </div>`;
       }).join('');
 
-      return `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #dce6f2;">
+      return `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #eddca0;">
         <p style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:3px;">Tijdlijn</p>
         ${rijen}
       </div>`;
