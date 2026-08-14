@@ -412,24 +412,25 @@
     }
 
     function renderKenmerkVeld(d, huidigeWaarde, betrokken, relevanteZkCodes) {
+      const veldStijl = 'padding:6px 9px; font-size:13px;';
       let input = '';
       if (d.veldtype === 'tekst') {
-        input = `<input type="text" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        input = `<input type="text" style="${veldStijl}" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
       } else if (d.veldtype === 'numeriek') {
-        input = `<input type="text" inputmode="numeric" data-kenmerk-id="${d.id}" data-lengte="${d.validatie_lengte || ''}" data-elfproef="${d.validatie_elfproef ? '1' : '0'}" maxlength="${d.validatie_lengte || 20}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        input = `<input type="text" inputmode="numeric" style="${veldStijl}" data-kenmerk-id="${d.id}" data-lengte="${d.validatie_lengte || ''}" data-elfproef="${d.validatie_elfproef ? '1' : '0'}" maxlength="${d.validatie_lengte || 20}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
       } else if (d.veldtype === 'datum') {
-        input = `<input type="date" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
+        input = `<input type="date" style="${veldStijl}" data-kenmerk-id="${d.id}" value="${esc(huidigeWaarde)}" ${betrokken ? '' : 'disabled'}>`;
       } else if (d.veldtype === 'keuzelijst') {
         const opties = (d.keuzelijst_waarden || []).map(w => `<option value="${esc(w)}" ${w === huidigeWaarde ? 'selected' : ''}>${esc(w)}</option>`).join('');
-        input = `<select data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`;
+        input = `<select style="${veldStijl}" data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`;
       } else if (d.veldtype === 'zorgkantoorcode') {
         const opties = relevanteZkCodes.map(z => `<option value="${esc(z.code)}" ${z.code === huidigeWaarde ? 'selected' : ''}>${esc(z.code)}</option>`).join('');
         input = relevanteZkCodes.length
-          ? `<select data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`
+          ? `<select style="${veldStijl}" data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`
           : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">Geen zorgkantoorcodes bekend voor de verantwoordelijke organisatie</span>`;
       }
       return `<div>
-        <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:4px;">${esc(d.naam)}</label>
+        <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">${esc(d.naam)}</label>
         ${input}
       </div>`;
     }
@@ -472,8 +473,8 @@
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
       const clientnaamVeldEdit = `<div>
-          <label style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; display:block; margin-bottom:4px;">Clientnaam</label>
-          <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:6px 10px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
+          <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">Clientnaam</label>
+          <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:5px 9px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
         </div>`;
 
       // Compacte modus (data al ingevuld): alles op één dunne regel —
@@ -495,7 +496,7 @@
         actieKnoppen = '';
       } else {
         const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, relevanteZkCodes)).join('');
-        inhoud = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:14px;">${clientnaamVeldEdit}${velden}</div>`;
+        inhoud = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">${clientnaamVeldEdit}${velden}</div>`;
         actieKnoppen = betrokken
           ? `<div style="display:flex; gap:8px;">
               ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
@@ -505,11 +506,11 @@
       }
 
       return `<div style="margin:10px 0; padding:12px 14px; background:#f5f8fc; border:1px solid #dce6f2; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen</p>
           ${actieKnoppen}
         </div>
-        <div id="kenmerkenAlert-algemeen-${scenarioId}" class="alert" style="display:none; margin-bottom:10px;"></div>
+        <div id="kenmerkenAlert-algemeen-${scenarioId}" class="alert" style="display:none; margin-bottom:8px;"></div>
         ${inhoud}
       </div>`;
     }
@@ -580,7 +581,7 @@
             ${actieKnoppen}
           </div>
           <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(160px, 1fr)); gap:14px;">${velden}</div>
+          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">${velden}</div>
         </div>`;
       }).join('');
 
