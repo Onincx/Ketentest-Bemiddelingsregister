@@ -518,7 +518,7 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Functionele kenmerken</h1>
-          <p>Definieer herbruikbare velden (bijv. Clientnaam, AGB-code, Leveringsvorm) die je vervolgens per scenario kunt koppelen, zodat betrokken organisaties er de daadwerkelijke waarden bij invullen.</p>
+          <p>Deze velden gelden overal hetzelfde: "Algemeen" staat 1x bij elk scenario; "Toewijzing" en "Regierol" zijn herhaalbare blokken die de betrokken organisaties zelf toevoegen bij een scenario.</p>
         </div>
         <button class="btn btn-primary" onclick="openNewKenmerkModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -544,34 +544,7 @@
         </div>
       </div>
 
-      <p class="eyebrow" style="margin-bottom:10px;">Kenmerk-definities</p>
-      <div class="card" style="padding:0;">
-        <div class="table-wrap">
-          <table>
-            <thead><tr><th>Volgorde</th><th>Naam</th><th>Veldtype</th><th>Validatie</th><th></th></tr></thead>
-            <tbody id="kenmerkDefTable"><tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Modal: functionele kenmerken koppelen aan een scenario -->
-  <div class="modal-overlay" id="modalKenmerkKoppel" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerkKoppel')">
-    <div class="modal" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3>Functionele kenmerken koppelen</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKenmerkKoppel')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <div class="modal-body">
-        <input type="hidden" id="kenmerkKoppelScenarioId">
-        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Vink aan welke kenmerken bij dit scenario ingevuld moeten kunnen worden.</p>
-        <div id="kenmerkKoppelLijst"></div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" onclick="closeModal('modalKenmerkKoppel')">Annuleren</button>
-        <button class="btn btn-primary" onclick="saveKenmerkKoppeling()">Opslaan</button>
-      </div>
+      <div id="kenmerkGroepen"></div>
     </div>
   </div>
 
@@ -584,6 +557,14 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="kenmerkDefId">
+        <div class="form-group">
+          <label>Groep <span style="color:var(--danger);">*</span></label>
+          <select id="kenmerkGroep">
+            <option value="algemeen">Algemeen (1x per scenario)</option>
+            <option value="toewijzing">Toewijzing (herhaalbaar blok)</option>
+            <option value="regierol">Regierol (herhaalbaar blok)</option>
+          </select>
+        </div>
         <div class="form-group">
           <label>Naam <span style="color:var(--danger);">*</span></label>
           <input type="text" id="kenmerkNaam" placeholder="bijv. AGB-code">
@@ -1160,20 +1141,8 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadScenarioKenmerkKoppelingen(), loadZorgkantoorcodes()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
-    }
-
-    // Welke kenmerk-definities gelden voor welk scenario. Eén keer
-    // geladen bij initialisatie; het beheerscherm bij een scenario
-    // ververst dit lokaal na het opslaan van een wijziging.
-    let scenarioKenmerkKoppelingen = [];
-    async function loadScenarioKenmerkKoppelingen() {
-      if (!scenarios.length) { scenarioKenmerkKoppelingen = []; return; }
-      const scenarioIds = scenarios.map(s => s.id);
-      const { data, error } = await fetchAllRows((from, to) => sb.from('scenario_kenmerk_koppelingen').select('*').in('scenario_id', scenarioIds).range(from, to));
-      if (error) { console.error('loadScenarioKenmerkKoppelingen error:', error); scenarioKenmerkKoppelingen = []; return; }
-      scenarioKenmerkKoppelingen = data || [];
     }
 
     async function loadScenarioFlowMap() {
@@ -1699,67 +1668,6 @@
       openModal('modalConfirm');
     }
 
-    // Toont, in het uitgeklapte scenario, welke functionele kenmerken
-    // aan dit scenario zijn gekoppeld, met een knop om dit aan te
-    // passen (checklist uit alle beschikbare kenmerk-definities).
-    function renderFunctioneleKenmerkenKoppeling(scenarioId) {
-      const gekoppeld = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId);
-      const gekoppeldeIds = new Set(gekoppeld.map(k => k.kenmerk_definitie_id));
-      const namen = KENMERKDEFINITIES.filter(d => gekoppeldeIds.has(d.id)).map(d => d.naam);
-
-      if (!KENMERKDEFINITIES.length) {
-        return `<div style="margin-bottom:14px; font-size:12px; color:var(--text-muted);">Nog geen kenmerk-definities aangemaakt (Beheer → Functionele kenmerken).</div>`;
-      }
-
-      return `<div style="margin-bottom:14px; padding:12px 14px; background:var(--surface); border-radius:8px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-          <div style="font-size:13px;">
-            <strong>Functionele kenmerken:</strong>
-            ${namen.length ? esc(namen.join(', ')) : '<span style="color:var(--text-muted);">geen gekoppeld</span>'}
-          </div>
-          <button class="btn btn-outline btn-sm" onclick="openKenmerkKoppelModal('${scenarioId}')">Aanpassen</button>
-        </div>
-      </div>`;
-    }
-
-    function openKenmerkKoppelModal(scenarioId) {
-      if (!window.isPageAdmin) return;
-      if (!KENMERKDEFINITIES.length) {
-        showAlert('Maak eerst kenmerk-definities aan bij Beheer → Functionele kenmerken.', 'error');
-        return;
-      }
-      document.getElementById('kenmerkKoppelScenarioId').value = scenarioId;
-      const gekoppeldeIds = new Set(scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId).map(k => k.kenmerk_definitie_id));
-      document.getElementById('kenmerkKoppelLijst').innerHTML = KENMERKDEFINITIES.map(d => `
-        <label style="display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); font-weight:400;">
-          <input type="checkbox" value="${d.id}" ${gekoppeldeIds.has(d.id) ? 'checked' : ''} style="width:auto;">
-          <span>${esc(d.naam)} <span style="color:var(--text-muted); font-size:12px;">(${KENMERK_VELDTYPE_LABELS[d.veldtype] || d.veldtype})</span></span>
-        </label>`).join('');
-      openModal('modalKenmerkKoppel');
-    }
-
-    async function saveKenmerkKoppeling() {
-      if (!window.isPageAdmin) return;
-      const scenarioId = document.getElementById('kenmerkKoppelScenarioId').value;
-      const geselecteerd = [...document.querySelectorAll('#kenmerkKoppelLijst input:checked')].map(cb => cb.value);
-      const huidig = scenarioKenmerkKoppelingen.filter(k => k.scenario_id === scenarioId).map(k => k.kenmerk_definitie_id);
-
-      const toeTeVoegen = geselecteerd.filter(id => !huidig.includes(id));
-      const teVerwijderen = huidig.filter(id => !geselecteerd.includes(id));
-
-      if (toeTeVoegen.length) {
-        await sb.from('scenario_kenmerk_koppelingen').insert(toeTeVoegen.map(kenmerk_definitie_id => ({ scenario_id: scenarioId, kenmerk_definitie_id })));
-      }
-      if (teVerwijderen.length) {
-        await sb.from('scenario_kenmerk_koppelingen').delete().eq('scenario_id', scenarioId).in('kenmerk_definitie_id', teVerwijderen);
-      }
-
-      closeModal('modalKenmerkKoppel');
-      await loadScenarioKenmerkKoppelingen();
-      renderScenarios();
-      showAlert('Kenmerken bijgewerkt voor dit scenario.', 'success');
-    }
-
 
     let KENMERKDEFINITIES = [];
     let ZORGKANTOORCODES = [];
@@ -1773,34 +1681,58 @@
       renderKenmerkDefTable();
     }
 
+    const KENMERK_GROEP_LABELS = {
+      algemeen: { titel: 'Algemeen', toelichting: 'Staat altijd 1x bij elk scenario.' },
+      toewijzing: { titel: 'Toewijzing', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Toewijzing 1", "Toewijzing 2", ... toe bij een scenario.' },
+      regierol: { titel: 'Regierol', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Regierol 1", "Regierol 2", ... toe bij een scenario.' },
+    };
+
     function renderKenmerkDefTable() {
-      const tb = document.getElementById('kenmerkDefTable');
-      if (!tb) return;
-      if (!KENMERKDEFINITIES.length) {
-        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Nog geen kenmerken gedefinieerd.</p></div></td></tr>';
-        return;
-      }
-      tb.innerHTML = KENMERKDEFINITIES.map((k, i) => {
-        let validatie = '—';
-        if (k.veldtype === 'numeriek') validatie = `${k.validatie_lengte || '?'} cijfers${k.validatie_elfproef ? ' + elfproef' : ''}`;
-        else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
-        return `<tr>
-          <td style="white-space:nowrap;">
-            <input type="number" value="${k.volgorde ?? 0}" style="width:64px; text-align:center;" onchange="wijzigKenmerkVolgorde('${k.id}', this.value)" title="Volgordenummer — lager = eerder in de lijst">
-          </td>
-          <td><strong>${esc(k.naam)}</strong></td>
-          <td>${KENMERK_VELDTYPE_LABELS[k.veldtype] || k.veldtype}</td>
-          <td style="color:var(--text-muted); font-size:13px;">${validatie}</td>
-          <td style="text-align:right;">
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="editKenmerkDefinitie('${k.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-            <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteKenmerkDefinitie('${k.id}','${esc(k.naam)}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
-          </td>
-        </tr>`;
+      const container = document.getElementById('kenmerkGroepen');
+      if (!container) return;
+
+      container.innerHTML = ['algemeen', 'toewijzing', 'regierol'].map(groep => {
+        const items = KENMERKDEFINITIES.filter(k => k.groep === groep);
+        const label = KENMERK_GROEP_LABELS[groep];
+
+        const rijen = items.length
+          ? items.map((k, i) => {
+              let validatie = '—';
+              if (k.veldtype === 'numeriek') validatie = `${k.validatie_lengte || '?'} cijfers${k.validatie_elfproef ? ' + elfproef' : ''}`;
+              else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
+              return `<tr>
+                <td style="white-space:nowrap;">
+                  <input type="number" value="${k.volgorde ?? 0}" style="width:64px; text-align:center;" onchange="wijzigKenmerkVolgorde('${k.id}', this.value)" title="Volgordenummer — lager = eerder in de lijst">
+                </td>
+                <td><strong>${esc(k.naam)}</strong></td>
+                <td>${KENMERK_VELDTYPE_LABELS[k.veldtype] || k.veldtype}</td>
+                <td style="color:var(--text-muted); font-size:13px;">${validatie}</td>
+                <td style="text-align:right;">
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="editKenmerkDefinitie('${k.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+                  <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteKenmerkDefinitie('${k.id}','${esc(k.naam)}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
+                </td>
+              </tr>`;
+            }).join('')
+          : `<tr><td colspan="5"><div class="empty-state"><p>Nog geen velden in deze groep.</p></div></td></tr>`;
+
+        return `<div style="margin-bottom:24px;">
+          <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
+            <p class="eyebrow">${label.titel}</p>
+            <button class="btn btn-outline btn-sm" onclick="openNewKenmerkModal('${groep}')">+ Veld toevoegen aan ${label.titel}</button>
+          </div>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">${label.toelichting}</p>
+          <div class="card" style="padding:0;">
+            <div class="table-wrap">
+              <table>
+                <thead><tr><th>Volgorde</th><th>Naam</th><th>Veldtype</th><th>Validatie</th><th></th></tr></thead>
+                <tbody>${rijen}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>`;
       }).join('');
     }
 
-    // Wisselt de volgorde van dit kenmerk met de buur erboven/eronder
-    // (richting: -1 = omhoog, 1 = omlaag) en slaat beide direct op.
     // Zet het volgordenummer van dit kenmerk direct op de door de
     // beheerder ingetypte waarde. Simpeler en voorspelbaarder dan
     // twee nummers verwisselen — vooral omdat kenmerken die nog nooit
@@ -1820,9 +1752,10 @@
       document.getElementById('kenmerkKeuzelijstOpties').style.display = type === 'keuzelijst' ? '' : 'none';
     }
 
-    function openNewKenmerkModal() {
+    function openNewKenmerkModal(groep) {
       if (!window.isPageAdmin) return;
       document.getElementById('kenmerkDefId').value = '';
+      document.getElementById('kenmerkGroep').value = groep || 'algemeen';
       document.getElementById('kenmerkNaam').value = '';
       document.getElementById('kenmerkVeldtype').value = 'tekst';
       document.getElementById('kenmerkValidatieLengte').value = '';
@@ -1839,6 +1772,7 @@
       const k = KENMERKDEFINITIES.find(x => x.id === id);
       if (!k) return;
       document.getElementById('kenmerkDefId').value = k.id;
+      document.getElementById('kenmerkGroep').value = k.groep || 'algemeen';
       document.getElementById('kenmerkNaam').value = k.naam;
       document.getElementById('kenmerkVeldtype').value = k.veldtype;
       document.getElementById('kenmerkValidatieLengte').value = k.validatie_lengte || '';
@@ -1853,11 +1787,12 @@
     async function saveKenmerkDefinitie() {
       if (!window.isPageAdmin) return;
       const id = document.getElementById('kenmerkDefId').value;
+      const groep = document.getElementById('kenmerkGroep').value;
       const naam = document.getElementById('kenmerkNaam').value.trim();
       const veldtype = document.getElementById('kenmerkVeldtype').value;
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertKenmerk'); return; }
 
-      const payload = { naam, veldtype, validatie_lengte: null, validatie_elfproef: false, keuzelijst_waarden: null };
+      const payload = { naam, veldtype, groep, validatie_lengte: null, validatie_elfproef: false, keuzelijst_waarden: null };
       if (veldtype === 'numeriek') {
         const lengte = parseInt(document.getElementById('kenmerkValidatieLengte').value);
         if (!lengte || lengte < 1) { showAlert('Vul een geldige lengte in (bijv. 8 voor AGB-code).', 'error', 'alertKenmerk'); return; }
@@ -1874,10 +1809,9 @@
         const res = await sb.from('kenmerk_definities').update(payload).eq('id', id);
         dbError = res.error;
       } else {
-        // Nieuw kenmerk: zet 'm automatisch achteraan (hoogste bestaande
-        // volgorde + 1), zodat niet alles op dezelfde waarde (0) blijft
-        // staan — dat maakte handmatig herordenen eerder onvoorspelbaar.
-        const hoogsteVolgorde = KENMERKDEFINITIES.reduce((max, k) => Math.max(max, k.volgorde ?? 0), -1);
+        // Nieuw kenmerk: zet 'm automatisch achteraan bínnen zijn groep
+        // (hoogste bestaande volgorde in die groep + 1).
+        const hoogsteVolgorde = KENMERKDEFINITIES.filter(k => k.groep === groep).reduce((max, k) => Math.max(max, k.volgorde ?? 0), -1);
         const res = await sb.from('kenmerk_definities').insert({ ...payload, ketentest_id: activeKetentest.id, volgorde: hoogsteVolgorde + 1 });
         dbError = res.error;
       }
@@ -1891,7 +1825,7 @@
 
     function deleteKenmerkDefinitie(id, naam) {
       if (!window.isPageAdmin) return;
-      document.getElementById('confirmMsg').textContent = `Kenmerk "${naam}" verwijderen? Dit verwijdert ook alle reeds ingevulde waarden en koppelingen bij scenario's.`;
+      document.getElementById('confirmMsg').textContent = `Kenmerk "${naam}" verwijderen? Dit verwijdert ook alle reeds ingevulde waarden.`;
       document.getElementById('confirmBtn').onclick = async () => {
         const { error } = await sb.from('kenmerk_definities').delete().eq('id', id);
         if (error) { showAlert('Fout bij verwijderen: ' + error.message); closeModal('modalConfirm'); return; }
@@ -3259,8 +3193,7 @@
                 ? `<div style="margin-bottom:14px; font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> Wanneer is al als activiteit 1 toegevoegd</div>`
                 : `<div style="margin-bottom:14px;"><button class="btn btn-outline btn-sm" onclick="zetWanneerOmInActiviteit('${s.id}')" title="Voegt de tekst van 'Instructie'/'Wanneer' toe als nieuwe eerste activiteit"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Wanneer → activiteit 1</button></div>`
             ) : ''}
-            ${renderFunctioneleKenmerkenKoppeling(s.id)}
-            ${acts.length ? `
+                        ${acts.length ? `
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
               <label style="font-size:13px; color:var(--text-muted); display:flex; align-items:center; gap:6px; cursor:pointer;">
                 <input type="checkbox" id="sel-all-${s.id}" onchange="toggleSelectAll('${s.id}', this.checked)" style="width:15px; height:15px; cursor:pointer;">
