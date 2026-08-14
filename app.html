@@ -891,23 +891,34 @@
       const node = flowNodes.find(n => n.scenario_id === scenarioId);
       if (!node || !node.flow_id) return null;
 
-      const bezocht = new Set([node.id]);
-      let laag = flowEdges.filter(e => e.to_id === node.id).map(e => e.from_id);
-
-      while (laag.length) {
-        const volgendeLaag = [];
-        for (const nodeId of laag) {
-          if (bezocht.has(nodeId)) continue;
-          bezocht.add(nodeId);
-          const voorgangerNode = flowNodes.find(n => n.id === nodeId);
-          if (!voorgangerNode) continue;
-          const heeftEigenData = scenarioKenmerkInstanties.some(i => i.scenario_id === voorgangerNode.scenario_id && i.groep === groep);
-          if (heeftEigenData) return voorgangerNode.scenario_id;
-          flowEdges.filter(e => e.to_id === nodeId).forEach(e => volgendeLaag.push(e.from_id));
+      // Loopt breedte-eerst terug door de flow, met een meegegeven
+      // functie die voor een node-id de 'voorgangers' oplevert.
+      const zoekMetRichting = (haalVoorgangers) => {
+        const bezocht = new Set([node.id]);
+        let laag = haalVoorgangers(node.id);
+        while (laag.length) {
+          const volgendeLaag = [];
+          for (const nodeId of laag) {
+            if (bezocht.has(nodeId)) continue;
+            bezocht.add(nodeId);
+            const voorgangerNode = flowNodes.find(n => n.id === nodeId);
+            if (!voorgangerNode) continue;
+            const heeftEigenData = scenarioKenmerkInstanties.some(i => i.scenario_id === voorgangerNode.scenario_id && i.groep === groep);
+            if (heeftEigenData) return voorgangerNode.scenario_id;
+            haalVoorgangers(nodeId).forEach(id => volgendeLaag.push(id));
+          }
+          laag = volgendeLaag;
         }
-        laag = volgendeLaag;
-      }
-      return null;
+        return null;
+      };
+
+      // Probeer eerst de gangbare richting (pijl loopt van een eerder
+      // naar een later scenario, dus 'to_id' is dit scenario en
+      // 'from_id' de voorganger). Levert dat niets op, probeer dan de
+      // omgekeerde richting — afhankelijk van hoe de pijl in de
+      // Flow-weergave getekend is, kan dat ook andersom opgeslagen zijn.
+      return zoekMetRichting(id => flowEdges.filter(e => e.to_id === id).map(e => e.from_id))
+        ?? zoekMetRichting(id => flowEdges.filter(e => e.from_id === id).map(e => e.to_id));
     }
 
     function isStartVanFlow(scenarioId) {
