@@ -891,21 +891,20 @@
       const node = flowNodes.find(n => n.scenario_id === scenarioId);
       if (!node || !node.flow_id) return null;
 
-      // Loopt breedte-eerst terug door de flow, met een meegegeven
-      // functie die voor een node-id de 'voorgangers' oplevert.
+      // LET OP: flow_edges.from_id/to_id verwijzen (ondanks de naam)
+      // rechtstreeks naar scenario_id's, niet naar flow_nodes.id — zo
+      // slaat flow.html ze op. Geen omweg via flowNodes dus nodig.
       const zoekMetRichting = (haalVoorgangers) => {
-        const bezocht = new Set([node.id]);
-        let laag = haalVoorgangers(node.id);
+        const bezocht = new Set([scenarioId]);
+        let laag = haalVoorgangers(scenarioId);
         while (laag.length) {
           const volgendeLaag = [];
-          for (const nodeId of laag) {
-            if (bezocht.has(nodeId)) continue;
-            bezocht.add(nodeId);
-            const voorgangerNode = flowNodes.find(n => n.id === nodeId);
-            if (!voorgangerNode) continue;
-            const heeftEigenData = scenarioKenmerkInstanties.some(i => i.scenario_id === voorgangerNode.scenario_id && i.groep === groep);
-            if (heeftEigenData) return voorgangerNode.scenario_id;
-            haalVoorgangers(nodeId).forEach(id => volgendeLaag.push(id));
+          for (const voorgangerScenarioId of laag) {
+            if (bezocht.has(voorgangerScenarioId)) continue;
+            bezocht.add(voorgangerScenarioId);
+            const heeftEigenData = scenarioKenmerkInstanties.some(i => i.scenario_id === voorgangerScenarioId && i.groep === groep);
+            if (heeftEigenData) return voorgangerScenarioId;
+            haalVoorgangers(voorgangerScenarioId).forEach(id => volgendeLaag.push(id));
           }
           laag = volgendeLaag;
         }
