@@ -429,7 +429,7 @@
           ? `<select style="${veldStijl}" data-kenmerk-id="${d.id}" ${betrokken ? '' : 'disabled'}><option value="">— kies —</option>${opties}</select>`
           : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">Geen zorgkantoorcodes bekend voor de verantwoordelijke organisatie</span>`;
       }
-      return `<div>
+      return `<div style="width:190px;">
         <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">${esc(d.naam)}</label>
         ${input}
       </div>`;
@@ -481,7 +481,7 @@
       const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
-      const clientnaamVeldEdit = `<div>
+      const clientnaamVeldEdit = `<div style="width:190px;">
           <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">Clientnaam</label>
           <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:5px 9px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
         </div>`;
@@ -490,7 +490,7 @@
       // ingevuld: dan valt hier ook nog niets te tonen of te doen.
       if (definities.length && !isBron && isNieuw) {
         const startCode = scenarios.find(s => s.id === bronScenarioId)?.code || '';
-        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#eef4fb; border:1px solid #c9dcf2; border-radius:var(--radius);">
           <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
           <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">Nog niet ingevuld bij het startscenario${startCode ? ` (${esc(startCode)})` : ''} van deze flow.</p>
         </div>`;
@@ -500,7 +500,7 @@
       // label, Clientnaam, velden en (alleen bij het startscenario
       // zelf) het potlood-icoontje samen.
       if (definities.length && !inBewerkModus) {
-        return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#eef4fb; border:1px solid #c9dcf2; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
             <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
             <span style="font-size:12px;"><span style="color:var(--text-muted);">Clientnaam:</span> <strong style="font-family:monospace; margin-left:3px;">${getClientnaam(scenarioId)}</strong></span>
@@ -516,7 +516,7 @@
         actieKnoppen = '';
       } else {
         const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, relevanteZkCodes)).join('');
-        inhoud = `<div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">${clientnaamVeldEdit}${velden}</div>`;
+        inhoud = `<div style="display:flex; flex-wrap:wrap; gap:14px;">${clientnaamVeldEdit}${velden}</div>`;
         actieKnoppen = betrokken
           ? `<div style="display:flex; gap:8px;">
               ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
@@ -525,7 +525,7 @@
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#eef4fb; border:1px solid #c9dcf2; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
           ${actieKnoppen}
@@ -640,7 +640,7 @@
             ${actieKnoppen}
           </div>
           <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
-          <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:10px;">${velden}</div>
+          <div style="display:flex; flex-wrap:wrap; gap:14px;">${velden}</div>
         </div>`;
       }).join('');
 
