@@ -490,7 +490,7 @@
       // ingevuld: dan valt hier ook nog niets te tonen of te doen.
       if (definities.length && !isBron && isNieuw) {
         const startCode = scenarios.find(s => s.id === bronScenarioId)?.code || '';
-        return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius); width:fit-content; max-width:100%;">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius);">
           <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
           <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">Nog niet ingevuld bij het startscenario${startCode ? ` (${esc(startCode)})` : ''} van deze flow.</p>
         </div>`;
@@ -500,7 +500,7 @@
       // label, Clientnaam, velden en (alleen bij het startscenario
       // zelf) het potlood-icoontje samen.
       if (definities.length && !inBewerkModus) {
-        return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius); width:fit-content; max-width:100%; display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+        return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
             <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Algemeen</span>
             <span style="font-size:12px;"><span style="color:var(--text-muted);">Clientnaam:</span> <strong style="font-family:monospace; margin-left:3px;">${getClientnaam(scenarioId)}</strong></span>
@@ -525,7 +525,7 @@
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius); width:fit-content; max-width:100%;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
           ${actieKnoppen}
@@ -634,7 +634,7 @@
             <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')">Verwijderen</button>
           </div>` : '';
 
-        return `<div style="border:1px solid #eddca0; border-radius:var(--radius); padding:14px; margin-bottom:12px; width:fit-content; max-width:100%;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
+        return `<div style="border:1px solid #eddca0; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
             <strong style="font-size:13px;">${titel} ${inst.volgnummer}</strong>
             ${actieKnoppen}
@@ -655,7 +655,7 @@
         ? `<p style="font-size:11px; color:var(--text-muted); font-style:italic; margin:0 0 8px;">Toont de gegevens van een eerder scenario in deze flow — pas iets aan om hier een eigen versie van te maken.</p>`
         : '';
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius); width:fit-content; max-width:100%;">
+      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
           ${(betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
