@@ -525,12 +525,12 @@
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
           ${actieKnoppen}
         </div>
-        <div id="kenmerkenAlert-algemeen-${bronScenarioId}" class="alert" style="display:none; margin-bottom:8px;"></div>
+        <div id="kenmerkenAlert-algemeen-${bronScenarioId}" class="alert" style="display:none; margin-bottom:5px;"></div>
         ${inhoud}
       </div>`;
     }
@@ -655,14 +655,14 @@
         ? `<p style="font-size:11px; color:var(--text-muted); font-style:italic; margin:0 0 8px;">Toont de gegevens van een eerder scenario in deze flow — pas iets aan om hier een eigen versie van te maken.</p>`
         : '';
 
-      return `<div style="margin:10px 0; padding:12px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+      return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
           <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
           ${(betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
         </div>
         ${geerfdMelding}
         ${blokkeerBericht ? `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">${blokkeerBericht}</p>` : ''}
-        ${blokken || (blokkeerBericht ? '' : `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen ${titel.toLowerCase()} toegevoegd.</p>`)}
+        ${blokken || (blokkeerBericht ? '' : `<p style="font-size:12px; color:var(--text-muted); font-style:italic; margin:2px 0;">Nog geen ${titel.toLowerCase()} toegevoegd.</p>`)}
         ${tijdlijn}
       </div>`;
     }
