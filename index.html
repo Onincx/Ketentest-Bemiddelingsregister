@@ -155,12 +155,15 @@
       if (!email || !password) {
         showAlert('Vul je inlognaam en wachtwoord in.'); return;
       }
+      if (email.includes('@')) {
+        showAlert('Log in met je inlognaam, niet met een e-mailadres.'); return;
+      }
 
       const btn = document.getElementById('loginBtn');
       btn.innerHTML = '<span class="spinner"></span> Inloggen...';
       btn.disabled = true;
 
-      const syntheticEmail = email.includes('@') ? email : `${email}@ketentest.invalid`;
+      const syntheticEmail = `${email}@ketentest.invalid`;
       const { data, error } = await sb.auth.signInWithPassword({ email: syntheticEmail, password });
 
       if (error) {
