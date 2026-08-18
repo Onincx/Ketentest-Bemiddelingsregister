@@ -148,6 +148,25 @@ function scenariosLinkHtml(role, isAdminPage) {
   return `<a href="app.html" id="navScenariosLink">${icon} Testscenario's</a>`;
 }
 
+// Werkt het 'Ketentest'-hoofdlink zelf (het woord bovenaan de
+// dropdown, niet het 'Testscenario's'-sublink) rolafhankelijk bij.
+// Zonder dit ging een beheerder die op dit hoofdlink klikte altijd
+// naar de gewone testerspagina (app.html) i.p.v. naar het
+// scenario-beheerscherm — ook al klopte het sublink 'Testscenario's'
+// wel. Roep dit aan op elke pagina die deze link heeft, meteen na het
+// vullen van 'navScenariosSlot'.
+function updateKetentestHoofdlink(role, isAdminPage) {
+  const link = document.getElementById('navKetentestLink');
+  if (!link) return;
+  if (role === 'admin') {
+    link.href = 'admin.html?tab=scenarios';
+    if (isAdminPage) link.onclick = (event) => navTab('scenarios', event);
+  } else {
+    link.href = 'app.html';
+    link.onclick = null;
+  }
+}
+
 // Toont in de navigatiebalk (element met id="nokBadge") hoeveel
 // openstaande bevindingen aan de organisatie van de huidige gebruiker
 // zijn toegewezen om op te lossen. Werkt op elke pagina die dit
