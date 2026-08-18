@@ -182,7 +182,7 @@
     
     <a href="dashboard.html" id="navDashboardLink" style="display:none;">Dashboard</a>
     <div class="nav-dropdown">
-      <a href="app.html" class="active">Ketentest <span class="nav-dropdown-caret">▾</span></a>
+      <a href="app.html" class="active" id="navKetentestLink">Ketentest <span class="nav-dropdown-caret">▾</span></a>
       <div class="nav-dropdown-menu">
         <span id="navScenariosSlot"></span>
         <a href="flow.html" class="active"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
@@ -198,6 +198,8 @@
         <a href="admin.html?tab=organisations">Organisaties</a>
         <a href="admin.html?tab=users">Gebruikers</a>
         <a href="admin.html?tab=notifications">Notificaties</a>
+        <a href="admin.html?tab=berichten">Berichten</a>
+        <a href="admin.html?tab=kenmerken">Functionele kenmerken</a>
         <a href="admin.html?tab=ketentests">Ketentesten</a>
         <a href="admin.html?tab=logboek">Logboek</a>
       </div>
@@ -439,6 +441,7 @@
       }
       const scenariosSlot = document.getElementById('navScenariosSlot');
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
+      updateKetentestHoofdlink(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
       if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
       window.isFlowAdmin = currentProfile?.role === 'admin';
