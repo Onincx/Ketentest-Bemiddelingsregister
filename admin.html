@@ -1118,9 +1118,24 @@
       currentUser = user;
       const profile = await getUserProfile(user.id);
       currentProfile = profile;
+
+      // Structurele toegangsblokkade: admin.html is uitsluitend voor de
+      // beheerder. Voorheen werd hier alleen het "Beheer"-menu-item
+      // verborgen en werden losse muterende acties los afgeschermd —
+      // waardoor een alleen-lezen functie als 'Scan activiteiten' eerder
+      // per ongeluk gemist werd. Nu wordt de hele pagina meteen
+      // afgesloten voor iedereen die geen beheerder is, net zoals
+      // dashboard.html al deed voor wie geen admin/manager is.
+      if (profile?.role !== 'admin') {
+        window.location.href = 'app.html';
+        return;
+      }
+
       refreshGlobalNokBadge(profile?.organisation_id);
       refreshMijnActiesBadge(profile?.organisation_id);
       window.isPageAdmin = profile?.role === 'admin';
+      const scanBtn = document.getElementById('scanBtn');
+      if (scanBtn && !window.isPageAdmin) scanBtn.style.display = 'none';
       document.getElementById('navUser').textContent = profile?.name || user.email;
       document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
       await renderActiveKetentestLabel();
@@ -1316,6 +1331,7 @@
     }
 
     async function scanActivities() {
+      if (!window.isPageAdmin) return;
       const btn = document.getElementById('scanBtn');
       btn.disabled = true;
       btn.innerHTML = '<span style="opacity:0.6">Scannen...</span>';
