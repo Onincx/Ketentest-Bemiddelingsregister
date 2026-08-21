@@ -142,7 +142,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=33"></script>
+  <script src="js/supabase-config.js?v=36"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
     let scenarios = [], activities = [], results = {}, orgs = [], scenarioFlowMap = {};
@@ -317,7 +317,11 @@
 
       scenarios.forEach(s => {
         const acts = scenarioActivitiesSorted(s.id);
-        const mijnActs = acts.filter(a => a.organisation_id === orgId || a.acceptant_org_id === orgId);
+        // Zelfde regel als de OK/NOK-rechten elders in de tool: is er
+        // een acceptant, dan telt alleen die acceptant mee — niet de
+        // verantwoordelijke organisatie. Is er geen acceptant, dan
+        // telt de verantwoordelijke organisatie zelf mee.
+        const mijnActs = acts.filter(a => a.acceptant_org_id === orgId || (!a.acceptant_org_id && a.organisation_id === orgId));
         if (!mijnActs.length) return;
 
         const bottleneck = acts.find(a => getResult(a.id) !== 'ok') || null;
@@ -440,7 +444,7 @@
         const dotClass = result === 'ok' ? 'done' : result === 'nok' ? 'nok' : (isBottleneck ? 'now' : 'pending');
         const dotContent = result === 'ok' ? '✓' : result === 'nok' ? '✕' : String(a.sort_order);
         const accOrg = orgById(a.acceptant_org_id) || orgById(a.organisation_id);
-        const isMine = a.organisation_id === orgId || a.acceptant_org_id === orgId;
+        const isMine = a.acceptant_org_id === orgId || (!a.acceptant_org_id && a.organisation_id === orgId);
         const lineDone = i > 0 && getResult(acts[i - 1].id) === 'ok' ? 'done' : '';
         return `${i > 0 ? `<div class="ma-step-line ${lineDone}"></div>` : ''}
           <div class="ma-step" title="${esc(a.description || '')}">

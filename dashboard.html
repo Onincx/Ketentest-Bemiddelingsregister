@@ -255,7 +255,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=33"></script>
+  <script src="js/supabase-config.js?v=36"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [];
@@ -828,7 +828,10 @@
         const bottleneck = acts.find(a => getResult(a.id) !== 'ok');
         if (!bottleneck) return;
 
-        const bottleneckOrgs = new Set([bottleneck.organisation_id, bottleneck.acceptant_org_id].filter(Boolean));
+        // Zelfde regel als de OK/NOK-rechten elders: is er een
+        // acceptant, dan ligt de bal alleen bij die acceptant — niet
+        // ook bij de verantwoordelijke organisatie.
+        const bottleneckOrgs = new Set([bottleneck.acceptant_org_id || bottleneck.organisation_id].filter(Boolean));
         bottleneckOrgs.forEach(oid => {
           perOrg[oid] = perOrg[oid] || { nu: 0, wacht: 0 };
           perOrg[oid].nu++;

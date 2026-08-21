@@ -1030,8 +1030,40 @@
     </div>
   </div>
 
+  <!-- Modal: ketentest afsluiten, met waarschuwend overzicht -->
+  <div class="modal-overlay" id="modalAfsluiten" style="display:none;" onclick="closeModalOverlay(event,'modalAfsluiten')">
+    <div class="modal" style="max-width:520px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Ketentest afsluiten</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalAfsluiten')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="afsluitenKetentestId">
+        <p style="font-size:14px; margin-bottom:14px;">Je staat op het punt <strong id="afsluitenKetentestNaam"></strong> af te sluiten. Daarna kan niemand (ook de beheerder niet) meer resultaten, functionele kenmerken of bevindingen wijzigen — tenzij je de ketentest weer heropent.</p>
+        <div id="afsluitenOverzichtLaden" style="font-size:13px; color:var(--text-muted);">Overzicht wordt opgehaald...</div>
+        <div id="afsluitenOverzicht" style="display:none;">
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:14px;">
+            <div style="background:var(--surface); border-radius:8px; padding:12px 14px;">
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Scenario's</div>
+              <div id="afsluitenScenarioCijfers" style="font-size:13px; margin-top:6px; line-height:1.6;"></div>
+            </div>
+            <div style="background:var(--surface); border-radius:8px; padding:12px 14px;">
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Bevindingen</div>
+              <div id="afsluitenBevindingCijfers" style="font-size:13px; margin-top:6px; line-height:1.6;"></div>
+            </div>
+          </div>
+          <div id="afsluitenWaarschuwing" style="display:none; background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:13px; color:#92400e; margin-bottom:6px;"></div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalAfsluiten')">Annuleren</button>
+        <button class="btn btn-danger" onclick="bevestigAfsluitenKetentest()">Definitief afsluiten</button>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=33"></script>
+  <script src="js/supabase-config.js?v=36"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -2271,13 +2303,17 @@
       }
       tb.innerHTML = ketentests.map(k => {
         const isActive = activeKetentest && k.id === activeKetentest.id;
+        const isAfgesloten = k.status === 'afgesloten';
         const date = new Date(k.created_at).toLocaleDateString('nl-NL');
         const startInFuture = k.start_op && new Date(k.start_op) > new Date();
         return `<tr style="${isActive ? 'background:#eaf3e0;' : ''}">
           <td style="vertical-align:top;">
             <div><strong>${k.naam}</strong></div>
             <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px;">
-              ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; font-size:11px;">Actief</span>' : ''}
+              ${isActive ? '<span class="badge" style="background:#39870c; color:#fff; font-size:11px;">Actief geopend</span>' : ''}
+              ${isAfgesloten
+                ? '<span class="badge" style="background:#374151; color:#fff; font-size:11px;">🔒 Afgesloten</span>'
+                : '<span class="badge" style="background:#dcfce7; color:#166534; font-size:11px;">Actief</span>'}
               <span class="badge" style="background:${k.model === 'estafettemodel' ? '#ede9fe' : '#dbeafe'}; color:${k.model === 'estafettemodel' ? '#5b21b6' : '#1e40af'}; font-size:11px;">${k.model === 'estafettemodel' ? 'Estafettemodel' : 'Netwerkmodel'}</span>
               ${startInFuture ? `<span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;" title="Gebruikers kunnen nog geen resultaten invullen">⏳ Start: ${new Date(k.start_op).toLocaleString('nl-NL')}</span>` : ''}
             </div>
@@ -2286,6 +2322,9 @@
           <td style="color:var(--text-muted); vertical-align:top; padding-top:14px;">${date}</td>
           <td style="text-align:right; vertical-align:top; padding-top:10px;">
             ${!isActive ? `<button class="btn btn-outline btn-sm" onclick="selectKetentestFromAdmin('${k.id}')" style="margin-right:6px;">Openen</button>` : ''}
+            ${isAfgesloten
+              ? `<button class="btn btn-outline btn-sm" onclick="heropenKetentest('${k.id}','${k.naam.replace(/'/g,"\\'")}')" style="margin-right:6px;">Heropenen</button>`
+              : `<button class="btn btn-outline btn-sm" onclick="openAfsluitenOverzicht('${k.id}','${k.naam.replace(/'/g,"\\'")}')" style="margin-right:6px;">Afsluiten</button>`}
             <button class="btn btn-outline btn-sm" onclick="openGuestLinkModal('${k.id}','${k.naam.replace(/'/g,"\\'")}')" style="margin-right:6px;" title="Deellink beheren">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
               Deellink
@@ -2395,6 +2434,104 @@
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
       document.getElementById('alertKetentest').style.display = 'none';
       openModal('modalKetentest');
+    }
+
+    // ---- KETENTEST AFSLUITEN / HEROPENEN ----
+    async function openAfsluitenOverzicht(id, naam) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('afsluitenKetentestId').value = id;
+      document.getElementById('afsluitenKetentestNaam').textContent = naam;
+      document.getElementById('afsluitenOverzicht').style.display = 'none';
+      document.getElementById('afsluitenOverzichtLaden').style.display = '';
+      document.getElementById('afsluitenWaarschuwing').style.display = 'none';
+      openModal('modalAfsluiten');
+
+      // Scenario's + hun activiteiten ophalen om per scenario te bepalen:
+      // afgerond (alles OK), NOK (minstens 1 NOK), of nog open.
+      const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', id);
+      const scenarioIds = (scenarioData || []).map(s => s.id);
+
+      let aantalOk = 0, aantalNok = 0, aantalOpen = 0;
+      if (scenarioIds.length) {
+        const { data: actData } = await sb.from('activities').select('id, scenario_id').in('scenario_id', scenarioIds);
+        const actIds = (actData || []).map(a => a.id);
+        const { data: resData } = actIds.length
+          ? await sb.from('activity_results').select('activity_id, result').in('activity_id', actIds)
+          : { data: [] };
+        const resultByActivity = {};
+        (resData || []).forEach(r => { resultByActivity[r.activity_id] = r.result; });
+
+        scenarioIds.forEach(sId => {
+          const actsVanScenario = (actData || []).filter(a => a.scenario_id === sId);
+          if (!actsVanScenario.length) { aantalOpen++; return; }
+          const resultaten = actsVanScenario.map(a => resultByActivity[a.id] || 'open');
+          if (resultaten.some(r => r === 'nok')) aantalNok++;
+          else if (resultaten.every(r => r === 'ok')) aantalOk++;
+          else aantalOpen++;
+        });
+      }
+
+      const { count: bevindingenOpenCount } = await sb.from('bevindingen').select('id', { count: 'exact', head: true }).eq('ketentest_id', id).neq('status', 'hertest_ok');
+      const { count: bevindingenTotaalCount } = await sb.from('bevindingen').select('id', { count: 'exact', head: true }).eq('ketentest_id', id);
+
+      document.getElementById('afsluitenScenarioCijfers').innerHTML =
+        `${scenarioIds.length} totaal<br>${aantalOk} afgerond (OK)<br>${aantalNok} met NOK<br>${aantalOpen} nog open`;
+      document.getElementById('afsluitenBevindingCijfers').innerHTML =
+        `${bevindingenTotaalCount || 0} totaal<br>${bevindingenOpenCount || 0} nog niet afgehandeld`;
+
+      const waarschuwingEl = document.getElementById('afsluitenWaarschuwing');
+      if (aantalOpen > 0 || aantalNok > 0 || (bevindingenOpenCount || 0) > 0) {
+        waarschuwingEl.textContent = `Let op: er zijn nog ${aantalOpen} openstaande scenario('s), ${aantalNok} met een NOK, en ${bevindingenOpenCount || 0} niet-afgehandelde bevinding(en). Afsluiten kan alsnog, dit blokkeert niets.`;
+        waarschuwingEl.style.display = '';
+      }
+
+      document.getElementById('afsluitenOverzichtLaden').style.display = 'none';
+      document.getElementById('afsluitenOverzicht').style.display = '';
+    }
+
+    async function bevestigAfsluitenKetentest() {
+      if (!window.isPageAdmin) return;
+      const id = document.getElementById('afsluitenKetentestId').value;
+      const { data: { user } } = await sb.auth.getUser();
+      const { error } = await sb.from('ketentests').update({
+        status: 'afgesloten',
+        afgesloten_op: new Date().toISOString(),
+        afgesloten_door: user?.id || null,
+      }).eq('id', id);
+
+      if (error) { showAlert('Fout bij afsluiten: ' + error.message, 'error'); return; }
+
+      closeModal('modalAfsluiten');
+      await loadKetentestsList();
+      renderKetentestTable();
+      showAlert('Ketentest afgesloten.', 'success');
+    }
+
+    function heropenKetentest(id, naam) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = `"${naam}" heropenen? Er kan daarna weer normaal gewerkt worden: resultaten, functionele kenmerken en bevindingen kunnen dan weer gewijzigd worden.`;
+      document.getElementById('confirmBtn').textContent = 'Heropenen';
+      document.getElementById('confirmBtn').className = 'btn btn-primary';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('ketentests').update({
+          status: 'actief',
+          afgesloten_op: null,
+          afgesloten_door: null,
+        }).eq('id', id);
+
+        closeModal('modalConfirm');
+        // Herstel de knop naar zijn gebruikelijke rode 'verwijderen'-stijl
+        // voor de volgende keer dat dit confirm-scherm ergens anders
+        // voor gebruikt wordt.
+        document.getElementById('confirmBtn').className = 'btn btn-danger';
+        document.getElementById('confirmBtn').textContent = 'Verwijderen';
+
+        if (error) { showAlert('Fout bij heropenen: ' + error.message, 'error'); return; }
+        await loadKetentestsList();
+        renderKetentestTable();
+        showAlert('Ketentest heropend.', 'success');
+      };
+      openModal('modalConfirm');
     }
 
     // Zet een ISO-tijdstip (uit de database, met tijdzone) om naar de

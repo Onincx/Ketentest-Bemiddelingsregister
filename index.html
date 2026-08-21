@@ -130,7 +130,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=33"></script>
+  <script src="js/supabase-config.js?v=36"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -204,7 +204,7 @@
       document.getElementById('ketentestChoiceCard').style.display = '';
       document.getElementById('ketentestChoiceList').innerHTML = options.map(k => `
         <div class="kt-choice-item" onclick="chooseKetentest('${k.id}')">
-          <span>${esc(k.naam)}</span>
+          <span>${k.status === 'afgesloten' ? '🔒 ' : ''}${esc(k.naam)}${k.status === 'afgesloten' ? ' <span style="color:var(--text-muted); font-weight:400;">(afgesloten)</span>' : ''}</span>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </div>`).join('');
     }
