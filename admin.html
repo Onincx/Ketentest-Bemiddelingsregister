@@ -655,6 +655,11 @@
           <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Zolang dit moment nog niet is bereikt, kunnen gewone gebruikers nog geen activiteiten op OK/NOK zetten. Leeg laten = geen beperking.</p>
         </div>
         <div id="alertKetentest" class="alert" style="display:none;"></div>
+
+        <div id="ketentestBeheerSectie" style="display:none; margin-top:22px; padding-top:18px; border-top:1px solid var(--border);">
+          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px;">Beheer</p>
+          <div id="ketentestBeheerKnoppen" style="display:flex; flex-direction:column; gap:8px;"></div>
+        </div>
       </div>
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalKetentest')">Annuleren</button>
@@ -1040,17 +1045,6 @@
   </div>
 
   <!-- Modal: ketentest afsluiten, met waarschuwend overzicht -->
-  <!-- Modal: alle acties voor één ketentest, vanuit het icoon per rij -->
-  <div class="modal-overlay" id="modalKetentestActies" style="display:none;" onclick="closeModalOverlay(event,'modalKetentestActies')">
-    <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
-      <div class="modal-header">
-        <h3 id="ketentestActiesTitel">Ketentest beheren</h3>
-        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKetentestActies')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-      </div>
-      <div class="modal-body" id="ketentestActiesLijst"></div>
-    </div>
-  </div>
-
   <div class="modal-overlay" id="modalAfsluiten" style="display:none;" onclick="closeModalOverlay(event,'modalAfsluiten')">
     <div class="modal" style="max-width:520px;" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -2341,7 +2335,7 @@
           <td id="ktScenCount-${k.id}" style="color:var(--text-muted); vertical-align:top; padding-top:14px;">…</td>
           <td style="color:var(--text-muted); vertical-align:top; padding-top:14px;">${date}</td>
           <td style="text-align:right; vertical-align:top; padding-top:10px;">
-            <button class="btn btn-outline btn-sm btn-icon" onclick="openKetentestActies('${k.id}')" title="Beheren">
+            <button class="btn btn-outline btn-sm btn-icon" onclick="editKetentest('${k.id}')" title="Wijzigen">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
             </button>
           </td>
@@ -2434,65 +2428,58 @@
       document.getElementById('ketentestStartOp').value = '';
       document.getElementById('modalKetentestTitle').textContent = 'Ketentest toevoegen';
       document.getElementById('alertKetentest').style.display = 'none';
+      document.getElementById('ketentestBeheerSectie').style.display = 'none';
       openModal('modalKetentest');
     }
 
     function editKetentest(id) {
       const k = ketentests.find(x => x.id === id);
       if (!k) return;
-      document.getElementById('ketentestId').value = k.id;
-      document.getElementById('ketentestNaam').value = k.naam;
-      document.getElementById('ketentestModel').value = k.model || 'netwerkmodel';
-      document.getElementById('ketentestStartOp').value = k.start_op ? toDatetimeLocalValue(k.start_op) : '';
-      document.getElementById('modalKetentestTitle').textContent = 'Ketentest hernoemen';
-      document.getElementById('alertKetentest').style.display = 'none';
-      openModal('modalKetentest');
-    }
-
-    // ---- KETENTEST AFSLUITEN / HEROPENEN ----
-    // ---- Ketentest beheren: pop-up met alle acties, vanuit het icoon per rij ----
-    function openKetentestActies(id) {
-      const k = ketentests.find(x => x.id === id);
-      if (!k) return;
       const isActive = activeKetentest && k.id === activeKetentest.id;
       const isAfgesloten = k.status === 'afgesloten';
       const naamEsc = k.naam.replace(/'/g,"\\'");
 
-      document.getElementById('ketentestActiesTitel').textContent = k.naam;
+      document.getElementById('ketentestId').value = k.id;
+      document.getElementById('ketentestNaam').value = k.naam;
+      document.getElementById('ketentestModel').value = k.model || 'netwerkmodel';
+      document.getElementById('ketentestStartOp').value = k.start_op ? toDatetimeLocalValue(k.start_op) : '';
+      document.getElementById('modalKetentestTitle').textContent = 'Ketentest wijzigen';
+      document.getElementById('alertKetentest').style.display = 'none';
 
-      const regels = [];
+      // Beheer-sectie: openen, afsluiten/heropenen, deellink en
+      // verwijderen — allemaal in dezelfde pop-up als de gewone
+      // velden, in plaats van los verspreid over aparte schermen.
+      const knoppen = [];
       if (!isActive) {
-        regels.push(`<button class="actie-regel" onclick="closeModal('modalKetentestActies'); selectKetentestFromAdmin('${id}')">
+        knoppen.push(`<button class="actie-regel" onclick="closeModal('modalKetentest'); selectKetentestFromAdmin('${id}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
           Openen
         </button>`);
       }
       if (isAfgesloten) {
-        regels.push(`<button class="actie-regel" onclick="closeModal('modalKetentestActies'); heropenKetentest('${id}','${naamEsc}')">
+        knoppen.push(`<button class="actie-regel" onclick="closeModal('modalKetentest'); heropenKetentest('${id}','${naamEsc}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V8a5 5 0 0 1 9.5-2.5"/></svg>
           Heropenen
         </button>`);
       } else {
-        regels.push(`<button class="actie-regel" onclick="closeModal('modalKetentestActies'); openAfsluitenOverzicht('${id}','${naamEsc}')">
+        knoppen.push(`<button class="actie-regel" onclick="closeModal('modalKetentest'); openAfsluitenOverzicht('${id}','${naamEsc}')">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
           Afsluiten
         </button>`);
       }
-      regels.push(`<button class="actie-regel" onclick="closeModal('modalKetentestActies'); openGuestLinkModal('${id}','${naamEsc}')">
+      knoppen.push(`<button class="actie-regel" onclick="closeModal('modalKetentest'); openGuestLinkModal('${id}','${naamEsc}')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
         Deellink beheren
       </button>`);
-      regels.push(`<button class="actie-regel" onclick="closeModal('modalKetentestActies'); editKetentest('${id}')">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-        Naam wijzigen
-      </button>`);
-      regels.push(`<button class="actie-regel danger" onclick="closeModal('modalKetentestActies'); deleteKetentest('${id}','${naamEsc}')">
+      knoppen.push(`<button class="actie-regel danger" onclick="closeModal('modalKetentest'); deleteKetentest('${id}','${naamEsc}')">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         Verwijderen
       </button>`);
 
-      document.getElementById('ketentestActiesLijst').innerHTML = regels.join('');
-      openModal('modalKetentestActies');
+      document.getElementById('ketentestBeheerKnoppen').innerHTML = knoppen.join('');
+      document.getElementById('ketentestBeheerSectie').style.display = '';
+
+      openModal('modalKetentest');
     }
 
     async function openAfsluitenOverzicht(id, naam) {
