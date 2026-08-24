@@ -142,10 +142,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=36"></script>
+  <script src="js/supabase-config.js?v=37"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
     let scenarios = [], activities = [], results = {}, orgs = [], scenarioFlowMap = {};
+    let flowNodes = [], flowEdges = [];
     let maBucket = 'nu_te_doen';
     let maScenarioStatussen = [];
 
@@ -199,14 +200,15 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [{ data: orgData }, { data: activityData }, { data: resultData }, { data: flowData }, { data: flowNodeData }] = await Promise.all([
+      const [{ data: orgData }, { data: activityData }, { data: resultData }, { data: flowData }, { data: flowNodeData }, { data: flowEdgeData }] = await Promise.all([
         sb.from('organisations').select('*'),
         scenarioIds.length
           ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
           : Promise.resolve({ data: [] }),
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
       ]);
       orgs = orgData || [];
       activities = activityData || [];
@@ -217,6 +219,8 @@
       (flowData || []).forEach(f => { flowById[f.id] = f; });
       scenarioFlowMap = {};
       (flowNodeData || []).forEach(n => { if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id]; });
+      flowNodes = flowNodeData || [];
+      flowEdges = flowEdgeData || [];
 
       renderNotStartedBanner();
       vulSimOrgSelect();
@@ -310,6 +314,33 @@
 
     function orgById(id) { return orgs.find(o => o.id === id) || null; }
 
+    function isInFlow(scenarioId) {
+      return flowNodes.some(n => n.scenario_id === scenarioId && n.flow_id);
+    }
+    function isStartVanFlow(scenarioId) {
+      const node = flowNodes.find(n => n.scenario_id === scenarioId);
+      return !!(node && node.is_start);
+    }
+    function directeVoorgangersInFlow(scenarioId) {
+      const viaTo = flowEdges.filter(e => e.to_id === scenarioId).map(e => e.from_id);
+      if (viaTo.length) return viaTo;
+      return flowEdges.filter(e => e.from_id === scenarioId).map(e => e.to_id);
+    }
+    function isScenarioVolledigOk(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return false;
+      return acts.every(a => getResult(a.id) === 'ok');
+    }
+    // Mag de eerste activiteit van dit scenario al starten? Zelfde
+    // regel als in app.html: bij een vervolgscenario in een flow pas
+    // zodra alle directe voorganger(s) in de flow volledig op OK staan.
+    function eersteActiviteitMagStarten(scenarioId) {
+      if (!isInFlow(scenarioId) || isStartVanFlow(scenarioId)) return true;
+      const voorgangers = directeVoorgangersInFlow(scenarioId);
+      if (!voorgangers.length) return true;
+      return voorgangers.every(id => isScenarioVolledigOk(id));
+    }
+
     function computeMijnActiesStatussen() {
       maScenarioStatussen = [];
       const orgId = effectieveOrgId();
@@ -325,9 +356,17 @@
         if (!mijnActs.length) return;
 
         const bottleneck = acts.find(a => getResult(a.id) !== 'ok') || null;
+        // Is de bottleneck de allereerste activiteit van dit scenario,
+        // en mag dat scenario door de flow-volgorde nog niet starten?
+        // Dan is dit voor niemand 'nu te doen', ongeacht organisatie.
+        const eersteActiviteitVanScenario = acts[0] || null;
+        const flowBlokkeert = bottleneck && eersteActiviteitVanScenario && bottleneck.id === eersteActiviteitVanScenario.id
+          && !eersteActiviteitMagStarten(s.id);
         let bucket;
         if (!bottleneck) {
           bucket = 'afgerond';
+        } else if (flowBlokkeert) {
+          bucket = 'wachtend';
         } else if (mijnActs.some(a => a.id === bottleneck.id)) {
           bucket = 'nu_te_doen';
         } else if (mijnActs.some(a => getResult(a.id) !== 'ok')) {
@@ -336,7 +375,11 @@
           bucket = 'afgerond';
         }
 
-        maScenarioStatussen.push({ scenario: s, acts, mijnActs, bottleneck, bucket });
+        const voorgaandScenario = flowBlokkeert
+          ? scenarios.find(sc => directeVoorgangersInFlow(s.id).includes(sc.id))
+          : null;
+
+        maScenarioStatussen.push({ scenario: s, acts, mijnActs, bottleneck, bucket, flowBlokkeert, voorgaandScenario });
       });
 
       const volgorde = { nu_te_doen: 0, wachtend: 1, afgerond: 2 };
@@ -382,7 +425,7 @@
         return;
       }
 
-      el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket }) => {
+      el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket, flowBlokkeert, voorgaandScenario }) => {
         let statusBadge = '';
         let statusDetail = '';
         const notStarted = isNotStartedYet();
@@ -404,6 +447,9 @@
             statusBadge = `<span class="ma-status-badge ma-status-nu">✅ Nu te doen</span>`;
             statusDetail = actieTekst + nokIndicatie;
           }
+        } else if (bucket === 'wachtend' && flowBlokkeert) {
+          statusBadge = `<span class="ma-status-badge ma-status-wacht">⏳ Wachten op vorig scenario</span>`;
+          statusDetail = `Wacht tot ${voorgaandScenario ? esc(voorgaandScenario.code) : 'het vorige scenario in deze flow'} volledig is afgerond (op OK staat) voordat dit scenario van start kan.`;
         } else if (bucket === 'wachtend' && bottleneck) {
           const wachtOrg = orgById(bottleneck.acceptant_org_id) || orgById(bottleneck.organisation_id);
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' (staat op NOK, wacht op oplossing)' : '';

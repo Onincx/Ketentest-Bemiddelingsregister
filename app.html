@@ -250,7 +250,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=36"></script>
+  <script src="js/supabase-config.js?v=37"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -932,6 +932,37 @@
       return flowNodes.some(n => n.scenario_id === scenarioId && n.flow_id);
     }
 
+    // Directe voorganger(s) van dit scenario in de flow (géén verdere
+    // zoektocht zoals vindVoorgangerMetData — puur de scenario's die
+    // via een edge rechtstreeks vóór dit scenario liggen). Zelfde
+    // richtingsonafhankelijke aanpak als elders: probeer eerst de
+    // gangbare richting, val anders terug op de omgekeerde.
+    function directeVoorgangersInFlow(scenarioId) {
+      const viaTo = flowEdges.filter(e => e.to_id === scenarioId).map(e => e.from_id);
+      if (viaTo.length) return viaTo;
+      return flowEdges.filter(e => e.from_id === scenarioId).map(e => e.to_id);
+    }
+
+    // Staan alle activiteiten van dit scenario op OK?
+    function isScenarioVolledigOk(scenarioId) {
+      const acts = activities.filter(a => a.scenario_id === scenarioId);
+      if (!acts.length) return false;
+      return acts.every(a => (results[a.id]?.result || 'open') === 'ok');
+    }
+
+    // Mag de EERSTE activiteit van dit scenario al bewerkt worden? Bij
+    // het startscenario van een flow (of een scenario buiten een flow)
+    // altijd. Bij een vervolgscenario pas als alle directe
+    // voorganger(s) in de flow volledig op OK staan — een scenario
+    // verderop in de keten mag niet starten vóórdat het scenario
+    // ervoor helemaal is afgerond.
+    function eersteActiviteitMagStarten(scenarioId) {
+      if (!isInFlow(scenarioId) || isStartVanFlow(scenarioId)) return true;
+      const voorgangers = directeVoorgangersInFlow(scenarioId);
+      if (!voorgangers.length) return true; // geen voorganger gevonden, niet onterecht blokkeren
+      return voorgangers.every(id => isScenarioVolledigOk(id));
+    }
+
     function getScenarioStatus(scenarioId) {
       const acts = activities.filter(a => a.scenario_id === scenarioId);
       if (!acts.length) return 'open';
@@ -1247,7 +1278,14 @@
           // "Wanneer") wordt door de verantwoordelijke organisatie zelf
           // bevestigd — anders zou niemand 'm ooit kunnen afronden.
           const isVerantwZonderAcceptant = !a.acceptant_org_id && a.organisations?.id === myOrgId;
-          const canEdit = currentProfile?.role !== 'manager' && (isAcceptant || isVerantwZonderAcceptant || currentProfile?.role === 'admin');
+          // Bij de eerste activiteit van een vervolgscenario in een flow:
+          // pas bewerkbaar zodra het vorige scenario in de flow
+          // volledig op OK staat. Activiteiten daarna binnen hetzelfde
+          // scenario zijn al gedekt door de gewone within-scenario
+          // volgorde (canEdit hangt toch al af van of deze activiteit
+          // aan de beurt is).
+          const flowVolgordeOk = idx > 0 || eersteActiviteitMagStarten(a.scenario_id);
+          const canEdit = flowVolgordeOk && currentProfile?.role !== 'manager' && (isAcceptant || isVerantwZonderAcceptant || currentProfile?.role === 'admin');
           const orgName = a.organisations?.name || '';
           const orgCode = a.organisations?.code || '';
           const accName = a.acceptant_org?.name || '';
@@ -1259,6 +1297,13 @@
           const prevResult = prevAct ? (results[prevAct.id]?.result || 'open') : null;
           const isBlocked = prevAct !== null && prevResult !== 'ok' && currentProfile?.role !== 'admin';
 
+          // Eerste activiteit van een vervolgscenario, en het vorige
+          // scenario in de flow staat nog niet volledig op OK.
+          const isFlowBlocked = idx === 0 && !flowVolgordeOk && currentProfile?.role !== 'admin';
+          const voorgaandScenarioCode = isFlowBlocked
+            ? (scenarios.find(s => directeVoorgangersInFlow(a.scenario_id).includes(s.id))?.code || 'het vorige scenario')
+            : null;
+
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
             <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
@@ -1269,6 +1314,11 @@
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="Activiteit #${prevAct.sort_order} moet eerst op OK gezet worden">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   Wacht op #${prevAct.sort_order}
+                </div>
+              ` : isFlowBlocked ? `
+                <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="${esc(voorgaandScenarioCode)} moet eerst volledig op OK staan voordat dit scenario van start kan">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Wacht op ${esc(voorgaandScenarioCode)}
                 </div>
               ` : notStartedYet ? `
                 <div style="display:flex; align-items:center; gap:6px; color:#92400e; font-size:12px;" title="De ketentest start op ${new Date(activeKetentest.start_op).toLocaleString('nl-NL')}">
