@@ -176,7 +176,8 @@
       <div class="stats-grid" id="totalStats" style="margin-bottom:24px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
         <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
         <div class="stat-card"><div class="stat-label">Activiteiten totaal</div><div class="stat-value" id="ds-activities">—</div></div>
-        <div class="stat-card"><div class="stat-label">Afgerond</div><div class="stat-value green" id="ds-done">—</div></div>
+        <div class="stat-card"><div class="stat-label">Activiteiten afgerond</div><div class="stat-value green" id="ds-activities-done">—</div></div>
+        <div class="stat-card"><div class="stat-label">Scenario's afgerond</div><div class="stat-value green" id="ds-done">—</div></div>
         <div class="stat-card"><div class="stat-label">NOK's</div><div class="stat-value red" id="ds-nok">—</div></div>
       </div>
       <p style="font-size:11px; color:var(--text-muted); margin:-16px 0 24px;">Scenario's, activiteiten en afgerond tellen alleen mee als de bijbehorende flow niet volledig is afgewezen bij Deelname.</p>
@@ -751,6 +752,7 @@
 
       const totalActs = includedActivities.length;
       const doneActs  = includedResults.filter(r => r.result === 'ok' || r.result === 'nok').length;
+      const okActs    = includedResults.filter(r => r.result === 'ok').length;
       const nokActs   = includedResults.filter(r => r.result === 'nok').length;
       const okScenarios = includedScenarios.filter(s => {
         const acts = includedActivities.filter(a => a.scenario_id === s.id);
@@ -779,14 +781,14 @@
 
       return {
         includedScenarios, includedActivities, includedResults,
-        totalActs, doneActs, nokActs, okScenarios,
+        totalActs, doneActs, okActs, nokActs, okScenarios,
         flowsWachten, totaalPartijen, beoordeeldePartijen, pct,
       };
     }
 
     function renderDashboard() {
       const stats = computeDashboardStats();
-      const { includedScenarios, totalActs, nokActs, okScenarios, flowsWachten, totaalPartijen, beoordeeldePartijen, pct } = stats;
+      const { includedScenarios, totalActs, okActs, nokActs, okScenarios, flowsWachten, totaalPartijen, beoordeeldePartijen, pct } = stats;
 
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
@@ -794,6 +796,7 @@
         totaalPartijen > 0 ? `${beoordeeldePartijen} van ${totaalPartijen} organisaties hebben al hun flows beoordeeld` : '';
       document.getElementById('ds-scenarios').textContent = includedScenarios.length;
       document.getElementById('ds-activities').textContent = totalActs;
+      document.getElementById('ds-activities-done').textContent = `${okActs} / ${totalActs}`;
       document.getElementById('ds-done').textContent = `${okScenarios} / ${includedScenarios.length}`;
       document.getElementById('ds-nok').textContent = nokActs;
 
