@@ -149,6 +149,20 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg> Gebruiker uitnodigen
         </button>
       </div>
+      <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin-bottom:18px;">
+        <div class="card" style="padding:16px 18px;">
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Totaal gebruikers</div>
+          <div id="userStatTotal" style="font-size:26px; font-weight:700; color:var(--text); margin-top:4px;">—</div>
+        </div>
+        <div class="card" style="padding:16px 18px;">
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Actief</div>
+          <div id="userStatActief" style="font-size:26px; font-weight:700; color:#0f6e56; margin-top:4px;">—</div>
+        </div>
+        <div class="card" style="padding:16px 18px;">
+          <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Nog niet actief (uitgenodigd)</div>
+          <div id="userStatUitgenodigd" style="font-size:26px; font-weight:700; color:var(--warning); margin-top:4px;">—</div>
+        </div>
+      </div>
       <div style="margin-bottom:12px; max-width:320px;">
         <input type="text" id="userSearch" placeholder="Zoek op naam, e-mail of organisatie..." oninput="renderUsers()" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
       </div>
@@ -2851,6 +2865,13 @@
       const tb = document.getElementById('userTable');
       const orgSel = document.getElementById('userOrg');
       orgSel.innerHTML = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+
+      // Statistieken bovenaan: altijd op basis van álle gebruikers, niet
+      // beïnvloed door het zoekveld hieronder.
+      const aantalActief = users.filter(u => u.activated).length;
+      document.getElementById('userStatTotal').textContent = users.length;
+      document.getElementById('userStatActief').textContent = aantalActief;
+      document.getElementById('userStatUitgenodigd').textContent = users.length - aantalActief;
 
       const term = (document.getElementById('userSearch')?.value || '').toLowerCase().trim();
       const filtered = term
