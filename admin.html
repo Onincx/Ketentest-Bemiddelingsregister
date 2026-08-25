@@ -73,6 +73,7 @@
         <a href="admin.html?tab=berichten" data-tab="berichten" onclick="return navTab('berichten', event)">Berichten</a>
         <a href="admin.html?tab=kenmerken" data-tab="kenmerken" onclick="return navTab('kenmerken', event)">Functionele kenmerken</a>
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
+        <a href="admin.html?tab=scenarios" data-tab="scenarios" onclick="return navTab('scenarios', event)">Scenario's beheren</a>
         <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
         <a href="admin.html?tab=nok" data-tab="nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
       </div>
@@ -360,17 +361,13 @@
       </div>
     </div>
 
-    <!-- TAB: Testscenario's -->
+    <!-- TAB: Scenario's beheren -->
     <div id="tab-scenarios" style="display:none;">
       <div class="page-header">
         <div class="page-header-left">
-          <h1>Testscenario's</h1>
-          <p>Beheer scenario's, teststappen en koppel activiteiten aan organisaties. Voor de voortgang per activiteit (OK/NOK), zie de knop hiernaast.</p>
+          <h1>Scenario's beheren</h1>
+          <p>Beheer scenario's, teststappen en koppel activiteiten aan organisaties. Voor de weergave zoals een gebruiker die ziet (met OK/NOK, functionele gegevens en notities), ga naar Ketentest → Testscenario's.</p>
         </div>
-        <a href="app.html" target="_blank" class="btn btn-outline" style="text-decoration:none;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
-          Voortgang bekijken
-        </a>
         <button class="btn btn-outline" onclick="openModal('modalImportScenario')">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Plakken & importeren
@@ -1095,7 +1092,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=37"></script>
+  <script src="js/supabase-config.js?v=38"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
