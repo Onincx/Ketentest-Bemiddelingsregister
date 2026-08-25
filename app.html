@@ -1276,7 +1276,21 @@
           // volgorde (canEdit hangt toch al af van of deze activiteit
           // aan de beurt is).
           const flowVolgordeOk = idx > 0 || eersteActiviteitMagStarten(a.scenario_id);
-          const canEdit = flowVolgordeOk && currentProfile?.role !== 'manager' && (isAcceptant || isVerantwZonderAcceptant || currentProfile?.role === 'admin');
+          const isVerantwoordelijke = a.organisations?.id === myOrgId;
+          // Verantwoordelijke, terwijl er wél een acceptant is aangewezen
+          // (en die acceptant niet toevallig ook wijzelf zijn — dan is
+          // isAcceptant al waar en gelden de volle rechten toch al).
+          const isVerantwMetAcceptant = !!a.acceptant_org_id && isVerantwoordelijke && !isAcceptant;
+          const nietManagerOfGeblokkeerd = flowVolgordeOk && currentProfile?.role !== 'manager';
+          // OK zetten mag alleen de acceptant, of de verantwoordelijke als
+          // er geen acceptant is — een verantwoordelijke met acceptant
+          // mag zichzelf niet "goedkeuren".
+          const magOk = nietManagerOfGeblokkeerd && (isAcceptant || isVerantwZonderAcceptant || currentProfile?.role === 'admin');
+          // NOK zetten mag daarnaast ook de verantwoordelijke zelf, ook
+          // als er een acceptant is — die mag altijd zelf aan de bel
+          // trekken dat iets niet goed is gegaan.
+          const magNok = nietManagerOfGeblokkeerd && (isAcceptant || isVerantwZonderAcceptant || isVerantwMetAcceptant || currentProfile?.role === 'admin');
+          const canEdit = magOk || magNok;
           const orgName = a.organisations?.name || '';
           const orgCode = a.organisations?.code || '';
           const accName = a.acceptant_org?.name || '';
@@ -1321,26 +1335,32 @@
                 ${canEdit ? (() => {
                   const isNok = r.result === 'nok';
                   const readyForRetest = isNok && bevinding?.status === 'opgelost_wacht_hertest';
-                  const okBtn = (!isNok || readyForRetest)
+                  const okInteractief = magOk && (!isNok || readyForRetest);
+                  const okBtn = okInteractief
                     ? `<button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}"
                         onclick="${readyForRetest ? `retestOkClick('${a.id}','${a.scenario_id}')` : `setResult('${a.id}','${a.scenario_id}','ok')`}"
                         title="Markeer als OK">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
                       </button>`
-                    : `<button class="rtbtn rtbtn-ok" disabled style="cursor:not-allowed; opacity:0.5;" title="Deze bevinding moet eerst op 'Opgelost, wacht op hertest' gezet worden bij NOK-opvolging voordat een hertest mogelijk is">
+                    : `<button class="rtbtn rtbtn-ok" disabled style="cursor:not-allowed; opacity:0.5;" title="${!magOk ? 'Alleen de acceptant mag dit op OK zetten' : 'Deze bevinding moet eerst op \'Opgelost, wacht op hertest\' gezet worden bij NOK-opvolging voordat een hertest mogelijk is'}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
                       </button>`;
-                  const nokBtn = !isNok
+                  const nokInteractief = magNok && !isNok;
+                  const nokBtn = nokInteractief
                     ? `<button class="rtbtn rtbtn-nok" onclick="openNokModal('${a.id}','${a.scenario_id}')" title="Markeer als NOK">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
                       </button>`
-                    : readyForRetest
-                      ? `<button class="rtbtn rtbtn-nok active" onclick="retestNokClick('${a.id}','${a.scenario_id}')" title="Nog steeds NOK na hertest">
+                    : (!isNok
+                      ? `<button class="rtbtn rtbtn-nok" disabled style="cursor:not-allowed; opacity:0.5;" title="Je hebt geen rechten om dit op NOK te zetten">
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
                         </button>`
-                      : `<button class="rtbtn rtbtn-nok active" disabled style="cursor:not-allowed; opacity:0.7;" title="Een geregistreerde NOK kan niet meer worden uitgezet — deze wordt pas weer actief zodra de bevinding bij NOK-opvolging op 'Opgelost, wacht op hertest' is gezet">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
-                        </button>`;
+                      : readyForRetest && magNok
+                        ? `<button class="rtbtn rtbtn-nok active" onclick="retestNokClick('${a.id}','${a.scenario_id}')" title="Nog steeds NOK na hertest">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
+                          </button>`
+                        : `<button class="rtbtn rtbtn-nok active" disabled style="cursor:not-allowed; opacity:0.7;" title="Een geregistreerde NOK kan niet meer worden uitgezet — deze wordt pas weer actief zodra de bevinding bij NOK-opvolging op 'Opgelost, wacht op hertest' is gezet">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK
+                          </button>`);
                   return okBtn + nokBtn;
                 })() : `
                   <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</span>
