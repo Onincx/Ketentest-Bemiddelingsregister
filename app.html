@@ -15,9 +15,7 @@
     .activity-row { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; align-items: center; }
     .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .activity-row:last-child > div { border-bottom: none; }
-    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; }
-    .activity-row:last-child > div:first-child { border-bottom-left-radius: var(--radius); }
-    .activity-row:last-child > div:last-child { border-bottom-right-radius: var(--radius); }
+    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; background: var(--surface); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
     .result-toggle { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; min-width: 220px; width: max-content; }
     .rtbtn { border: 1.5px solid; border-radius: var(--radius); padding: 4px 9px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -31,15 +29,6 @@
     .notes-mini:focus { outline: none; border-color: var(--brand-mid); }
     .scenario-progress { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; margin-top: 6px; }
     .scenario-progress-bar { height: 100%; background: var(--accent); border-radius: 99px; transition: width 0.3s; }
-    .notes-tooltip { position: relative; display: inline-block; }
-    .notes-tooltip .tooltip-box {
-      display: none; position: absolute; right: 0; top: 28px; z-index: 50;
-      background: #1a1a1a; color: #fff; font-size: 12px; line-height: 1.5;
-      padding: 8px 12px; border-radius: 6px; width: 240px;
-      white-space: pre-wrap; word-break: break-word;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-    }
-    .notes-tooltip:hover .tooltip-box { display: block; }
     .note-icon-btn {
       border: 1.5px solid #d1d5db;
       background: #f9fafb;
@@ -1268,7 +1257,7 @@
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
       const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
 
-      return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:visible; margin-top:4px;">
+      return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
           <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
@@ -1357,16 +1346,13 @@
                   <span class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" style="cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK</span>
                   <span class="rtbtn rtbtn-nok ${r.result === 'nok' ? 'active' : ''}" style="cursor:default;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> NOK</span>
                 `}
-                <div class="notes-tooltip">
-                  <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}"
-                    onclick="${canEdit ? `openNoteModal('${a.id}','${a.scenario_id}')` : ''}"
-                    style="${canEdit ? '' : 'cursor:default;'}"
-                    title="${hasNote ? 'Opmerking bekijken/bewerken' : (canEdit ? 'Opmerking toevoegen' : 'Geen opmerking')}">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    ${hasNote ? '<span style="font-size:11px;font-weight:600;">notitie</span>' : ''}
-                  </button>
-                  ${hasNote ? `<div class="tooltip-box">${r.notes.replace(/</g,'&lt;')}</div>` : ''}
-                </div>
+                <button class="note-icon-btn ${hasNote ? 'has-note' : 'no-note'}"
+                  onclick="${canEdit ? `openNoteModal('${a.id}','${a.scenario_id}')` : (hasNote ? `viewNoteModal('${a.id}')` : '')}"
+                  style="${canEdit || hasNote ? '' : 'cursor:default;'}"
+                  title="${hasNote ? (canEdit ? 'Opmerking bekijken/bewerken' : 'Opmerking bekijken') : (canEdit ? 'Opmerking toevoegen' : 'Geen opmerking')}">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  ${hasNote ? '<span style="font-size:11px;font-weight:600;">notitie</span>' : ''}
+                </button>
               </div>
               `}
             </div>
@@ -1399,7 +1385,7 @@
       // Maak detail panel
       const panel = document.createElement('div');
       panel.id = 'detail-panel-' + id;
-      panel.style.cssText = 'background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:visible; margin-bottom:4px;';
+      panel.style.cssText = 'background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
       panel.innerHTML = `
         <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
           <div style="display:flex; align-items:center; gap:10px;">
@@ -1562,6 +1548,29 @@
     // Notitie modal
     let historyPanelOpen = false;
     let historyLoadedFor = null;
+
+    function viewNoteModal(activityId) {
+      const r = results[activityId] || {};
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.id = 'viewNoteModalOverlay';
+      modal.style.display = 'flex';
+      modal.innerHTML = `
+        <div class="modal" style="max-width:480px;" onclick="event.stopPropagation()">
+          <div class="modal-header">
+            <h3><span style="margin-right:6px;"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>Opmerking</h3>
+            <button class="btn btn-ghost btn-icon" onclick="document.getElementById('viewNoteModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          </div>
+          <div class="modal-body">
+            <p style="white-space:pre-wrap; word-break:break-word; font-size:14px; line-height:1.6; max-height:50vh; overflow-y:auto;">${esc(r.notes || '')}</p>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-outline" onclick="document.getElementById('viewNoteModalOverlay').remove()">Sluiten</button>
+          </div>
+        </div>`;
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+      document.body.appendChild(modal);
+    }
 
     function openNoteModal(activityId, scenarioId) {
       historyPanelOpen = false;
