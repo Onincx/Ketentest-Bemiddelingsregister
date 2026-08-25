@@ -141,10 +141,10 @@ function notifBerichtenLinkHtml(model, isAdminPage) {
 // rol per ongeluk zichtbaar blijft.
 function scenariosLinkHtml(role, isAdminPage) {
   const icon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>';
-  if (role === 'admin') {
-    const onclick = isAdminPage ? ` onclick="return navTab('scenarios', event)"` : '';
-    return `<a href="admin.html?tab=scenarios" id="navScenariosLink"${onclick}>${icon} Testscenario's</a>`;
-  }
+  // 'Testscenario's' onder Ketentest toont voortaan voor iedereen —
+  // ook de beheerder — de weergave zoals een gebruiker die ziet
+  // (app.html). Het beheerscherm om scenario's te muteren/beheren zit
+  // voortaan apart onder Beheer → 'Scenario's beheren'.
   return `<a href="app.html" id="navScenariosLink">${icon} Testscenario's</a>`;
 }
 
@@ -158,13 +158,10 @@ function scenariosLinkHtml(role, isAdminPage) {
 function updateKetentestHoofdlink(role, isAdminPage) {
   const link = document.getElementById('navKetentestLink');
   if (!link) return;
-  if (role === 'admin') {
-    link.href = 'admin.html?tab=scenarios';
-    if (isAdminPage) link.onclick = (event) => navTab('scenarios', event);
-  } else {
-    link.href = 'app.html';
-    link.onclick = null;
-  }
+  // Ook het hoofdlink 'Ketentest' zelf gaat voortaan voor iedereen naar
+  // de gebruikersweergave (app.html) — zie scenariosLinkHtml hierboven.
+  link.href = 'app.html';
+  link.onclick = null;
 }
 
 // Toont in de navigatiebalk (element met id="nokBadge") hoeveel
@@ -280,6 +277,14 @@ async function refreshMijnActiesBadge(orgId) {
   const { data: resultData } = activityIds.length
     ? await fetchAllRows((from, to) => sb.from('activity_results').select('activity_id,result').in('activity_id', activityIds).range(from, to))
     : { data: [] };
+  const { data: flowNodeData } = await fetchAllRows((from, to) =>
+    sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', result.active.id).range(from, to)
+  );
+  const { data: flowEdgeData } = await fetchAllRows((from, to) =>
+    sb.from('flow_edges').select('from_id,to_id').eq('ketentest_id', result.active.id).range(from, to)
+  );
+  const fNodes = flowNodeData || [];
+  const fEdges = flowEdgeData || [];
 
   const resultsMap = {};
   (resultData || []).forEach(r => { resultsMap[r.activity_id] = r.result; });
@@ -287,11 +292,33 @@ async function refreshMijnActiesBadge(orgId) {
   const byScenario = {};
   (activityData || []).forEach(a => { (byScenario[a.scenario_id] = byScenario[a.scenario_id] || []).push(a); });
 
+  // Zelfde regel als in app.html/mijn-acties.html: de eerste activiteit
+  // van een vervolgscenario in een flow telt pas mee zodra alle directe
+  // voorganger(s) in die flow volledig op OK staan.
+  function scenarioVolledigOk(scenarioId) {
+    const acts = byScenario[scenarioId];
+    if (!acts || !acts.length) return false;
+    return acts.every(a => (resultsMap[a.id] || 'open') === 'ok');
+  }
+  function eersteActiviteitMagStarten(scenarioId) {
+    const node = fNodes.find(n => n.scenario_id === scenarioId);
+    if (!node || !node.flow_id || node.is_start) return true;
+    let voorgangers = fEdges.filter(e => e.to_id === scenarioId).map(e => e.from_id);
+    if (!voorgangers.length) voorgangers = fEdges.filter(e => e.from_id === scenarioId).map(e => e.to_id);
+    if (!voorgangers.length) return true;
+    return voorgangers.every(scenarioVolledigOk);
+  }
+
   let count = 0;
-  Object.values(byScenario).forEach(acts => {
+  Object.entries(byScenario).forEach(([scenarioId, acts]) => {
     acts.sort((a, b) => a.sort_order - b.sort_order);
     const bottleneck = acts.find(a => (resultsMap[a.id] || 'open') !== 'ok');
-    if (bottleneck && (bottleneck.organisation_id === orgId || bottleneck.acceptant_org_id === orgId)) count++;
+    if (!bottleneck) return;
+    const isEersteActiviteit = acts[0] && acts[0].id === bottleneck.id;
+    if (isEersteActiviteit && !eersteActiviteitMagStarten(scenarioId)) return;
+    // Zelfde regel als de OK/NOK-rechten elders: is er een acceptant,
+    // dan telt alleen die acceptant mee — niet de verantwoordelijke.
+    if (bottleneck.acceptant_org_id === orgId || (!bottleneck.acceptant_org_id && bottleneck.organisation_id === orgId)) count++;
   });
 
   if (count > 0) {
@@ -312,7 +339,9 @@ async function renderActiveKetentestLabel() {
   }
 
   if (el) {
-    el.textContent = result.active.naam;
+    const isAfgesloten = result.active.status === 'afgesloten';
+    el.textContent = (isAfgesloten ? '🔒 ' : '') + result.active.naam + (isAfgesloten ? ' (afgesloten)' : '');
+    el.style.background = isAfgesloten ? 'rgba(55,65,81,0.85)' : 'rgba(255,255,255,0.15)';
     el.style.display = '';
   }
 
