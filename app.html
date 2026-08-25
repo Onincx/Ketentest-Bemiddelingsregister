@@ -15,7 +15,9 @@
     .activity-row { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; align-items: center; }
     .activity-row > div { padding: 10px 12px; border-bottom: 1px solid var(--border); }
     .activity-row:last-child > div { border-bottom: none; }
-    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; background: var(--surface); }
+    .activity-header { display: grid; grid-template-columns: 32px 110px 1fr 110px minmax(220px, auto); gap: 0; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; }
+    .activity-row:last-child > div:first-child { border-bottom-left-radius: var(--radius); }
+    .activity-row:last-child > div:last-child { border-bottom-right-radius: var(--radius); }
     .activity-header > div { padding: 8px 12px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border); }
     .result-toggle { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; min-width: 220px; width: max-content; }
     .rtbtn { border: 1.5px solid; border-radius: var(--radius); padding: 4px 9px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
@@ -1266,7 +1268,7 @@
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
       const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
 
-      return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
+      return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:visible; margin-top:4px;">
         <div class="activity-header">
           <div>#</div><div>Verantw. org.</div><div>Omschrijving</div><div>Acceptant</div><div>Uitkomst</div>
         </div>
@@ -1397,7 +1399,7 @@
       // Maak detail panel
       const panel = document.createElement('div');
       panel.id = 'detail-panel-' + id;
-      panel.style.cssText = 'background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:4px;';
+      panel.style.cssText = 'background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); overflow:visible; margin-bottom:4px;';
       panel.innerHTML = `
         <div style="padding:14px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; background:var(--surface);">
           <div style="display:flex; align-items:center; gap:10px;">
