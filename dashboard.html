@@ -892,20 +892,35 @@
         const nok  = orgActs.filter(a => getResult(a.id) === 'nok').length;
         const open = total - ok - nok;
         const pct  = Math.round(((ok + nok) / total) * 100);
-        const aantalVerantwoordelijk = orgActs.filter(a => a.organisation_id === org.id).length;
-        const aantalAcceptant = orgActs.filter(a => a.acceptant_org?.id === org.id).length;
+
+        // Zelfde telling, maar apart per rol — een activiteit valt
+        // nooit in beide, een organisatie is per activiteit óf
+        // verantwoordelijke óf acceptant (uitvoerend), nooit allebei.
+        const verantwActs = orgActs.filter(a => a.organisation_id === org.id);
+        const acceptantActs = orgActs.filter(a => a.acceptant_org?.id === org.id);
+        const telRol = (acts) => ({
+          total: acts.length,
+          ok: acts.filter(a => getResult(a.id) === 'ok').length,
+          nok: acts.filter(a => getResult(a.id) === 'nok').length,
+          open: acts.filter(a => !['ok', 'nok'].includes(getResult(a.id))).length,
+        });
+        const verantw = telRol(verantwActs);
+        const acceptant = telRol(acceptantActs);
+
+        const aantalVerantwoordelijk = verantwActs.length;
+        const aantalAcceptant = acceptantActs.length;
         // "Heeft NOK" is bewust gebaseerd op eigenaarschap van de
         // bevinding (wie 'm moet oplossen), niet op loutere betrokkenheid
         // bij de activiteit (verantwoordelijke/acceptant) — anders zouden
         // beide partijen bij dezelfde NOK deze badge krijgen.
         const heeftEigenNok = orgActs.some(a => getResult(a.id) === 'nok' && latestBevindingByActivity[a.id]?.owner_org_id === org.id);
-        return { org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant, heeftEigenNok };
+        return { org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant, verantw, acceptant, heeftEigenNok };
       }).filter(Boolean).sort((a,b) => b.pct - a.pct);
 
       if (!rows.length) { el.innerHTML = '<p class="empty-dash">Geen activiteiten gekoppeld aan organisaties.</p>'; return; }
 
       el.innerHTML = `<div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:16px;">` +
-        rows.map(({ org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant, heeftEigenNok }) => {
+        rows.map(({ org, total, ok, nok, open, pct, aantalVerantwoordelijk, aantalAcceptant, verantw, acceptant, heeftEigenNok }) => {
           const okPct   = total > 0 ? Math.round(ok/total*100) : 0;
           const nokPct  = total > 0 ? Math.round(nok/total*100) : 0;
           const statusColor = heeftEigenNok ? '#dc2626' : (ok === total ? '#16a34a' : '#e67e22');
@@ -914,6 +929,19 @@
           const rolDelen = [];
           if (aantalVerantwoordelijk > 0) rolDelen.push(`${aantalVerantwoordelijk} als verantwoordelijke`);
           if (aantalAcceptant > 0) rolDelen.push(`${aantalAcceptant} als acceptant`);
+          // Bouwt de regel "✓ X OK  ✗ Y NOK  ○ Z open" voor één rol,
+          // alleen de onderdelen tonen die > 0 zijn.
+          const rolRegel = (label, r) => {
+            if (r.total === 0) return '';
+            const delen = [];
+            if (r.ok > 0) delen.push(`<span style="color:#16a34a;">✓ ${r.ok} OK</span>`);
+            if (r.nok > 0) delen.push(`<span style="color:#dc2626;">✗ ${r.nok} NOK</span>`);
+            if (r.open > 0) delen.push(`<span style="color:#6b7280;">○ ${r.open} open</span>`);
+            return `<div style="display:flex; align-items:center; gap:10px; font-size:12px; font-weight:500; margin-top:4px;">
+              <span style="color:#9ca3af; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:0.03em; width:110px; flex-shrink:0;">${label}</span>
+              ${delen.join(' ')}
+            </div>`;
+          };
           return `<div style="border:1px solid #e5e7eb; border-radius:10px; padding:16px; background:#fff; border-top:3px solid ${statusColor};">
             <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:12px;">
               <div>
@@ -926,12 +954,9 @@
               ${ok  > 0 ? `<div style="width:${okPct}%;  background:#16a34a; transition:width 0.4s;"></div>` : ''}
               ${nok > 0 ? `<div style="width:${nokPct}%; background:#dc2626; transition:width 0.4s;"></div>` : ''}
             </div>
-            <div style="display:flex; gap:12px; font-size:12px; font-weight:500;">
-              <span style="color:#16a34a;">✓ ${ok} OK</span>
-              ${nok > 0 ? `<span style="color:#dc2626;">✗ ${nok} NOK</span>` : ''}
-              ${open > 0 ? `<span style="color:#6b7280;">○ ${open} open</span>` : ''}
-              <span style="margin-left:auto; font-weight:700; color:#1a1a1a;">${pct}%</span>
-            </div>
+            ${rolRegel('Verantwoordelijk', verantw)}
+            ${rolRegel('Uitvoerend', acceptant)}
+            <div style="text-align:right; font-weight:700; color:#1a1a1a; font-size:12px; margin-top:8px;">${pct}%</div>
           </div>`;
         }).join('') + '</div>';
     }
