@@ -429,8 +429,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th style="width:24px;"></th><th>Nummer</th><th>Titel</th><th>Scenario</th><th>Verantw.</th><th>Status</th><th>Datum melding</th><th>Opmerkingen</th></tr></thead>
-            <tbody id="nokTable"><tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Nummer</th><th>Titel</th><th>Scenario</th><th>Verantw.</th><th>Status</th><th>Datum melding</th><th>Opmerkingen</th></tr></thead>
+            <tbody id="nokTable"><tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -1930,7 +1930,7 @@
 
     async function loadNokOverview() {
       const tb = document.getElementById('nokTable');
-      tb.innerHTML = '<tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      tb.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
       if (!activeKetentest) { bevindingen = []; renderNokTable(); return; }
 
       const { data, error } = await fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at').range(from, to));
@@ -1988,7 +1988,7 @@
       let rows = bevindingen;
       if (nokFilter === 'open') rows = rows.filter(b => b.status !== 'hertest_ok');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
         return;
       }
 
