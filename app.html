@@ -1473,6 +1473,10 @@
               <textarea id="nokModalReden" placeholder="Wat gaat er mis? Wees zo concreet mogelijk, dit helpt bij het oplossen..." style="min-height:100px;"></textarea>
             </div>
             <div class="form-group" style="margin-top:14px;">
+              <label>Omschrijving probleem</label>
+              <textarea id="nokModalOmschrijving" placeholder="Optioneel: aanvullende, meer technische of functionele omschrijving van het probleem..." style="min-height:80px;"></textarea>
+            </div>
+            <div class="form-group" style="margin-top:14px;">
               <label>Prioriteit</label>
               <select id="nokModalPrioriteit">
                 <option value="laag">Laag</option>
@@ -1558,6 +1562,7 @@
     async function submitNokModal(activityId, scenarioId) {
       const titel = document.getElementById('nokModalTitel').value.trim();
       const reden = document.getElementById('nokModalReden').value.trim();
+      const omschrijvingProbleem = document.getElementById('nokModalOmschrijving').value.trim();
       const prioriteit = document.getElementById('nokModalPrioriteit').value;
       const eigenaar = document.getElementById('nokModalEigenaar').value;
       if (!titel) {
@@ -1580,8 +1585,9 @@
 
       const { data: bevinding, error: bevindingError } = await sb.from('bevindingen').insert({
         ketentest_id: activeKetentest.id, activity_id: activityId, titel, toelichting: reden, prioriteit,
+        omschrijving_probleem: omschrijvingProbleem || null,
         owner_org_id: eigenaar, status: 'nieuw', gerelateerde_bevinding_id: gerelateerdeBevindingId || null,
-        gemeld_door_user_id: currentUser?.id || null,
+        gemeld_door_user_id: currentUser?.id || null, gemeld_door_org_id: currentProfile?.organisation_id || null,
       }).select().single();
       if (bevindingError) { alert('Fout bij opslaan: ' + bevindingError.message); return; }
       latestBevindingByActivity[activityId] = bevinding;

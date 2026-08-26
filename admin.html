@@ -1916,7 +1916,6 @@
     // ---- NOK-OPVOLGING (nu gebaseerd op de tabel 'bevindingen') ----
     let bevindingen = [];
     let nokNotitiesMap = {}; // bevinding_id -> aantal opmerkingen
-    let nokMelderMap = {}; // bevinding_id -> naam van de melder
     let nokFilter = 'open';
     const NOK_STATUS_LABELS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK' };
 
@@ -1937,15 +1936,6 @@
       const { data, error } = await fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at').range(from, to));
       if (error) { console.error('loadNokOverview error:', error); bevindingen = []; renderNokTable(); return; }
       bevindingen = data || [];
-
-      // Meldernamen ophalen via de beperkte RPC-functie (niet via de
-      // volledige users-tabel, die is voor een gewone gebruiker
-      // terecht afgeschermd tot het eigen profiel).
-      nokMelderMap = {};
-      if (bevindingen.length) {
-        const { data: melderData } = await sb.rpc('get_bevinding_melder_namen', { p_ketentest_id: activeKetentest.id });
-        (melderData || []).forEach(m => { nokMelderMap[m.bevinding_id] = m.melder_naam; });
-      }
 
       // Aantal opmerkingen per bevinding in één keer ophalen (voor het
       // label op de knop) — de volledige inhoud laden we pas als de
@@ -2056,13 +2046,16 @@
     }
 
     // ---- Detailpop-up voor één bevinding ----
-    function openBevindingModal(bevindingId) {
+    let bevindingTitelEditModus = false;
+
+    function openBevindingModal(bevindingId, behoudTitelEditModus = false) {
       const b = bevindingen.find(x => x.id === bevindingId);
       if (!b) return;
       const act = activities.find(a => a.id === b.activity_id);
       const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
       const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : null;
       const acceptantOrg = act ? orgs.find(o => o.id === act.acceptant_org_id) : null;
+      const melderOrg = orgs.find(o => o.id === b.gemeld_door_org_id);
       const setDate = b.created_at ? new Date(b.created_at) : null;
       const isResolved = b.status === 'hertest_ok';
       const isLocked = b.status === 'opgelost_wacht_hertest' || isResolved;
@@ -2073,26 +2066,31 @@
       // dezelfde regel als voorheen, nu uitsluitend toegepast binnen
       // deze pop-up (niet meer rechtstreeks in het overzicht).
       const magMuteren = canMutateNok(b);
-      const melderNaam = nokMelderMap[b.id] || null;
       const notitieCount = nokNotitiesMap[b.id] || 0;
+      if (!behoudTitelEditModus) bevindingTitelEditModus = false;
 
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
       modal.id = 'bevindingModalOverlay';
       modal.style.display = 'flex';
       modal.innerHTML = `
-        <div class="modal" style="max-width:560px;" onclick="event.stopPropagation()">
-          <div class="modal-header" style="flex-direction:column; align-items:flex-start; gap:6px;">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%;">
-              <div>
-                <div style="font-size:11px; font-family:monospace; font-weight:700; color:var(--text-muted); margin-bottom:4px;">B${b.bevinding_nummer}</div>
-                ${magMuteren
-                  ? `<div style="display:flex; gap:8px; align-items:center;">
-                      <input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" style="font-size:17px; font-weight:700; padding:6px 10px; border:1px solid var(--border); border-radius:6px; width:340px;">
-                    </div>`
-                  : `<h3 style="margin:0;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</h3>`}
-              </div>
+        <div class="modal" style="max-width:760px; width:92vw;" onclick="event.stopPropagation()">
+          <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:12px;">
+              <div style="font-size:11px; font-family:monospace; font-weight:700; color:var(--text-muted);">B${b.bevinding_nummer}</div>
               <button class="btn btn-ghost btn-icon" onclick="document.getElementById('bevindingModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; width:100%;">
+              ${magMuteren && bevindingTitelEditModus
+                ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">
+                   <button class="btn btn-primary btn-sm" onclick="opslaanBevindingTitel('${b.id}')">Opslaan</button>
+                   <button class="btn btn-outline btn-sm" onclick="bevindingTitelEditModus=false; document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}')">Annuleren</button>`
+                : `<h3 style="margin:0; flex:1;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</h3>
+                   ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}', true)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
+            </div>
+            <div style="font-size:12.5px; color:var(--text-muted); line-height:1.6;">
+              ${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" style="color:var(--brand); text-decoration:none; font-weight:600;">${scen.code}</a> — ${scen.title ? scen.title.replace(/</g, '&lt;') : ''}` : ''}
+              ${act ? `<br>Activiteit: ${act.description || ''}` : ''}
             </div>
           </div>
           <div class="modal-body">
@@ -2137,7 +2135,7 @@
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Melder</div>
-                <span style="font-size:12px;">${melderNaam ? melderNaam.replace(/</g, '&lt;') : '—'}</span>
+                <span style="font-size:12px;">${melderOrg?.name || '—'}</span>
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Datum melding</div>
@@ -2148,14 +2146,15 @@
                 <span style="font-size:12px;">${doorlooptijd}</span>
               </div>
             </div>
-            <div style="margin-bottom:16px;">
-              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Activiteit</div>
-              <div style="font-size:13px;">${act ? (act.description || '—') : '—'}</div>
-            </div>
             ${b.toelichting ? `
-            <div style="margin-bottom:6px;">
+            <div style="margin-bottom:16px;">
               <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Reden</div>
               <div style="font-size:13px; font-style:italic; white-space:pre-wrap;">${b.toelichting.replace(/</g, '&lt;')}</div>
+            </div>` : ''}
+            ${b.omschrijving_probleem ? `
+            <div style="margin-bottom:6px;">
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Omschrijving probleem</div>
+              <div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem.replace(/</g, '&lt;')}</div>
             </div>` : ''}
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
@@ -2163,10 +2162,7 @@
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Opmerkingen (${notitieCount})
             </button>
-            <div style="display:flex; gap:8px;">
-              ${magMuteren ? `<button class="btn btn-primary btn-sm" onclick="opslaanBevindingTitel('${b.id}')">Titel opslaan</button>` : ''}
-              <button class="btn btn-outline btn-sm" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
-            </div>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
           </div>
         </div>`;
       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
@@ -2181,8 +2177,10 @@
       if (error) { alert('Fout bij opslaan: ' + error.message); return; }
       const b = bevindingen.find(x => x.id === bevindingId);
       if (b) b.titel = nieuweTitel;
+      bevindingTitelEditModus = false;
       document.getElementById('bevindingModalOverlay')?.remove();
       renderNokTable();
+      openBevindingModal(bevindingId);
     }
 
     async function updateNokField(bevindingId, field, value) {
