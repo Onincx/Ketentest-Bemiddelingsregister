@@ -465,6 +465,25 @@
         const gapPt = 10;
 
         let y = margin;
+
+        // Gecentreerde kop bovenaan: titel (ketentestnaam) + datum/tijd.
+        const titel = `Ketentest ${activeKetentest?.naam || ''}`.trim();
+        const nu = new Date();
+        const dagen = ['zondag','maandag','dinsdag','woensdag','donderdag','vrijdag','zaterdag'];
+        const maanden = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+        const datumTekst = `${dagen[nu.getDay()]} ${nu.getDate()} ${maanden[nu.getMonth()]} ${String(nu.getHours()).padStart(2,'0')}:${String(nu.getMinutes()).padStart(2,'0')} uur`;
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(20);
+        doc.setTextColor(26, 26, 26);
+        doc.text(titel, pageWidth / 2, y + 18, { align: 'center' });
+        y += 30;
+
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(11);
+        doc.setTextColor(107, 114, 128);
+        doc.text(datumTekst, pageWidth / 2, y, { align: 'center' });
+        y += 26;
         let isEersteBlokOpPagina = true;
 
         for (const blok of blokken) {
