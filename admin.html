@@ -481,26 +481,6 @@
     </div>
 
     <!-- Modal: NOK op In behandeling zetten (vereist een toelichting) -->
-    <div class="modal-overlay" id="modalNokInBehandeling" style="display:none;" onclick="closeModalOverlay(event,'modalNokInBehandeling')">
-      <div class="modal" onclick="event.stopPropagation()">
-        <div class="modal-header">
-          <h3>NOK op In behandeling zetten</h3>
-          <button class="btn btn-ghost btn-icon" onclick="cancelNokInBehandeling()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-          <div class="form-group">
-            <label>Notitie <span style="color:var(--danger);">*</span></label>
-            <textarea id="nokInBehandelingNotitie" placeholder="Wat ga je doen om dit op te pakken?" style="min-height:90px;"></textarea>
-          </div>
-          <div id="alertNokInBehandeling" class="alert" style="display:none; margin-top:10px;"></div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-outline" onclick="cancelNokInBehandeling()">Annuleren</button>
-          <button class="btn btn-primary" onclick="confirmNokInBehandeling()">OK</button>
-        </div>
-      </div>
-    </div>
-
     <!-- TAB: Berichten -->
     <div id="tab-berichten" style="display:none;">
       <div class="page-header">
@@ -2097,13 +2077,9 @@
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Status</div>
-                ${isLocked
-                  ? `<span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : '#ede9fe'}; color:${isResolved ? '#065f46' : '#5b21b6'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;" title="${isResolved ? 'Deze bevinding is afgerond' : 'Status kan niet meer aangepast worden — alleen opmerkingen blijven mogelijk'}">${isResolved ? '✓' : '🔒'} ${NOK_STATUS_LABELS[b.status]}</span>`
-                  : magMuteren
-                    ? `<select onchange="handleNokStatusChange(this,'${b.id}')" style="font-size:12px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; width:100%;">
-                        ${Object.entries(NOK_STATUS_LABELS).filter(([v]) => v !== 'hertest_ok').map(([v, l]) => `<option value="${v}" ${b.status === v ? 'selected' : ''}>${l}</option>`).join('')}
-                      </select>`
-                    : `<span style="font-size:12px;">${NOK_STATUS_LABELS[b.status] || '—'}</span>`}
+                <span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : isLocked ? '#ede9fe' : '#f3f4f6'}; color:${isResolved ? '#065f46' : isLocked ? '#5b21b6' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓ ' : ''}${NOK_STATUS_LABELS[b.status]}</span>
+                ${magMuteren && b.status === 'nieuw' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="nemInBehandeling('${b.id}')">In behandeling nemen</button>` : ''}
+                ${magMuteren && b.status === 'in_behandeling' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="openNokOpgelostModal('${b.id}')">Markeren als opgelost</button>` : ''}
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Prioriteit</div>
@@ -2201,80 +2177,27 @@
     // het systeem zelf na een geslaagde hertest).
     let nokOpgelostContext = null;
 
-    function handleNokStatusChange(selectEl, bevindingId) {
-      const newValue = selectEl.value;
-      const b = bevindingen.find(x => x.id === bevindingId);
-      if (newValue === 'opgelost_wacht_hertest') {
-        openNokOpgelostModal(bevindingId, b?.status, selectEl);
-      } else if (newValue === 'in_behandeling' && b?.status === 'nieuw') {
-        openNokInBehandelingModal(bevindingId, b?.status, selectEl);
-      } else {
-        updateNokField(bevindingId, 'status', newValue);
-      }
-    }
-
-    // Van Nieuw naar In behandeling zetten vereist een toelichting: wat
-    // gaat de eigenaar-organisatie doen om dit op te pakken?
-    let nokInBehandelingContext = null;
-
-    function openNokInBehandelingModal(bevindingId, previousValue, selectEl) {
-      nokInBehandelingContext = { bevindingId, previousValue, selectEl };
-      document.getElementById('nokInBehandelingNotitie').value = '';
-      document.getElementById('alertNokInBehandeling').style.display = 'none';
-      openModal('modalNokInBehandeling');
-    }
-
-    function cancelNokInBehandeling() {
-      if (nokInBehandelingContext?.selectEl) {
-        nokInBehandelingContext.selectEl.value = nokInBehandelingContext.previousValue || 'nieuw';
-      }
-      closeModal('modalNokInBehandeling');
-      nokInBehandelingContext = null;
-    }
-
-    async function confirmNokInBehandeling() {
-      const tekst = document.getElementById('nokInBehandelingNotitie').value.trim();
-      if (!tekst) {
-        const al = document.getElementById('alertNokInBehandeling');
-        al.textContent = 'Vul een notitie in — dit is verplicht.';
-        al.className = 'alert alert-error';
-        al.style.display = '';
-        return;
-      }
-      if (!nokInBehandelingContext) return;
-      const { bevindingId } = nokInBehandelingContext;
-      const b = bevindingen.find(x => x.id === bevindingId);
-      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
-
-      const { error: notitieError } = await sb.from('nok_notities').insert({
-        bevinding_id: bevindingId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
-      });
-      if (notitieError) { alert('Fout bij opslaan: ' + notitieError.message); return; }
-      nokNotitiesMap[bevindingId] = (nokNotitiesMap[bevindingId] || 0) + 1;
-
+    // Van Nieuw naar In behandeling: een simpele, directe actie zonder
+    // verplichte toelichting — de eerstvolgende status ná Nieuw is
+    // altijd In behandeling.
+    async function nemInBehandeling(bevindingId) {
       const { error } = await sb.from('bevindingen').update({ status: 'in_behandeling' }).eq('id', bevindingId);
       if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      const b = bevindingen.find(x => x.id === bevindingId);
       if (b) b.status = 'in_behandeling';
-
-      closeModal('modalNokInBehandeling');
-      nokInBehandelingContext = null;
       renderNokTable();
       document.getElementById('bevindingModalOverlay')?.remove();
       openBevindingModal(bevindingId);
     }
 
-    function openNokOpgelostModal(bevindingId, previousValue, selectEl) {
-      nokOpgelostContext = { bevindingId, previousValue, selectEl };
+    function openNokOpgelostModal(bevindingId) {
+      nokOpgelostContext = { bevindingId };
       document.getElementById('nokOpgelostToelichting').value = '';
       document.getElementById('alertNokOpgelost').style.display = 'none';
       openModal('modalNokOpgelost');
     }
 
     function cancelNokOpgelost() {
-      // Zet de zichtbare keuze terug naar de status van vóór deze poging
-      if (nokOpgelostContext?.selectEl) {
-        nokOpgelostContext.selectEl.value = nokOpgelostContext.previousValue || 'nieuw';
-      }
       closeModal('modalNokOpgelost');
       nokOpgelostContext = null;
     }
@@ -2298,16 +2221,22 @@
         bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
 
-      // Status wordt vergrendeld op "Opgelost, wacht op hertest". De
-      // activiteit zelf blijft op NOK staan totdat de acceptant de
-      // hertest daadwerkelijk uitvoert (in Ketentest → Testscenario's) —
-      // pas dan wordt deze bevinding afgerond of komt er een nieuwe,
-      // gekoppelde bevinding bij als de hertest opnieuw NOK oplevert.
+      // Status wordt gezet op "Opgelost, wacht op hertest". De
+      // activiteit zelf wordt daarbij teruggezet naar 'open' (het
+      // activiteitresultaat wordt verwijderd) — zo kan de betrokken
+      // organisatie de activiteit gewoon opnieuw, als een normale
+      // activiteit, uitvoeren en op OK/NOK zetten in Ketentest →
+      // Testscenario's. Een eventuele nieuwe NOK wordt dan als een
+      // volledig nieuwe bevinding vastgelegd.
       const { error } = await sb.from('bevindingen').update({ status: 'opgelost_wacht_hertest' }).eq('id', bevindingId);
 
       if (error) {
         alert('Fout bij opslaan: ' + error.message);
         return;
+      }
+      if (b?.activity_id) {
+        const { error: deleteError } = await sb.from('activity_results').delete().eq('activity_id', b.activity_id);
+        if (deleteError) { alert('Bevinding is opgelost, maar het heropenen van de activiteit is niet gelukt: ' + deleteError.message); }
       }
       if (b) b.status = 'opgelost_wacht_hertest';
 
