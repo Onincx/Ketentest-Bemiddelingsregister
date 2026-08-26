@@ -426,6 +426,25 @@
     // (het actieve subtabblad: Voorbereiding of Ketentest), inclusief de
     // donut-grafiek, voortgangsbalken en kaarten — via een schermafbeelding
     // van de content, in plaats van een los opgebouwde PDF-layout.
+    // Legt letterlijk vast wat er op dit moment op het scherm te zien is
+    // (het actieve subtabblad: Voorbereiding of Ketentest) — maar dan per
+    // los blok (elk kaartje/sectie apart), zodat een paginaovergang nooit
+    // dwars door één kaart of bevindingenlijst heen knipt. Een 'dash-grid'
+    // wrapper (die meerdere kaarten onder elkaar bevat) wordt hiervoor
+    // uitgeklapt tot zijn losse kaarten; andere blokken (statistieken,
+    // voortgangsbalk, grafiekenrij) blijven zelf één geheel.
+    function getPdfBlocks(container) {
+      const blocks = [];
+      Array.from(container.children).forEach(child => {
+        if (child.classList && child.classList.contains('dash-grid')) {
+          Array.from(child.children).forEach(grandchild => blocks.push(grandchild));
+        } else {
+          blocks.push(child);
+        }
+      });
+      return blocks;
+    }
+
     async function exportSummaryPdf() {
       const btn = event?.currentTarget;
       const origHtml = btn ? btn.innerHTML : null;
@@ -435,12 +454,7 @@
         const actieveTab = document.getElementById('dashsub-ketentest').style.display !== 'none'
           ? 'dashsub-ketentest' : 'dashsub-voorbereiding';
         const target = document.getElementById(actieveTab);
-
-        const canvas = await html2canvas(target, {
-          scale: 2,
-          backgroundColor: '#f9fafb',
-          useCORS: true,
-        });
+        const blokken = getPdfBlocks(target);
 
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF({ unit: 'pt', format: 'a4', orientation: 'portrait' });
@@ -448,33 +462,52 @@
         const pageHeight = doc.internal.pageSize.getHeight();
         const margin = 24;
         const usableWidth = pageWidth - margin * 2;
-        const usableHeight = pageHeight - margin * 2;
+        const gapPt = 10;
 
-        const imgWidthPt = usableWidth;
-        const imgHeightPt = (canvas.height / canvas.width) * imgWidthPt;
+        let y = margin;
+        let isEersteBlokOpPagina = true;
 
-        // Past de afbeelding, indien nodig, over meerdere pagina's uit —
-        // door telkens een ander stuk van hetzelfde canvas op elke pagina
-        // te tekenen (schuiven via negatieve y-positie).
-        let renderedHeight = 0;
-        let pageNum = 0;
-        while (renderedHeight < imgHeightPt) {
-          if (pageNum > 0) doc.addPage();
-          const imgData = canvas.toDataURL('image/png');
-          doc.addImage(
-            imgData, 'PNG',
-            margin, margin - renderedHeight,
-            imgWidthPt, imgHeightPt
-          );
-          // Wit vlak over het deel dat buiten de huidige pagina hoort te
-          // vallen (boven en onder), zodat elke pagina alleen zijn eigen
-          // segment toont.
-          if (renderedHeight + usableHeight < imgHeightPt) {
-            doc.setFillColor(255, 255, 255);
-            doc.rect(0, margin + usableHeight, pageWidth, pageHeight - margin - usableHeight, 'F');
+        for (const blok of blokken) {
+          if (!(blok instanceof HTMLElement) || blok.offsetHeight === 0) continue;
+
+          const canvas = await html2canvas(blok, { scale: 2, backgroundColor: '#f9fafb', useCORS: true });
+          const imgHeightPt = (canvas.height / canvas.width) * usableWidth;
+
+          // Past dit blok niet meer op de huidige pagina (en het is niet
+          // het eerste blok van de pagina, anders zou het nergens passen)?
+          // Begin dan een nieuwe pagina, zodat het blok in zijn geheel bij
+          // elkaar blijft.
+          if (!isEersteBlokOpPagina && y + imgHeightPt > pageHeight - margin) {
+            doc.addPage();
+            y = margin;
+            isEersteBlokOpPagina = true;
           }
-          renderedHeight += usableHeight;
-          pageNum++;
+
+          // Uitzondering: een enkel blok dat op zichzelf al langer is dan
+          // een volledige pagina (bijv. een zeer lange bevindingenlijst) —
+          // die kan niet anders dan alsnog over meerdere pagina's verdeeld
+          // worden, om een oneindige lus te voorkomen.
+          if (imgHeightPt > pageHeight - margin * 2) {
+            let resterendeHoogte = imgHeightPt;
+            let renderedHeight = 0;
+            const imgData = canvas.toDataURL('image/png');
+            while (resterendeHoogte > 0) {
+              const ruimteOpPagina = pageHeight - margin - y;
+              doc.addImage(imgData, 'PNG', margin, y - renderedHeight, usableWidth, imgHeightPt);
+              renderedHeight += ruimteOpPagina;
+              resterendeHoogte -= ruimteOpPagina;
+              if (resterendeHoogte > 0) { doc.addPage(); y = margin; }
+            }
+            y = pageHeight - margin - Math.abs(resterendeHoogte) + gapPt;
+            if (y > pageHeight - margin) { doc.addPage(); y = margin; }
+            isEersteBlokOpPagina = false;
+            continue;
+          }
+
+          const imgData = canvas.toDataURL('image/png');
+          doc.addImage(imgData, 'PNG', margin, y, usableWidth, imgHeightPt);
+          y += imgHeightPt + gapPt;
+          isEersteBlokOpPagina = false;
         }
 
         doc.save(`ketentest-dashboard-${todayStamp()}.pdf`);
