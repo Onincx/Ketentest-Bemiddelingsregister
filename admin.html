@@ -429,7 +429,7 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nummer</th><th>Titel</th><th>Scenario / activiteit</th><th>Verantw.</th><th>Acceptant</th><th>Status</th><th>Eigenaar</th><th>Datum melding</th><th>Doorlooptijd</th><th>Opmerkingen</th></tr></thead>
+            <thead><tr><th style="width:24px;"></th><th>Nummer</th><th>Titel</th><th>Scenario</th><th>Verantw.</th><th>Status</th><th>Datum melding</th><th>Opmerkingen</th></tr></thead>
             <tbody id="nokTable"><tr><td colspan="9" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
@@ -1980,7 +1980,7 @@
       let rows = bevindingen;
       if (nokFilter === 'open') rows = rows.filter(b => b.status !== 'hertest_ok');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="10"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="8"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
         return;
       }
 
@@ -2016,22 +2016,18 @@
         const notitieCount = nokNotitiesMap[b.id] || 0;
         const gekoppeldAan = b.gerelateerde_bevinding_id ? bevindingen.find(x => x.id === b.gerelateerde_bevinding_id) : null;
         const isVervolg = !!gekoppeldAan;
+        const isExpanded = expandedBevindingId === b.id;
 
-        return `<tr style="${isVervolg ? 'background:#faf5ff;' : ''}">
+        const compacteRij = `<tr style="${isVervolg ? 'background:#faf5ff;' : ''} cursor:pointer;" onclick="toggleBevindingExpand('${b.id}')">
+          <td style="text-align:center; color:var(--text-muted);">${isExpanded ? '▾' : '▸'}</td>
           <td style="${isVervolg ? 'border-left:3px solid #c4b5fd;' : ''}">
             <span style="font-family:monospace; font-weight:700; font-size:13px;">B${b.bevinding_nummer}</span>
             ${isVervolg ? `<div style="font-size:11px; color:#7c3aed; margin-top:2px;">🔗 vervolg van B${gekoppeldAan.bevinding_nummer}</div>` : ''}
           </td>
           <td style="font-weight:600; font-size:13px; max-width:220px;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</td>
-          <td>
-            <div style="font-weight:600; font-size:13px;">
-              ${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" style="color:var(--brand); text-decoration:none;" title="Open scenario">${scen.code}</a>` : '?'}
-            </div>
-            <div style="font-size:12px; color:var(--text-muted);">${act ? (act.description || '') : ''}</div>
-          </td>
+          <td>${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" onclick="event.stopPropagation()" style="color:var(--brand); text-decoration:none; font-weight:600; font-size:13px;" title="Open scenario">${scen.code}</a>` : '?'}</td>
           <td><span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;">${verantwOrg?.name || '—'}</span></td>
-          <td><span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span></td>
-          <td>
+          <td onclick="event.stopPropagation()">
             ${isLocked
               ? `<span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : '#ede9fe'}; color:${isResolved ? '#065f46' : '#5b21b6'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;" title="${isResolved ? 'Deze bevinding is afgerond' : 'Status kan niet meer aangepast worden — alleen opmerkingen blijven mogelijk'}">${isResolved ? '✓' : '🔒'} ${NOK_STATUS_LABELS[b.status]}</span>`
               : magMuteren
@@ -2040,23 +2036,79 @@
                   </select>`
                 : `<span style="font-size:12px;">${NOK_STATUS_LABELS[b.status] || '—'}</span>`}
           </td>
-          <td>
-            ${magMuteren && !isLocked
-              ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
-                  ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
-                </select>`
-              : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`}
-          </td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</td>
-          <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${doorlooptijd}</td>
-          <td>
+          <td onclick="event.stopPropagation()">
             <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               ${notitieCount}
             </button>
           </td>
         </tr>`;
+
+        if (!isExpanded) return compacteRij;
+
+        const detailRij = `<tr style="background:var(--surface);">
+          <td></td>
+          <td colspan="7" style="padding:16px 20px 20px;">
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:16px; margin-bottom:16px;">
+              <div>
+                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Acceptant</div>
+                <span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span>
+              </div>
+              <div>
+                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Eigenaar (verantwoordelijk voor oplossing)</div>
+                ${magMuteren && !isLocked
+                  ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px;">
+                      ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                    </select>`
+                  : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`}
+              </div>
+              <div>
+                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Doorlooptijd</div>
+                <span style="font-size:12px;">${doorlooptijd}</span>
+              </div>
+            </div>
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Activiteit</div>
+              <div style="font-size:13px;">${act ? (act.description || '—') : '—'}</div>
+            </div>
+            ${b.toelichting ? `
+            <div style="margin-bottom:16px;">
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Reden</div>
+              <div style="font-size:13px; font-style:italic; white-space:pre-wrap;">${b.toelichting.replace(/</g, '&lt;')}</div>
+            </div>` : ''}
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Titel</div>
+              ${magMuteren
+                ? `<div style="display:flex; gap:8px; max-width:480px;">
+                    <input type="text" id="titelInput-${b.id}" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" style="flex:1; font-size:13px; padding:6px 10px; border:1px solid var(--border); border-radius:6px;">
+                    <button class="btn btn-outline btn-sm" onclick="opslaanBevindingTitel('${b.id}')">Opslaan</button>
+                  </div>
+                  <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Jij mag de titel aanpassen omdat je de eigenaar van deze bevinding bent, of beheerder.</p>`
+                : `<div style="font-size:13px;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</div>`}
+            </div>
+          </td>
+        </tr>`;
+
+        return compacteRij + detailRij;
       }).join('');
+    }
+
+    let expandedBevindingId = null;
+    function toggleBevindingExpand(bevindingId) {
+      expandedBevindingId = expandedBevindingId === bevindingId ? null : bevindingId;
+      renderNokTable();
+    }
+
+    async function opslaanBevindingTitel(bevindingId) {
+      const input = document.getElementById(`titelInput-${bevindingId}`);
+      const nieuweTitel = input.value.trim();
+      if (!nieuweTitel) { alert('Titel mag niet leeg zijn.'); return; }
+      const { error } = await sb.from('bevindingen').update({ titel: nieuweTitel }).eq('id', bevindingId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      const b = bevindingen.find(x => x.id === bevindingId);
+      if (b) b.titel = nieuweTitel;
+      renderNokTable();
     }
 
     async function updateNokField(bevindingId, field, value) {
