@@ -1592,6 +1592,11 @@
       if (bevindingError) { alert('Fout bij opslaan: ' + bevindingError.message); return; }
       latestBevindingByActivity[activityId] = bevinding;
 
+      await sb.from('bevinding_toelichtingen').insert({
+        bevinding_id: bevinding.id, tekst: reden, organisation_id: currentProfile?.organisation_id || null,
+        created_by: currentUser?.id || null,
+      });
+
       await setResult(activityId, scenarioId, 'nok', { notes: reden, nok_owner_org_id: eigenaar });
     }
 

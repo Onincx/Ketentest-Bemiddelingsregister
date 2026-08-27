@@ -2050,8 +2050,16 @@
 
     // ---- Detailpop-up voor één bevinding ----
     let bevindingTitelEditModus = false;
+    let bevindingToelichtingEditId = null;
 
-    function openBevindingModal(bevindingId, behoudTitelEditModus = false) {
+    function markeerBevindingGewijzigd() {
+      const opslaanBtn = document.getElementById('bevindingOpslaanBtn');
+      const sluitenBtn = document.getElementById('bevindingSluitenBtn');
+      if (opslaanBtn) opslaanBtn.style.display = '';
+      if (sluitenBtn) sluitenBtn.style.display = 'none';
+    }
+
+    async function openBevindingModal(bevindingId, behoudEditState = false) {
       const b = bevindingen.find(x => x.id === bevindingId);
       if (!b) return;
       const act = activities.find(a => a.id === b.activity_id);
@@ -2076,7 +2084,27 @@
       // bevinding.
       const magToelichtingBewerken = window.isPageAdmin || (act && act.organisation_id === currentProfile?.organisation_id);
       const notitieCount = nokNotitiesMap[b.id] || 0;
-      if (!behoudTitelEditModus) bevindingTitelEditModus = false;
+      if (!behoudEditState) { bevindingTitelEditModus = false; bevindingToelichtingEditId = null; }
+
+      const { data: toelichtingenData } = await sb.from('bevinding_toelichtingen').select('*').eq('bevinding_id', bevindingId).order('created_at', { ascending: false });
+      const toelichtingen = toelichtingenData || [];
+
+      const heropen = (behoud) => `document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}'${behoud ? ', true' : ''})`;
+
+      const toelichtingHtml = toelichtingen.map(t => {
+        const orgNaam = orgs.find(o => o.id === t.organisation_id)?.name || '—';
+        const datumTekst = new Date(t.created_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        const isEditingThis = bevindingToelichtingEditId === t.id;
+        return `<div style="border-bottom:1px solid var(--border); padding:10px 0;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+            <div style="font-size:11px; color:var(--text-muted);">${orgNaam} · ${datumTekst}${t.updated_at ? ' · bewerkt' : ''}</div>
+            ${magToelichtingBewerken && !isEditingThis ? `<button class="btn btn-ghost btn-icon" style="width:22px; height:22px; flex-shrink:0;" title="Bewerken" onclick="bevindingToelichtingEditId='${t.id}'; ${heropen(true)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+          </div>
+          ${isEditingThis
+            ? `<textarea id="toelichtingEdit-${t.id}" oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-top:6px;">${t.tekst.replace(/</g, '&lt;')}</textarea>`
+            : `<div style="font-size:13px; white-space:pre-wrap; margin-top:4px;">${t.tekst.replace(/</g, '&lt;')}</div>`}
+        </div>`;
+      }).join('');
 
       const modal = document.createElement('div');
       modal.className = 'modal-overlay';
@@ -2091,11 +2119,9 @@
             </div>
             <div style="display:flex; align-items:center; gap:10px; width:100%;">
               ${magMuteren && bevindingTitelEditModus
-                ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">
-                   <button class="btn btn-primary btn-sm" onclick="opslaanBevindingTitel('${b.id}')">Opslaan</button>
-                   <button class="btn btn-outline btn-sm" onclick="bevindingTitelEditModus=false; document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}')">Annuleren</button>`
+                ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" oninput="markeerBevindingGewijzigd()" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">`
                 : `<h3 style="margin:0; flex:1;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</h3>
-                   ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}', true)"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
+                   ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; ${heropen(true)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
             </div>
             <div style="font-size:12.5px; color:var(--text-muted); line-height:1.6;">
               ${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" style="color:var(--brand); text-decoration:none; font-weight:600;">${scen.code}</a> — ${scen.title ? scen.title.replace(/</g, '&lt;') : ''}` : ''}
@@ -2109,7 +2135,6 @@
                 <span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : isVervallen ? '#f3f4f6' : isLocked ? '#ede9fe' : '#f3f4f6'}; color:${isResolved ? '#065f46' : isVervallen ? '#6b7280' : isLocked ? '#5b21b6' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓ ' : ''}${NOK_STATUS_LABELS[b.status]}</span>
                 ${magMuteren && b.status === 'nieuw' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="nemInBehandeling('${b.id}')">In behandeling nemen</button>` : ''}
                 ${magMuteren && b.status === 'in_behandeling' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="openNokOpgelostModal('${b.id}')">Markeren als opgelost</button>` : ''}
-                ${magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling') ? `<button class="btn btn-sm" style="margin-top:8px; display:block; background:var(--danger); color:#fff; border-color:var(--danger);" onclick="openNokVervallenModal('${b.id}')">Melding laten vervallen</button>` : ''}
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Prioriteit</div>
@@ -2149,54 +2174,72 @@
                 <span style="font-size:12px;">${doorlooptijd}</span>
               </div>
             </div>
-            <div style="margin-bottom:16px;">
-              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Toelichting</div>
-              ${magToelichtingBewerken
-                ? `<textarea id="bevindingModalToelichting" style="width:100%; min-height:80px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${b.toelichting ? b.toelichting.replace(/</g, '&lt;') : ''}</textarea>
-                   <button class="btn btn-outline btn-sm" style="margin-top:8px;" onclick="opslaanBevindingToelichting('${b.id}')">Opslaan</button>
-                   <p style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Jij mag dit veld bewerken als beheerder of als verantwoordelijke organisatie van de activiteit.</p>`
-                : `<div style="font-size:13px; white-space:pre-wrap;">${b.toelichting ? b.toelichting.replace(/</g, '&lt;') : '—'}</div>`}
-            </div>
             ${b.omschrijving_probleem ? `
-            <div style="margin-bottom:6px;">
+            <div style="margin-bottom:16px;">
               <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Omschrijving probleem</div>
               <div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem.replace(/</g, '&lt;')}</div>
             </div>` : ''}
+            <div>
+              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Toelichting</div>
+              ${magToelichtingBewerken ? `<textarea id="toelichtingNieuw" placeholder="Voeg een update toe over de status van deze melding..." oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:60px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:10px;"></textarea>` : ''}
+              ${toelichtingHtml || '<p style="font-size:12px; color:var(--text-muted);">Nog geen toelichting vastgelegd.</p>'}
+            </div>
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
-            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Opmerkingen (${notitieCount})
-            </button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                Opmerkingen (${notitieCount})
+              </button>
+              ${magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling') ? `<button class="btn btn-sm" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="openNokVervallenModal('${b.id}')">Melding laten vervallen</button>` : ''}
+            </div>
+            <div>
+              <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
+              <button class="btn btn-primary btn-sm" id="bevindingOpslaanBtn" style="display:none;" onclick="opslaanAlleBevindingWijzigingen('${b.id}')">Opslaan</button>
+            </div>
           </div>
         </div>`;
       modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
       document.body.appendChild(modal);
     }
 
-    async function opslaanBevindingToelichting(bevindingId) {
-      const textarea = document.getElementById('bevindingModalToelichting');
-      const nieuweToelichting = textarea.value.trim();
-      const { error } = await sb.from('bevindingen').update({ toelichting: nieuweToelichting || null }).eq('id', bevindingId);
-      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+    async function opslaanAlleBevindingWijzigingen(bevindingId) {
       const b = bevindingen.find(x => x.id === bevindingId);
-      if (b) b.toelichting = nieuweToelichting || null;
-      document.getElementById('bevindingModalOverlay')?.remove();
-      openBevindingModal(bevindingId);
-    }
 
-    async function opslaanBevindingTitel(bevindingId) {
-      const input = document.getElementById('bevindingModalTitel');
-      const nieuweTitel = input.value.trim();
-      if (!nieuweTitel) { alert('Titel mag niet leeg zijn.'); return; }
-      const { error } = await sb.from('bevindingen').update({ titel: nieuweTitel }).eq('id', bevindingId);
-      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
-      const b = bevindingen.find(x => x.id === bevindingId);
-      if (b) b.titel = nieuweTitel;
+      if (bevindingTitelEditModus) {
+        const input = document.getElementById('bevindingModalTitel');
+        const nieuweTitel = input?.value.trim();
+        if (nieuweTitel && nieuweTitel !== b.titel) {
+          const { error } = await sb.from('bevindingen').update({ titel: nieuweTitel }).eq('id', bevindingId);
+          if (error) { alert('Fout bij opslaan van de titel: ' + error.message); return; }
+          b.titel = nieuweTitel;
+        }
+      }
+
+      if (bevindingToelichtingEditId) {
+        const textarea = document.getElementById(`toelichtingEdit-${bevindingToelichtingEditId}`);
+        const nieuweTekst = textarea?.value.trim();
+        if (nieuweTekst) {
+          const { error } = await sb.from('bevinding_toelichtingen').update({ tekst: nieuweTekst, updated_at: new Date().toISOString() }).eq('id', bevindingToelichtingEditId);
+          if (error) { alert('Fout bij opslaan van de toelichting: ' + error.message); return; }
+        }
+      }
+
+      const nieuweToelichtingTextarea = document.getElementById('toelichtingNieuw');
+      const nieuweToelichtingTekst = nieuweToelichtingTextarea?.value.trim();
+      if (nieuweToelichtingTekst) {
+        const { error } = await sb.from('bevinding_toelichtingen').insert({
+          bevinding_id: bevindingId, tekst: nieuweToelichtingTekst,
+          organisation_id: window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id,
+          created_by: currentUser?.id || null,
+        });
+        if (error) { alert('Fout bij opslaan van de nieuwe toelichting: ' + error.message); return; }
+      }
+
       bevindingTitelEditModus = false;
-      document.getElementById('bevindingModalOverlay')?.remove();
+      bevindingToelichtingEditId = null;
       renderNokTable();
+      document.getElementById('bevindingModalOverlay')?.remove();
       openBevindingModal(bevindingId);
     }
 
