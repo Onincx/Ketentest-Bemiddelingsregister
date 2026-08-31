@@ -3961,7 +3961,12 @@
     function editActivity(id) {
       const a = activities.find(x => x.id === id);
       activeScenarioId = a.scenario_id;
-      activiteitZonderAcceptant = !a.acceptant_org_id;
+      // Alleen de daadwerkelijke eerste activiteit van het scenario mag
+      // zonder acceptant — niet elke activiteit die toevallig (mogelijk
+      // per ongeluk) geen acceptant heeft. Anders verdween het
+      // Acceptant-veld ten onrechte, en kon een foutieve lege acceptant
+      // niet eens via dit scherm hersteld worden.
+      activiteitZonderAcceptant = a.sort_order === 1 && !a.acceptant_org_id;
       document.getElementById('activityId').value = a.id;
       document.getElementById('activityScenarioId').value = a.scenario_id;
       document.getElementById('activityDesc').value = a.description || '';
