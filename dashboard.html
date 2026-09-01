@@ -173,6 +173,9 @@
 
     <!-- SUBTAB: Ketentest -->
     <div id="dashsub-ketentest" style="display:none;">
+      <!-- Formele afsluiting: Go/No-go -->
+      <div id="gonogoSectie" style="margin-bottom:24px;"></div>
+
       <!-- Ketentest statistieken -->
       <div class="stats-grid" id="totalStats" style="margin-bottom:24px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
         <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
@@ -261,7 +264,7 @@
   <script src="js/supabase-config.js?v=38"></script>
   <script>
     let currentUser = null, currentProfile = null;
-    let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [];
+    let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [], gonogoData = [];
     let flows = [], flowNodes = [], flowParticipation = [];
     let activeKetentest = null;
 
@@ -309,7 +312,7 @@
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [a, r, u, o, fl, fn, fp, bv] = await Promise.all([
+      const [a, r, u, o, fl, fn, fp, bv, gng] = await Promise.all([
         scenarioIds.length
           ? fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
           : Promise.resolve({ data: [] }),
@@ -320,6 +323,7 @@
         fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_participation').select('*').order('id').range(from, to)),
         fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }).range(from, to)),
+        sb.from('ketentest_gonogo').select('*').eq('ketentest_id', activeKetentest.id),
       ]);
 
       activities = a.data || [];
@@ -344,6 +348,8 @@
           latestBevindingByActivity[b.activity_id] = b;
         }
       });
+
+      gonogoData = gng.data || [];
 
       renderDashboard();
     }
@@ -624,7 +630,9 @@
 
     function renderDashboard() {
       const stats = computeDashboardStats();
-      const { includedScenarios, totalActs, okActs, nokActs, okScenarios, flowsWachten, totaalPartijen, beoordeeldePartijen, pct } = stats;
+      const { includedScenarios, includedActivities, totalActs, okActs, nokActs, okScenarios, flowsWachten, totaalPartijen, beoordeeldePartijen, pct } = stats;
+
+      renderGonogoSectie(includedActivities, totalActs, okActs);
 
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
@@ -707,6 +715,134 @@
             <div style="font-size:13px; ${nu > 0 ? 'color:#dc2626; font-weight:700;' : 'color:var(--text-muted);'}">🔴 ${nu} scenario${nu === 1 ? '' : "'s"} nu bij hen</div>
             <div style="font-size:13px; color:var(--text-muted); margin-top:4px;">⏳ ${wacht} scenario${wacht === 1 ? '' : "'s"} komen nog aan</div>
           </div>`).join('') + `</div>`;
+    }
+
+    // ── Formele afsluiting: Go/No-go per organisatie ────────────
+    function renderGonogoSectie(includedActivities, totalActs, okActs) {
+      const el = document.getElementById('gonogoSectie');
+      const isVolledigCompleet = totalActs > 0 && okActs === totalActs;
+
+      // Alleen tonen zodra alles is afgerond, of als er al eerder een
+      // begin is gemaakt met Go/No-go (zodat de sectie niet ineens
+      // verdwijnt als er tussentijds toch nog iets verandert).
+      if (!isVolledigCompleet && gonogoData.length === 0) { el.innerHTML = ''; return; }
+
+      const blokkerendeBevindingen = allBevindingen.filter(b =>
+        b.prioriteit === 'blokkerend' && b.status !== 'hertest_ok' && b.status !== 'vervallen'
+      );
+
+      // Betrokken organisaties: verantwoordelijk of acceptant van
+      // minstens 1 meegenomen activiteit (dus exclusief volledig
+      // afgewezen flows — zelfde uitsluiting als de rest van het
+      // dashboard).
+      const betrokkenOrgIds = new Set();
+      includedActivities.forEach(a => {
+        if (a.organisation_id) betrokkenOrgIds.add(a.organisation_id);
+        if (a.acceptant_org_id) betrokkenOrgIds.add(a.acceptant_org_id);
+      });
+      const betrokkenOrgs = orgs.filter(o => betrokkenOrgIds.has(o.id));
+
+      let html = `<div class="dash-card" style="border:1.5px solid var(--brand-mid);">
+        <h3><div class="dot" style="background:var(--brand-mid);"></div>Formele afsluiting</h3>`;
+
+      if (!isVolledigCompleet) {
+        html += `<div style="background:#f3f4f6; color:#4b5563; border-radius:8px; padding:12px 16px; font-size:13px;">Nog niet alle activiteiten zijn afgerond (${okActs} / ${totalActs}) — de formele afsluiting kan pas gestart worden zodra alles op OK staat.</div></div>`;
+        el.innerHTML = html;
+        return;
+      }
+
+      if (blokkerendeBevindingen.length > 0) {
+        html += `<div style="background:#fee2e2; color:#991b1b; border-radius:8px; padding:12px 16px; font-size:13px; margin-bottom:4px;">
+          <strong>Nog ${blokkerendeBevindingen.length} openstaande blokkerende bevinding${blokkerendeBevindingen.length !== 1 ? 'en' : ''}</strong> — los deze eerst op bij NOK-opvolging voordat organisaties een Go/No-go kunnen afgeven:
+          <ul style="margin:8px 0 0; padding-left:20px;">
+            ${blokkerendeBevindingen.map(b => `<li>B${b.bevinding_nummer} — ${b.titel ? b.titel.replace(/</g,'&lt;') : '(geen titel)'}</li>`).join('')}
+          </ul>
+        </div></div>`;
+        el.innerHTML = html;
+        return;
+      }
+
+      html += `<p style="font-size:12.5px; color:var(--text-muted); margin:-6px 0 16px;">Alle activiteiten zijn afgerond en er zijn geen blokkerende bevindingen meer open. Elke betrokken organisatie geeft hieronder, via de manager, een Go of No-go af.</p>`;
+
+      // Tabel met de stand per organisatie
+      const rows = betrokkenOrgs.map(org => {
+        const g = gonogoData.find(x => x.organisation_id === org.id);
+        const pillStyle = !g ? 'background:#f3f4f6; color:#6b7280;' : g.besluit === 'go' ? 'background:#dcfce7; color:#166534;' : 'background:#fee2e2; color:#991b1b;';
+        const pillText = !g ? 'Nog geen keuze' : g.besluit === 'go' ? '✓ Go' : '✗ No-go';
+        return `<tr>
+          <td style="padding:8px 10px; font-size:13px; font-weight:600;">${org.name}</td>
+          <td style="padding:8px 10px;"><span class="badge" style="${pillStyle} font-size:11px;">${pillText}</span></td>
+          <td style="padding:8px 10px; font-size:12.5px; color:var(--text-muted);">${g?.toelichting ? g.toelichting.replace(/</g,'&lt;') : ''}</td>
+          <td style="padding:8px 10px; font-size:11.5px; color:var(--text-muted); white-space:nowrap;">${g ? new Date(g.besloten_op).toLocaleDateString('nl-NL') : ''}</td>
+        </tr>`;
+      }).join('');
+      html += `<table style="width:100%; border-collapse:collapse; margin-bottom:16px;"><tbody>${rows}</tbody></table>`;
+
+      // Eindoordeel
+      const beslistenAantal = betrokkenOrgs.filter(o => gonogoData.some(g => g.organisation_id === o.id)).length;
+      const heeftNoGo = betrokkenOrgs.some(o => gonogoData.find(g => g.organisation_id === o.id)?.besluit === 'nogo');
+      let eindoordeelHtml;
+      if (heeftNoGo) {
+        eindoordeelHtml = `<div style="background:#fee2e2; color:#991b1b; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">✗ NO-GO — minstens 1 organisatie heeft No-go aangegeven.</div>`;
+      } else if (beslistenAantal === betrokkenOrgs.length && betrokkenOrgs.length > 0) {
+        eindoordeelHtml = `<div style="background:#dcfce7; color:#166534; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">✓ GO — alle organisaties hebben Go gegeven. De ketentest kan formeel afgesloten worden.</div>`;
+      } else {
+        eindoordeelHtml = `<div style="background:#fef3c7; color:#92400e; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">⏳ Wachtend — ${beslistenAantal} van ${betrokkenOrgs.length} organisaties hebben al gereageerd.</div>`;
+      }
+      html += eindoordeelHtml;
+
+      // Formulier voor de manager om namens de eigen organisatie een
+      // keuze te geven of te wijzigen.
+      if (currentProfile?.role === 'manager' && currentProfile?.organisation_id && betrokkenOrgIds.has(currentProfile.organisation_id)) {
+        const eigen = gonogoData.find(x => x.organisation_id === currentProfile.organisation_id);
+        html += `<div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border);">
+          <p style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;">${eigen ? 'Jouw keuze wijzigen' : 'Jouw keuze afgeven'}</p>
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <button class="btn ${eigen?.besluit === 'go' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="gonogoBesluitKiezen('go')" id="gonogoGoBtn">✓ Go</button>
+            <button class="btn ${eigen?.besluit === 'nogo' ? '' : 'btn-outline'} btn-sm" style="${eigen?.besluit === 'nogo' ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="gonogoBesluitKiezen('nogo')" id="gonogoNoGoBtn">✗ No-go</button>
+          </div>
+          <textarea id="gonogoToelichting" placeholder="Toelichting (verplicht bij No-go)..." style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:10px;">${eigen?.toelichting || ''}</textarea>
+          <button class="btn btn-primary btn-sm" onclick="gonogoOpslaan()">Opslaan</button>
+          <div id="gonogoAlert" style="display:none; margin-top:10px; font-size:12.5px; color:var(--danger);"></div>
+        </div>`;
+      }
+
+      html += `</div>`;
+      el.innerHTML = html;
+    }
+
+    let gonogoGekozenBesluit = null;
+    function gonogoBesluitKiezen(besluit) {
+      gonogoGekozenBesluit = besluit;
+      document.getElementById('gonogoGoBtn').className = 'btn btn-sm ' + (besluit === 'go' ? 'btn-primary' : 'btn-outline');
+      const noGoBtn = document.getElementById('gonogoNoGoBtn');
+      noGoBtn.className = 'btn btn-sm ' + (besluit === 'nogo' ? '' : 'btn-outline');
+      noGoBtn.style.cssText = besluit === 'nogo' ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : '';
+    }
+
+    async function gonogoOpslaan() {
+      const eigen = gonogoData.find(x => x.organisation_id === currentProfile.organisation_id);
+      const besluit = gonogoGekozenBesluit || eigen?.besluit;
+      const toelichting = document.getElementById('gonogoToelichting').value.trim();
+      const alertEl = document.getElementById('gonogoAlert');
+
+      if (!besluit) { alertEl.textContent = 'Kies eerst Go of No-go.'; alertEl.style.display = ''; return; }
+      if (besluit === 'nogo' && !toelichting) { alertEl.textContent = 'Vul een toelichting in — verplicht bij No-go.'; alertEl.style.display = ''; return; }
+
+      const payload = {
+        ketentest_id: activeKetentest.id, organisation_id: currentProfile.organisation_id,
+        besluit, toelichting: besluit === 'nogo' ? toelichting : (toelichting || null),
+        besloten_door: currentUser.id, besloten_op: new Date().toISOString(),
+      };
+
+      const { error } = eigen
+        ? await sb.from('ketentest_gonogo').update(payload).eq('id', eigen.id)
+        : await sb.from('ketentest_gonogo').insert(payload);
+
+      if (error) { alertEl.textContent = 'Fout bij opslaan: ' + error.message; alertEl.style.display = ''; return; }
+
+      gonogoGekozenBesluit = null;
+      await loadDashboard();
     }
 
     function renderOrgProgress() {

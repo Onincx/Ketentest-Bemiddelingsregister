@@ -1052,6 +1052,7 @@
             </div>
           </div>
           <div id="afsluitenWaarschuwing" style="display:none; background:#fef3c7; border:1px solid #fde68a; border-radius:8px; padding:10px 14px; font-size:13px; color:#92400e; margin-bottom:6px;"></div>
+          <div id="afsluitenGonogo" style="display:none; margin-top:10px;"></div>
         </div>
       </div>
       <div class="modal-footer">
@@ -2704,6 +2705,7 @@
       document.getElementById('afsluitenOverzicht').style.display = 'none';
       document.getElementById('afsluitenOverzichtLaden').style.display = '';
       document.getElementById('afsluitenWaarschuwing').style.display = 'none';
+      document.getElementById('afsluitenGonogo').style.display = 'none';
       openModal('modalAfsluiten');
 
       // Scenario's + hun activiteiten ophalen om per scenario te bepalen:
@@ -2743,6 +2745,31 @@
       if (aantalOpen > 0 || aantalNok > 0 || (bevindingenOpenCount || 0) > 0) {
         waarschuwingEl.textContent = `Let op: er zijn nog ${aantalOpen} openstaande scenario('s), ${aantalNok} met een NOK, en ${bevindingenOpenCount || 0} niet-afgehandelde bevinding(en). Afsluiten kan alsnog, dit blokkeert niets.`;
         waarschuwingEl.style.display = '';
+      }
+
+      // Go/No-go-samenvatting: hoeveel betrokken organisaties hebben al
+      // een keuze afgegeven, en is er een No-go bij?
+      const { data: actOrgData } = scenarioIds.length
+        ? await sb.from('activities').select('organisation_id, acceptant_org_id').in('scenario_id', scenarioIds)
+        : { data: [] };
+      const betrokkenOrgIds = new Set();
+      (actOrgData || []).forEach(a => {
+        if (a.organisation_id) betrokkenOrgIds.add(a.organisation_id);
+        if (a.acceptant_org_id) betrokkenOrgIds.add(a.acceptant_org_id);
+      });
+      const { data: gonogoData } = await sb.from('ketentest_gonogo').select('*').eq('ketentest_id', id);
+      const gonogo = gonogoData || [];
+      const heeftNoGo = [...betrokkenOrgIds].some(oid => gonogo.find(g => g.organisation_id === oid)?.besluit === 'nogo');
+      const aantalBeslist = [...betrokkenOrgIds].filter(oid => gonogo.some(g => g.organisation_id === oid)).length;
+
+      const gonogoEl = document.getElementById('afsluitenGonogo');
+      if (betrokkenOrgIds.size > 0) {
+        let kleur, tekst;
+        if (heeftNoGo) { kleur = 'background:#fee2e2; color:#991b1b;'; tekst = '✗ Let op: minstens 1 organisatie heeft No-go gegeven bij de formele afsluiting (zie Dashboard).'; }
+        else if (aantalBeslist === betrokkenOrgIds.size) { kleur = 'background:#dcfce7; color:#166534;'; tekst = '✓ Alle organisaties hebben Go gegeven bij de formele afsluiting.'; }
+        else { kleur = 'background:#f3f4f6; color:#4b5563;'; tekst = `⏳ ${aantalBeslist} van ${betrokkenOrgIds.size} organisaties hebben tot nu toe een Go/No-go afgegeven (zie Dashboard).`; }
+        gonogoEl.innerHTML = `<div style="${kleur} border-radius:8px; padding:10px 14px; font-size:13px;">${tekst}</div>`;
+        gonogoEl.style.display = '';
       }
 
       document.getElementById('afsluitenOverzichtLaden').style.display = 'none';
