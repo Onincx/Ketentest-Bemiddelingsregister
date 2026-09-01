@@ -1733,10 +1733,6 @@
         payload.nok_owner_org_id = extra.nok_owner_org_id;
         payload.nok_set_at = new Date().toISOString();
         payload.nok_resolved_at = null;
-      } else if (result === 'ok' && existing?.result === 'nok') {
-        // Automatische hertest-registratie: een eerdere NOK is nu goedgekeurd
-        payload.nok_status = 'hertest_ok';
-        payload.nok_resolved_at = new Date().toISOString();
       } else if (result === 'open') {
         // NOK-opvolging heeft geen zin meer als de activiteit weer helemaal open staat
         payload.nok_status = null;
@@ -1769,6 +1765,25 @@
 
       updateStats();
       refreshNokBadge();
+
+      // Hertest-afhandeling: staat er voor deze activiteit een bevinding
+      // die op 'Opgelost, wacht op hertest' staat, en wordt nu alsnog OK
+      // geregistreerd? Dan is de hertest geslaagd — zet die bevinding
+      // door naar 'Hertest OK', zodat hij bij NOK-opvolging niet
+      // onterecht als openstaand blijft staan.
+      if (result === 'ok') {
+        const bevinding = latestBevindingByActivity[activityId];
+        if (bevinding && bevinding.status === 'opgelost_wacht_hertest') {
+          const resolvedAt = new Date().toISOString();
+          const { error: hertestError } = await sb.from('bevindingen')
+            .update({ status: 'hertest_ok', resolved_at: resolvedAt })
+            .eq('id', bevinding.id);
+          if (!hertestError) {
+            bevinding.status = 'hertest_ok';
+            bevinding.resolved_at = resolvedAt;
+          }
+        }
+      }
 
       // Deze handeling wordt vanaf nu automatisch gelogd door een
       // databasetrigger (zie activity-log-trigger-setup.sql) — niet meer
