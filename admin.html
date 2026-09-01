@@ -2148,11 +2148,20 @@
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Verantwoordelijke</div>
-                <span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;">${verantwOrg?.name || '—'}</span>
+                ${window.isPageAdmin
+                  ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','organisation_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
+                      ${orgs.map(o => `<option value="${o.id}" ${act?.organisation_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                    </select>`
+                  : `<span class="badge" style="background:#eef2ff; color:#3730a3; font-size:11px;">${verantwOrg?.name || '—'}</span>`}
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Acceptant</div>
-                <span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span>
+                ${window.isPageAdmin
+                  ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','acceptant_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
+                      <option value="">— geen acceptant —</option>
+                      ${orgs.map(o => `<option value="${o.id}" ${act?.acceptant_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                    </select>`
+                  : `<span class="badge" style="background:#fef3c7; color:#92400e; font-size:11px;">${acceptantOrg?.name || '—'}</span>`}
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Eigenaar (oplossing)</div>
@@ -2160,6 +2169,7 @@
                 <p style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Eenmaal gekozen bij het registreren van de NOK, niet meer te wijzigen.</p>
               </div>
             </div>
+            ${window.isPageAdmin ? `<p style="font-size:10.5px; color:var(--text-muted); margin:-10px 0 16px;">Verantwoordelijke en acceptant pas je hier aan op de onderliggende activiteit zelf — dit geldt dus voor de hele activiteit, niet alleen voor deze bevinding.</p>` : ''}
             <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Melder</div>
@@ -2250,6 +2260,22 @@
       if (b) b[field] = value;
       renderNokTable();
       // Pop-up blijft open en toont meteen de nieuwe waarde.
+      document.getElementById('bevindingModalOverlay')?.remove();
+      openBevindingModal(bevindingId);
+    }
+
+    // Uitsluitend voor de beheerder: verantwoordelijke of acceptant van
+    // de onderliggende activiteit corrigeren, rechtstreeks vanuit de
+    // bevinding-pop-up — nuttig als bij het aanmaken van het scenario
+    // de verkeerde partij is gekozen en niemand anders dit kan
+    // herstellen.
+    async function updateActiviteitOrgVeld(bevindingId, activityId, field, value) {
+      if (!window.isPageAdmin || !activityId) return;
+      const { error } = await sb.from('activities').update({ [field]: value || null }).eq('id', activityId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      const a = activities.find(x => x.id === activityId);
+      if (a) a[field] = value || null;
+      renderNokTable();
       document.getElementById('bevindingModalOverlay')?.remove();
       openBevindingModal(bevindingId);
     }
@@ -2902,6 +2928,12 @@
         const el = document.getElementById(a);
         if (el) el.style.display = 'none';
       });
+      // Specifiek voor de activiteit-pop-up: is deze gesloten zonder op
+      // te slaan (dus niet via saveActivity, die dit zelf al opruimt),
+      // dan mag een eventueel klaarstaande 'Wanneer → activiteit 1'-
+      // opschuiving niet blijven hangen voor een latere, ongerelateerde
+      // activiteit.
+      if (id === 'modalActivity') pendingWannneerActiviteit = null;
     }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
 
@@ -3878,6 +3910,11 @@
     // ---- ACTIVITIES ----
     let activeScenarioId = null;
     let activiteitZonderAcceptant = false;
+    // Onthoudt, tussen het bevestigen van 'Wanneer → activiteit 1' en het
+    // daadwerkelijk opslaan van die activiteit, welke bestaande
+    // activiteiten nog moeten opschuiven — zodat dit precies op het
+    // opslaanmoment in één keer gebeurt (zie saveActivity), niet ervoor.
+    let pendingWannneerActiviteit = null;
 
     // Schuift de bestaande activiteiten van een scenario één plek op en
     // opent de "activiteit toevoegen"-modal, vooringevuld met de tekst
@@ -3922,20 +3959,18 @@
 
       confirmBtn.onclick = async () => {
         closeModal('modalConfirm');
-        // Van hoog naar laag ophogen, om een eventuele unieke-combinatie
-        // botsing (scenario + volgnummer) tijdens het opschuiven te
-        // voorkomen.
-        for (const a of acts) {
-          await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
-        }
-        await sb.from('scenarios').update({ wanneer_activiteit_toegevoegd: true }).eq('id', scenarioId);
-        await loadScenarios();
-        await loadActivities(); renderScenarios();
+        // Bewust NIETS in de database aanpassen op dit moment — pas
+        // wanneer er straks daadwerkelijk op 'Opslaan' wordt geklikt in
+        // de pop-up die hierna opent (zie saveActivity). Zo kan het
+        // sluiten van de pop-up zonder op te slaan nooit meer een kapotte
+        // tussenstand opleveren (activiteiten al opgeschoven, vlag al
+        // aan, maar activiteit 1 zelf niet aangemaakt).
+        pendingWannneerActiviteit = { scenarioId, acts };
 
         openAddActivity(scenarioId, true);
         document.getElementById('activityOrder').value = 1;
         document.getElementById('activityDesc').value = tekst;
-        showAlert('Bestaande activiteiten opgeschoven. Vul hieronder de verantwoordelijke organisatie in en sla op.', 'success', 'alertActivity');
+        showAlert('Vul hieronder de verantwoordelijke organisatie in en sla op — de bestaande activiteiten schuiven pas op zodra je opslaat.', 'success', 'alertActivity');
       };
       openModal('modalConfirm');
     }
@@ -3991,6 +4026,23 @@
       if (!activiteitZonderAcceptant && !acceptant_org_id) {
         showAlert('Kies een acceptant (alleen de activiteit die voortkomt uit "Wanneer" heeft geen acceptant).', 'error', 'alertActivity');
         return;
+      }
+
+      // Staat er een 'Wanneer → activiteit 1'-opschuiving klaar voor
+      // precies dit scenario? Dan nu, op het daadwerkelijke opslaanmoment,
+      // pas de bestaande activiteiten opschuiven en de vlag zetten — vóór
+      // de nummer-uniek-check hieronder, zodat die de nieuwe situatie al
+      // meekrijgt.
+      if (pendingWannneerActiviteit && pendingWannneerActiviteit.scenarioId === scenarioId) {
+        for (const a of pendingWannneerActiviteit.acts) {
+          await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
+          const cached = activities.find(x => x.id === a.id);
+          if (cached) cached.sort_order = a.sort_order + 1;
+        }
+        await sb.from('scenarios').update({ wanneer_activiteit_toegevoegd: true }).eq('id', scenarioId);
+        const scenCached = scenarios.find(x => x.id === scenarioId);
+        if (scenCached) scenCached.wanneer_activiteit_toegevoegd = true;
+        pendingWannneerActiviteit = null;
       }
 
       // Controleer of het nummer al in gebruik is binnen dit scenario
