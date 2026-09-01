@@ -2165,8 +2165,12 @@
               </div>
               <div>
                 <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Eigenaar (oplossing)</div>
-                <span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>
-                <p style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Eenmaal gekozen bij het registreren van de NOK, niet meer te wijzigen.</p>
+                ${window.isPageAdmin
+                  ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
+                      ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                    </select>`
+                  : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>
+                     <p style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Eenmaal gekozen bij het registreren van de NOK, alleen de beheerder kan dit nog wijzigen.</p>`}
               </div>
             </div>
             ${window.isPageAdmin ? `<p style="font-size:10.5px; color:var(--text-muted); margin:-10px 0 16px;">Verantwoordelijke en acceptant pas je hier aan op de onderliggende activiteit zelf — dit geldt dus voor de hele activiteit, niet alleen voor deze bevinding.</p>` : ''}
