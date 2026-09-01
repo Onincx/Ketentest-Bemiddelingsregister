@@ -722,10 +722,14 @@
       const el = document.getElementById('gonogoSectie');
       const isVolledigCompleet = totalActs > 0 && okActs === totalActs;
 
-      // Alleen tonen zodra alles is afgerond, of als er al eerder een
-      // begin is gemaakt met Go/No-go (zodat de sectie niet ineens
-      // verdwijnt als er tussentijds toch nog iets verandert).
-      if (!isVolledigCompleet && gonogoData.length === 0) { el.innerHTML = ''; return; }
+      let html = `<div class="dash-card" style="border:1.5px solid var(--brand-mid);">
+        <h3><div class="dot" style="background:var(--brand-mid);"></div>Formele afsluiting</h3>`;
+
+      if (!isVolledigCompleet) {
+        html += `<div style="background:#f3f4f6; color:#4b5563; border-radius:8px; padding:12px 16px; font-size:13px;">Nog niet alle activiteiten zijn afgerond (${okActs} / ${totalActs}) — de formele afsluiting kan pas gestart worden zodra alles op OK staat.</div></div>`;
+        el.innerHTML = html;
+        return;
+      }
 
       const blokkerendeBevindingen = allBevindingen.filter(b =>
         b.prioriteit === 'blokkerend' && b.status !== 'hertest_ok' && b.status !== 'vervallen'
@@ -741,15 +745,6 @@
         if (a.acceptant_org_id) betrokkenOrgIds.add(a.acceptant_org_id);
       });
       const betrokkenOrgs = orgs.filter(o => betrokkenOrgIds.has(o.id));
-
-      let html = `<div class="dash-card" style="border:1.5px solid var(--brand-mid);">
-        <h3><div class="dot" style="background:var(--brand-mid);"></div>Formele afsluiting</h3>`;
-
-      if (!isVolledigCompleet) {
-        html += `<div style="background:#f3f4f6; color:#4b5563; border-radius:8px; padding:12px 16px; font-size:13px;">Nog niet alle activiteiten zijn afgerond (${okActs} / ${totalActs}) — de formele afsluiting kan pas gestart worden zodra alles op OK staat.</div></div>`;
-        el.innerHTML = html;
-        return;
-      }
 
       if (blokkerendeBevindingen.length > 0) {
         html += `<div style="background:#fee2e2; color:#991b1b; border-radius:8px; padding:12px 16px; font-size:13px; margin-bottom:4px;">
