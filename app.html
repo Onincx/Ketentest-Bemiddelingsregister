@@ -1343,7 +1343,7 @@
                         title="Markeer als OK">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
                       </button>`
-                    : `<button class="rtbtn rtbtn-ok" disabled style="cursor:not-allowed; opacity:0.5;" title="${!magOk ? 'Alleen de acceptant mag dit op OK zetten' : 'Deze bevinding moet eerst op \'Opgelost, wacht op hertest\' gezet worden bij NOK-opvolging voordat een hertest mogelijk is'}">
+                    : `<button class="rtbtn rtbtn-ok ${r.result === 'ok' ? 'active' : ''}" disabled style="cursor:not-allowed; opacity:${r.result === 'ok' ? '0.85' : '0.5'};" title="${r.result === 'ok' ? 'Al op OK gezet' : (!magOk ? 'Alleen de acceptant mag dit op OK zetten' : 'Deze bevinding moet eerst op \'Opgelost, wacht op hertest\' gezet worden bij NOK-opvolging voordat een hertest mogelijk is')}">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg> OK
                       </button>`;
                   const nokInteractief = magNok && !isNok;
