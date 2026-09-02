@@ -130,14 +130,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=39"></script>
+  <script src="js/supabase-config.js?v=40"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     // Redirect als al ingelogd
     (async () => {
       if (new URLSearchParams(window.location.search).get('reden') === 'inactiviteit') {
-        showAlert('Je bent automatisch uitgelogd wegens 15 minuten inactiviteit. Log opnieuw in om verder te gaan.', 'error');
+        showAlert('Je bent wegens inactiviteit automatisch uitgelogd. Log opnieuw in om verder te gaan.', 'error');
       }
       const user = await getCurrentUser();
       if (user) {
