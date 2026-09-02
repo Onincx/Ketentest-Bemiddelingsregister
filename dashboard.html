@@ -639,10 +639,23 @@
     }
 
     function renderDashboard() {
-      const stats = computeDashboardStats();
+      let stats;
+      try {
+        stats = computeDashboardStats();
+      } catch (err) {
+        console.error('Fout bij berekenen van dashboardstatistieken:', err);
+        stats = { includedScenarios: [], includedActivities: [], includedResults: [], totalActs: 0, doneActs: 0, okActs: 0, nokActs: 0, okScenarios: 0, flowsWachten: 0, flowsAfgerond: 0, flowsMeegeteld: 0, totaalPartijen: 0, beoordeeldePartijen: 0, pct: 0 };
+      }
       const { includedScenarios, includedActivities, totalActs, okActs, nokActs, okScenarios, flowsWachten, flowsAfgerond, flowsMeegeteld, totaalPartijen, beoordeeldePartijen, pct } = stats;
 
-      renderGonogoSectie(includedActivities, totalActs, okActs);
+      // Elk onderdeel apart afgeschermd: een fout in één sectie (bijv. de
+      // nieuwe 'Formele afsluiting') mag nooit de rest van het dashboard
+      // leeg laten vallen. Bij een fout blijft de sectie zelf leeg/oud,
+      // maar de rest werkt gewoon door, en de fout verschijnt duidelijk
+      // in de browserconsole om te kunnen natrekken.
+      const veilig = (naam, fn) => { try { fn(); } catch (err) { console.error(`Fout bij renderen van '${naam}':`, err); } };
+
+      veilig('Formele afsluiting', () => renderGonogoSectie(includedActivities, totalActs, okActs));
 
       document.getElementById('ds-flows').textContent = flows.length;
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
@@ -657,14 +670,14 @@
       document.getElementById('ds-pct').textContent = pct + '%';
       document.getElementById('ds-bar').style.width = pct + '%';
 
-      renderOrgProgress();
-      renderKetenBottleneck();
-      renderFlowProgress();
-      renderPendingParticipation();
-      renderRejectedParticipation();
-      renderNokOverview();
-      renderAfgehandeldeNokOverview();
-      renderCharts();
+      veilig('Voortgang per organisatie', renderOrgProgress);
+      veilig('Keten-bottleneck', renderKetenBottleneck);
+      veilig('Voortgang per flow', renderFlowProgress);
+      veilig('Nog te beoordelen deelname', renderPendingParticipation);
+      veilig('Afgewezen deelname', renderRejectedParticipation);
+      veilig('NOK-overzicht', renderNokOverview);
+      veilig('Afgehandelde NOK\'s', renderAfgehandeldeNokOverview);
+      veilig('Grafieken', renderCharts);
 
 
       document.getElementById('lastUpdated').textContent =
