@@ -174,6 +174,7 @@
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
+      <span id="gonogoBadge" style="display:none; background:#fef3c7; color:#92400e; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='dashboard.html'" title="Klik om naar het Dashboard te gaan"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg> Uitloggen
       </button>
@@ -242,7 +243,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=41"></script>
+  <script src="js/supabase-config.js?v=42"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -1556,6 +1557,7 @@
     // hetzelfde, altijd-actuele aantal toont — ook op andere pagina's.
     function refreshNokBadge() {
       refreshGlobalNokBadge(currentProfile?.organisation_id);
+      refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
     }
 

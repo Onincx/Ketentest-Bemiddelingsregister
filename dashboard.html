@@ -99,6 +99,7 @@
       <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
+      <span id="gonogoBadge" style="display:none; background:#fef3c7; color:#92400e; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='dashboard.html'" title="Klik om naar het Dashboard te gaan"></span>
       <span class="topnav-user" id="navUser"></span>
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
@@ -132,18 +133,18 @@
 
     <!-- Subtabs -->
     <div class="tabs" style="margin-bottom:20px;">
-      <button class="tab-btn active" id="dashsub-btn-voorbereiding" onclick="showDashSubTab('voorbereiding')">
+      <button class="tab-btn" id="dashsub-btn-voorbereiding" onclick="showDashSubTab('voorbereiding')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
         Voorbereiding
       </button>
-      <button class="tab-btn" id="dashsub-btn-ketentest" onclick="showDashSubTab('ketentest')">
+      <button class="tab-btn active" id="dashsub-btn-ketentest" onclick="showDashSubTab('ketentest')">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
         Ketentest
       </button>
     </div>
 
     <!-- SUBTAB: Voorbereiding -->
-    <div id="dashsub-voorbereiding">
+    <div id="dashsub-voorbereiding" style="display:none;">
       <p style="font-size:13px; color:var(--text-muted); margin:-8px 0 20px;">Voortgang van de deelname-beoordeling: welke flows en organisaties nog een besluit moeten nemen, en waar al is afgewezen.</p>
 
       <!-- Voorbereiding statistieken -->
@@ -172,7 +173,7 @@
     </div>
 
     <!-- SUBTAB: Ketentest -->
-    <div id="dashsub-ketentest" style="display:none;">
+    <div id="dashsub-ketentest">
       <!-- Formele afsluiting: Go/No-go -->
       <div id="gonogoSectie" style="margin-bottom:24px;"></div>
 
@@ -260,7 +261,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=41"></script>
+  <script src="js/supabase-config.js?v=42"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [], gonogoData = [];
@@ -272,6 +273,7 @@
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
       refreshGlobalNokBadge(currentProfile?.organisation_id);
+      refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
 
       // Admin en Manager mogen het dashboard zien; Manager alleen-lezen
@@ -745,12 +747,14 @@
       const el = document.getElementById('gonogoSectie');
       const isVolledigCompleet = totalActs > 0 && okActs === totalActs;
 
-      let html = `<div class="dash-card" style="border:1.5px solid var(--brand-mid);">
-        <h3><div class="dot" style="background:var(--brand-mid);"></div>Formele afsluiting</h3>`;
+      const kader = (kleur, inhoud) => `<div class="dash-card" style="border:1.5px solid ${kleur};">
+        <h3><div class="dot" style="background:${kleur};"></div>Formele afsluiting</h3>${inhoud}</div>`;
+
+      let html = '';
 
       if (!isVolledigCompleet) {
-        html += `<div style="background:#f3f4f6; color:#4b5563; border-radius:8px; padding:12px 16px; font-size:13px;">Nog niet alle activiteiten zijn afgerond (${okActs} / ${totalActs}) — de formele afsluiting kan pas gestart worden zodra alles op OK staat.</div></div>`;
-        el.innerHTML = html;
+        html += `<div style="background:#f3f4f6; color:#4b5563; border-radius:8px; padding:12px 16px; font-size:13px;">Nog niet alle activiteiten zijn afgerond (${okActs} / ${totalActs}) — de formele afsluiting kan pas gestart worden zodra alles op OK staat.</div>`;
+        el.innerHTML = kader('var(--border)', html);
         return;
       }
 
@@ -775,8 +779,8 @@
           <ul style="margin:8px 0 0; padding-left:20px;">
             ${blokkerendeBevindingen.map(b => `<li>B${b.bevinding_nummer} — ${b.titel ? b.titel.replace(/</g,'&lt;') : '(geen titel)'}</li>`).join('')}
           </ul>
-        </div></div>`;
-        el.innerHTML = html;
+        </div>`;
+        el.innerHTML = kader('#f87171', html);
         return;
       }
 
@@ -785,8 +789,8 @@
       // Tabel met de stand per organisatie
       const rows = betrokkenOrgs.map(org => {
         const g = gonogoData.find(x => x.organisation_id === org.id);
-        const pillStyle = !g ? 'background:#f3f4f6; color:#6b7280;' : g.besluit === 'go' ? 'background:#dcfce7; color:#166534;' : 'background:#fee2e2; color:#991b1b;';
-        const pillText = !g ? 'Nog geen keuze' : g.besluit === 'go' ? '✓ Go' : '✗ No-go';
+        const pillStyle = !g ? 'background:#fef3c7; color:#92400e;' : g.besluit === 'go' ? 'background:#dcfce7; color:#166534;' : 'background:#fee2e2; color:#991b1b;';
+        const pillText = !g ? '⚑ Nog geen keuze' : g.besluit === 'go' ? '✓ Go' : '✗ No-go';
         return `<tr>
           <td style="padding:8px 10px; font-size:13px; font-weight:600;">${org.name}</td>
           <td style="padding:8px 10px;"><span class="badge" style="${pillStyle} font-size:11px;">${pillText}</span></td>
@@ -796,16 +800,20 @@
       }).join('');
       html += `<table style="width:100%; border-collapse:collapse; margin-bottom:16px;"><tbody>${rows}</tbody></table>`;
 
-      // Eindoordeel
+      // Eindoordeel — bepaalt ook meteen de kleur van het kader eromheen,
+      // zodat in één oogopslag duidelijk is of er nog iets moet gebeuren.
       const beslistenAantal = betrokkenOrgs.filter(o => gonogoData.some(g => g.organisation_id === o.id)).length;
       const heeftNoGo = betrokkenOrgs.some(o => gonogoData.find(g => g.organisation_id === o.id)?.besluit === 'nogo');
-      let eindoordeelHtml;
+      let eindoordeelHtml, kaderKleur;
       if (heeftNoGo) {
         eindoordeelHtml = `<div style="background:#fee2e2; color:#991b1b; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">✗ NO-GO — minstens 1 organisatie heeft No-go aangegeven.</div>`;
+        kaderKleur = '#f87171';
       } else if (beslistenAantal === betrokkenOrgs.length && betrokkenOrgs.length > 0) {
         eindoordeelHtml = `<div style="background:#dcfce7; color:#166534; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">✓ GO — alle organisaties hebben Go gegeven. De ketentest kan formeel afgesloten worden.</div>`;
+        kaderKleur = '#4ade80';
       } else {
         eindoordeelHtml = `<div style="background:#fef3c7; color:#92400e; border-radius:8px; padding:14px 18px; font-weight:700; font-size:14px;">⏳ Wachtend — ${beslistenAantal} van ${betrokkenOrgs.length} organisaties hebben al gereageerd.</div>`;
+        kaderKleur = '#fbbf24';
       }
       html += eindoordeelHtml;
 
@@ -814,7 +822,7 @@
       if (currentProfile?.role === 'manager' && currentProfile?.organisation_id && betrokkenOrgIds.has(currentProfile.organisation_id)) {
         const eigen = gonogoData.find(x => x.organisation_id === currentProfile.organisation_id);
         html += `<div style="margin-top:18px; padding-top:16px; border-top:1px solid var(--border);">
-          <p style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;">${eigen ? 'Jouw keuze wijzigen' : 'Jouw keuze afgeven'}</p>
+          <p style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:10px;">${eigen ? 'Jouw keuze wijzigen' : '⚑ Jouw keuze afgeven — dit staat nog open'}</p>
           <div style="display:flex; gap:10px; margin-bottom:10px;">
             <button class="btn ${eigen?.besluit === 'go' ? 'btn-primary' : 'btn-outline'} btn-sm" onclick="gonogoBesluitKiezen('go')" id="gonogoGoBtn">✓ Go</button>
             <button class="btn ${eigen?.besluit === 'nogo' ? '' : 'btn-outline'} btn-sm" style="${eigen?.besluit === 'nogo' ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="gonogoBesluitKiezen('nogo')" id="gonogoNoGoBtn">✗ No-go</button>
@@ -825,8 +833,7 @@
         </div>`;
       }
 
-      html += `</div>`;
-      el.innerHTML = html;
+      el.innerHTML = kader(kaderKleur, html);
     }
 
     let gonogoGekozenBesluit = null;

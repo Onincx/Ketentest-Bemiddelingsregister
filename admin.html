@@ -82,6 +82,7 @@
       <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700;"></span>
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="typeof navTab === 'function' ? navTab('nok') : window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
+      <span id="gonogoBadge" style="display:none; background:#fef3c7; color:#92400e; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='dashboard.html'" title="Klik om naar het Dashboard te gaan"></span>
       <span class="topnav-user" id="navUser"></span>
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
       <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">
@@ -1063,7 +1064,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=41"></script>
+  <script src="js/supabase-config.js?v=42"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -1105,6 +1106,7 @@
       const profile = await getUserProfile(user.id);
       currentProfile = profile;
       refreshGlobalNokBadge(profile?.organisation_id);
+      refreshGonogoBadge(profile?.organisation_id, profile?.role);
       refreshMijnActiesBadge(profile?.organisation_id);
       window.isPageAdmin = profile?.role === 'admin';
       // 'Scan activiteiten' leest weliswaar alleen (geen mutatie), maar

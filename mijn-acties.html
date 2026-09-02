@@ -88,6 +88,7 @@
     <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700; margin-left:16px;"></span>
       <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
       <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
+      <span id="gonogoBadge" style="display:none; background:#fef3c7; color:#92400e; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='dashboard.html'" title="Klik om naar het Dashboard te gaan"></span>
     <div class="topnav-right">
       <span class="topnav-user" id="navUser"></span>
       <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
@@ -143,7 +144,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=41"></script>
+  <script src="js/supabase-config.js?v=42"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
     let scenarios = [], activities = [], results = {}, orgs = [], scenarioFlowMap = {};
@@ -170,6 +171,7 @@
       currentProfile = await getUserProfile(currentUser.id);
       myOrgId = currentProfile?.organisation_id || null;
       refreshGlobalNokBadge(myOrgId);
+      refreshGonogoBadge(myOrgId, currentProfile?.role);
       refreshMijnActiesBadge(myOrgId);
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
