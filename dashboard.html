@@ -178,7 +178,7 @@
 
       <!-- Ketentest statistieken -->
       <div class="stats-grid" id="totalStats" style="margin-bottom:24px; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr));">
-        <div class="stat-card"><div class="stat-label">Flows opgenomen</div><div class="stat-value" id="ds-flows-opgenomen">—</div></div>
+        <div class="stat-card"><div class="stat-label">Flows afgerond</div><div class="stat-value" id="ds-flows-opgenomen">—</div></div>
         <div class="stat-card"><div class="stat-label">Scenario's totaal</div><div class="stat-value" id="ds-scenarios">—</div></div>
         <div class="stat-card"><div class="stat-label">Activiteiten totaal</div><div class="stat-value" id="ds-activities">—</div></div>
         <div class="stat-card"><div class="stat-label">Activiteiten afgerond</div><div class="stat-value green" id="ds-activities-done">—</div></div>
@@ -582,14 +582,21 @@
       // betrokken organisaties willen 'm niet testen) tellen niet mee als
       // "daadwerkelijk meegenomen". Scenario's zonder flow tellen altijd mee.
       const rejectedScenarioIds = new Set();
-      let flowsOpgenomen = 0;
+      let flowsAfgerond = 0;
+      let flowsMeegeteld = 0;
       flows.forEach(f => {
         const status = getFlowStatus(f.id);
         if (status === 'nee') {
           flowNodes.filter(n => n.flow_id === f.id).forEach(n => rejectedScenarioIds.add(n.scenario_id));
-        } else if (status === 'ja') {
-          flowsOpgenomen++;
+          return; // afgewezen flows tellen niet mee, ook niet als 'niet afgerond'
         }
+        flowsMeegeteld++;
+        const scenarioIdsVanFlow = flowNodes.filter(n => n.flow_id === f.id).map(n => n.scenario_id);
+        const activiteitenVanFlow = activities.filter(a => scenarioIdsVanFlow.includes(a.scenario_id));
+        const isVolledigAfgerond = scenarioIdsVanFlow.length > 0
+          && activiteitenVanFlow.length > 0
+          && activiteitenVanFlow.every(a => getResult(a.id) === 'ok');
+        if (isVolledigAfgerond) flowsAfgerond++;
       });
 
       const includedScenarios  = scenarios.filter(s => !rejectedScenarioIds.has(s.id));
@@ -629,13 +636,13 @@
       return {
         includedScenarios, includedActivities, includedResults,
         totalActs, doneActs, okActs, nokActs, okScenarios,
-        flowsWachten, flowsOpgenomen, totaalPartijen, beoordeeldePartijen, pct,
+        flowsWachten, flowsAfgerond, flowsMeegeteld, totaalPartijen, beoordeeldePartijen, pct,
       };
     }
 
     function renderDashboard() {
       const stats = computeDashboardStats();
-      const { includedScenarios, includedActivities, totalActs, okActs, nokActs, okScenarios, flowsWachten, flowsOpgenomen, totaalPartijen, beoordeeldePartijen, pct } = stats;
+      const { includedScenarios, includedActivities, totalActs, okActs, nokActs, okScenarios, flowsWachten, flowsAfgerond, flowsMeegeteld, totaalPartijen, beoordeeldePartijen, pct } = stats;
 
       renderGonogoSectie(includedActivities, totalActs, okActs);
 
@@ -643,7 +650,7 @@
       document.getElementById('ds-flows-wachten').textContent = flowsWachten;
       document.getElementById('ds-flows-wachten-sub').textContent =
         totaalPartijen > 0 ? `${beoordeeldePartijen} van ${totaalPartijen} organisaties hebben al hun flows beoordeeld` : '';
-      document.getElementById('ds-flows-opgenomen').textContent = `${flowsOpgenomen} / ${flows.length}`;
+      document.getElementById('ds-flows-opgenomen').textContent = `${flowsAfgerond} / ${flowsMeegeteld}`;
       document.getElementById('ds-scenarios').textContent = includedScenarios.length;
       document.getElementById('ds-activities').textContent = totalActs;
       document.getElementById('ds-activities-done').textContent = `${okActs} / ${totalActs}`;
