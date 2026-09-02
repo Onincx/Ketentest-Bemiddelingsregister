@@ -34,7 +34,86 @@ async function requireAuth(redirectTo = 'index.html') {
   if (!user) { window.location.href = redirectTo; return null; }
   const profile = await getUserProfile(user.id);
   if (profile?.must_change_password) { window.location.href = 'invite.html'; return null; }
+  startIdleTimeoutWatcher();
   return user;
+}
+
+// ============================================================
+// AUTOMATISCH UITLOGGEN BIJ INACTIVITEIT (beveiliging)
+// Na 15 minuten zonder muis-/toetsenbordgebruik/klikken wordt de
+// gebruiker uitgelogd. De laatste minuut daarvan verschijnt eerst een
+// waarschuwing met de mogelijkheid om aangemeld te blijven.
+// ============================================================
+const IDLE_TIMEOUT_MINUTEN = 15;
+const IDLE_WAARSCHUWING_SECONDEN = 60;
+
+let idleWatcherGestart = false;
+let idleTimer = null;
+let idleWaarschuwingActief = false;
+let idleCountdownInterval = null;
+
+function startIdleTimeoutWatcher() {
+  if (idleWatcherGestart) return; // voorkomt dubbele listeners bij meerdere requireAuth-aanroepen
+  idleWatcherGestart = true;
+  resetIdleTimer();
+  // Bewust beperkt tot échte, bewuste interacties met de tool zelf —
+  // niet 'mousemove' of 'scroll', die ook afgaan bij de geringste
+  // muistrilling of sensorruis, zonder dat er daadwerkelijk iets in de
+  // monitor gebeurt.
+  ['click', 'keydown'].forEach(evt => {
+    document.addEventListener(evt, () => { if (!idleWaarschuwingActief) resetIdleTimer(); }, { passive: true });
+  });
+}
+
+function resetIdleTimer() {
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(toonIdleWaarschuwing, (IDLE_TIMEOUT_MINUTEN * 60 - IDLE_WAARSCHUWING_SECONDEN) * 1000);
+}
+
+function toonIdleWaarschuwing() {
+  idleWaarschuwingActief = true;
+  let secondenOver = IDLE_WAARSCHUWING_SECONDEN;
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-overlay';
+  modal.id = 'idleWaarschuwingOverlay';
+  modal.style.cssText = 'display:flex; z-index:9999;';
+  modal.innerHTML = `
+    <div class="modal" style="max-width:420px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Sessie verloopt binnenkort</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:14px; line-height:1.6;">Wegens inactiviteit word je over <strong id="idleSecondenOver">${secondenOver}</strong> seconden automatisch uitgelogd.</p>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-primary" onclick="blijfAangemeld()">Ingelogd blijven</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+
+  idleCountdownInterval = setInterval(() => {
+    secondenOver--;
+    const el = document.getElementById('idleSecondenOver');
+    if (el) el.textContent = secondenOver;
+    if (secondenOver <= 0) {
+      clearInterval(idleCountdownInterval);
+      logUitWegensInactiviteit();
+    }
+  }, 1000);
+}
+
+function blijfAangemeld() {
+  idleWaarschuwingActief = false;
+  clearInterval(idleCountdownInterval);
+  document.getElementById('idleWaarschuwingOverlay')?.remove();
+  resetIdleTimer();
+}
+
+async function logUitWegensInactiviteit() {
+  document.getElementById('idleWaarschuwingOverlay')?.remove();
+  await sb.auth.signOut();
+  window.location.href = 'index.html?reden=inactiviteit';
 }
 
 async function requireAdmin() {
@@ -323,6 +402,60 @@ async function refreshMijnActiesBadge(orgId) {
 
   if (count > 0) {
     badge.textContent = `🔔 ${count} actie${count === 1 ? '' : 's'} voor jou`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+// Toont in de navigatiebalk (element met id="gonogoBadge") of er voor
+// deze manager een openstaande Go/No-go-beslissing klaarstaat: de
+// ketentest is volledig afgerond, er zijn geen blokkerende bevindingen
+// meer open, en de eigen organisatie heeft nog geen keuze afgegeven.
+// Alleen relevant voor de rol 'manager' — zij geven dit namens hun
+// organisatie af (zie dashboard.html).
+async function refreshGonogoBadge(orgId, role) {
+  const badge = document.getElementById('gonogoBadge');
+  if (!badge) return;
+  if (role !== 'manager' || !orgId) { badge.style.display = 'none'; return; }
+
+  const result = await ensureActiveKetentest();
+  if (!result) { badge.style.display = 'none'; return; }
+  const ketentestId = result.active.id;
+
+  const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', ketentestId);
+  const scenarioIds = (scenarioData || []).map(s => s.id);
+  if (!scenarioIds.length) { badge.style.display = 'none'; return; }
+
+  const { data: activityData } = await fetchAllRows((from, to) =>
+    sb.from('activities').select('id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)
+  );
+  const activities = activityData || [];
+  if (!activities.length) { badge.style.display = 'none'; return; }
+  const activityIds = activities.map(a => a.id);
+
+  const { data: resultData } = await fetchAllRows((from, to) =>
+    sb.from('activity_results').select('activity_id,result').in('activity_id', activityIds).range(from, to)
+  );
+  const resultsMap = {};
+  (resultData || []).forEach(r => { resultsMap[r.activity_id] = r.result; });
+  const isVolledigCompleet = activities.every(a => resultsMap[a.id] === 'ok');
+  if (!isVolledigCompleet) { badge.style.display = 'none'; return; }
+
+  const { data: bevindingenData } = await sb.from('bevindingen').select('id,prioriteit,status').eq('ketentest_id', ketentestId);
+  const heeftBlokkerend = (bevindingenData || []).some(b => b.prioriteit === 'blokkerend' && b.status !== 'hertest_ok' && b.status !== 'vervallen');
+  if (heeftBlokkerend) { badge.style.display = 'none'; return; }
+
+  // Is deze organisatie ook echt betrokken (verantwoordelijk of acceptant
+  // van minstens 1 activiteit)? Zo niet, hoeft er niets van hen.
+  const betrokken = activities.some(a => a.organisation_id === orgId || a.acceptant_org_id === orgId);
+  if (!betrokken) { badge.style.display = 'none'; return; }
+
+  const { data: gonogoData } = await sb.from('ketentest_gonogo').select('id').eq('ketentest_id', ketentestId).eq('organisation_id', orgId);
+  const alBeslist = (gonogoData || []).length > 0;
+
+  if (!alBeslist) {
+    badge.textContent = '⚑ Go/No-go nodig';
     badge.style.display = '';
   } else {
     badge.style.display = 'none';
