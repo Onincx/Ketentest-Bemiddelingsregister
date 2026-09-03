@@ -29,6 +29,36 @@ async function isAdmin() {
   return profile?.role === 'admin';
 }
 
+// ============================================================
+// CONSISTENTE ORGANISATIEKLEUREN
+// Elke organisatie krijgt altijd dezelfde kleur, ongeacht of ze als
+// verantwoordelijke, acceptant, eigenaar, melder, enz. wordt getoond —
+// en die kleur is uniek ten opzichte van elke andere organisatie
+// binnen dezelfde ketentest (alfabetische volgorde op naam bepaalt de
+// toewijzing, dus stabiel en overal identiek).
+// ============================================================
+const ORG_KLEUREN_PALET = [
+  { bg: '#eef2ff', fg: '#3730a3' }, // indigo
+  { bg: '#fef3c7', fg: '#92400e' }, // amber
+  { bg: '#dcfce7', fg: '#166534' }, // groen
+  { bg: '#fce7f3', fg: '#9d174d' }, // roze
+  { bg: '#ede9fe', fg: '#5b21b6' }, // paars
+  { bg: '#ccfbf1', fg: '#0f766e' }, // teal
+  { bg: '#ffedd5', fg: '#9a3412' }, // oranje
+  { bg: '#cffafe', fg: '#155e75' }, // cyaan
+  { bg: '#ecfccb', fg: '#3f6212' }, // limoen
+  { bg: '#ffe4e6', fg: '#9f1239' }, // roos
+  { bg: '#f3e8ff', fg: '#6b21a8' }, // violet
+  { bg: '#f1f5f9', fg: '#334155' }, // grijsblauw
+];
+
+function getOrgKleur(orgId, alleOrgs) {
+  if (!orgId || !alleOrgs || !alleOrgs.length) return ORG_KLEUREN_PALET[0];
+  const gesorteerd = [...alleOrgs].sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+  const index = gesorteerd.findIndex(o => o.id === orgId);
+  return ORG_KLEUREN_PALET[index === -1 ? 0 : index % ORG_KLEUREN_PALET.length];
+}
+
 async function requireAuth(redirectTo = 'index.html') {
   const user = await getCurrentUser();
   if (!user) { window.location.href = redirectTo; return null; }
