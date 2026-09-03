@@ -888,8 +888,8 @@
           <input type="text" id="activityDesc" placeholder="Omschrijving van de activiteit">
         </div>
         <div class="form-group" id="activityAcceptantGroup">
-          <label>Acceptant <span style="color:var(--text-muted); font-weight:400;">(mag OK/NOK zetten)</span></label>
-          <select id="activityAcceptant"><option value="">Selecteer organisatie...</option></select>
+          <label>Acceptant <span style="color:var(--text-muted); font-weight:400;">(optioneel — mag OK/NOK zetten)</span></label>
+          <select id="activityAcceptant"><option value="">— geen acceptant, de verantwoordelijke zet zelf OK/NOK —</option></select>
         </div>
         <p id="activityGeenAcceptantNotice" style="display:none; font-size:12px; color:var(--text-muted); margin:-8px 0 14px;">Deze activiteit komt voort uit "Wanneer" en heeft daarom geen acceptant — de verantwoordelijke organisatie zet 'm zelf op OK/NOK.</p>
         <div class="form-group">
@@ -4056,10 +4056,6 @@
       const sort_order = parseInt(document.getElementById('activityOrder').value) || 1;
       if (!description) { showAlert('Vul de activiteit in.', 'error', 'alertActivity'); return; }
       if (!organisation_id) { showAlert('Kies een verantwoordelijke organisatie.', 'error', 'alertActivity'); return; }
-      if (!activiteitZonderAcceptant && !acceptant_org_id) {
-        showAlert('Kies een acceptant (alleen de activiteit die voortkomt uit "Wanneer" heeft geen acceptant).', 'error', 'alertActivity');
-        return;
-      }
 
       // Staat er een 'Wanneer → activiteit 1'-opschuiving klaar voor
       // precies dit scenario? Dan nu, op het daadwerkelijke opslaanmoment,
@@ -4078,10 +4074,17 @@
         pendingWannneerActiviteit = null;
       }
 
-      // Controleer of het nummer al in gebruik is binnen dit scenario
+      // Nummer al in gebruik binnen dit scenario? Schuif dan alle
+      // activiteiten vanaf dat nummer automatisch een plek op (van hoog
+      // naar laag bijwerken, om tussentijdse botsingen te voorkomen) —
+      // dit geldt voor elke activiteit, dus ook een reeds bestaande
+      // activiteit 1 die ooit uit 'Wanneer' is ontstaan.
       const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);
-      if (scenarioActivities.some(a => a.sort_order === sort_order)) {
-        showAlert(`Nummer ${sort_order} is al in gebruik. Kies een ander nummer.`, 'error', 'alertActivity'); return;
+      const teVerschuiven = scenarioActivities.filter(a => a.sort_order >= sort_order).sort((a, b) => b.sort_order - a.sort_order);
+      for (const a of teVerschuiven) {
+        const { error: schuifError } = await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
+        if (schuifError) { showAlert('Fout bij opschuiven van activiteit ' + a.sort_order + ': ' + schuifError.message, 'error', 'alertActivity'); return; }
+        a.sort_order = a.sort_order + 1;
       }
 
       let dbError;
