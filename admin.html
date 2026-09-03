@@ -4167,17 +4167,24 @@
         pendingWannneerActiviteit = null;
       }
 
-      // Nummer al in gebruik binnen dit scenario? Schuif dan alle
-      // activiteiten vanaf dat nummer automatisch een plek op (van hoog
-      // naar laag bijwerken, om tussentijdse botsingen te voorkomen) —
-      // dit geldt voor elke activiteit, dus ook een reeds bestaande
-      // activiteit 1 die ooit uit 'Wanneer' is ontstaan.
+      // Alleen opschuiven bij een dáádwerkelijke botsing — dus alleen
+      // als een ándere activiteit al exact dit nummer heeft. Zonder
+      // deze controle werd bij het simpelweg opslaan van een activiteit
+      // op zijn eigen, bestaande nummer (bijv. na het wijzigen van
+      // alleen de titel) alles daarna onterecht opgeschoven.
       const scenarioActivities = activities.filter(a => a.scenario_id === scenarioId && a.id !== id);
-      const teVerschuiven = scenarioActivities.filter(a => a.sort_order >= sort_order).sort((a, b) => b.sort_order - a.sort_order);
-      for (const a of teVerschuiven) {
-        const { error: schuifError } = await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
-        if (schuifError) { showAlert('Fout bij opschuiven van activiteit ' + a.sort_order + ': ' + schuifError.message, 'error', 'alertActivity'); return; }
-        a.sort_order = a.sort_order + 1;
+      const heeftBotsing = scenarioActivities.some(a => a.sort_order === sort_order);
+      if (heeftBotsing) {
+        // Van hoog naar laag bijwerken, om tussentijdse botsingen tijdens
+        // het opschuiven zelf te voorkomen — dit geldt voor elke
+        // activiteit, dus ook een reeds bestaande activiteit 1 die ooit
+        // uit 'Wanneer' is ontstaan.
+        const teVerschuiven = scenarioActivities.filter(a => a.sort_order >= sort_order).sort((a, b) => b.sort_order - a.sort_order);
+        for (const a of teVerschuiven) {
+          const { error: schuifError } = await sb.from('activities').update({ sort_order: a.sort_order + 1 }).eq('id', a.id);
+          if (schuifError) { showAlert('Fout bij opschuiven van activiteit ' + a.sort_order + ': ' + schuifError.message, 'error', 'alertActivity'); return; }
+          a.sort_order = a.sort_order + 1;
+        }
       }
 
       let dbError;
