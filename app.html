@@ -473,8 +473,19 @@
       const editKey = `algemeen-${bronScenarioId}`;
       const inBewerkModus = isBron && (isNieuw || kenmerkEditMode.has(editKey));
 
-      const eersteActiviteit = activities.filter(a => a.scenario_id === bronScenarioId).sort((a, b) => a.sort_order - b.sort_order)[0];
-      const verantwOrgId = eersteActiviteit?.organisation_id || eersteActiviteit?.organisations?.id;
+      // Niet zomaar de eerste activiteit van het scenario pakken — die is
+      // vaak geen zorgkantoor. Loop in volgorde door de activiteiten
+      // heen tot er een gevonden is waarvan de verantwoordelijke
+      // organisatie daadwerkelijk zorgkantoorcodes heeft.
+      const activiteitenOpVolgorde = activities.filter(a => a.scenario_id === bronScenarioId).sort((a, b) => a.sort_order - b.sort_order);
+      let verantwOrgId = null;
+      for (const a of activiteitenOpVolgorde) {
+        const kandidaatOrgId = a.organisation_id || a.organisations?.id;
+        if (kandidaatOrgId && zorgkantoorcodes.some(z => z.organisation_id === kandidaatOrgId)) {
+          verantwOrgId = kandidaatOrgId;
+          break;
+        }
+      }
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
       const clientnaamVeldEdit = `<div style="width:190px;">
