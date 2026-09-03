@@ -426,7 +426,7 @@
           : `<span style="font-size:12px; color:var(--text-muted); font-style:italic;">Geen zorgkantoorcodes bekend voor de verantwoordelijke organisatie</span>`;
       }
       return `<div style="width:190px;">
-        <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">${esc(d.naam)}</label>
+        <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:flex; align-items:flex-end; min-height:26px; margin-bottom:2px; line-height:1.2;">${esc(d.naam)}</label>
         ${input}
       </div>`;
     }
@@ -489,7 +489,7 @@
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
       const clientnaamVeldEdit = `<div style="width:190px;">
-          <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:block; margin-bottom:2px;">Clientnaam</label>
+          <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:flex; align-items:flex-end; min-height:26px; margin-bottom:2px; line-height:1.2;">Clientnaam</label>
           <span style="display:inline-block; font-size:13px; font-weight:700; color:#154273; background:#e8f0fb; border-radius:4px; padding:5px 9px; font-family:monospace;">${getClientnaam(scenarioId)}</span>
         </div>`;
 
