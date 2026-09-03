@@ -869,6 +869,31 @@
     </div>
   </div>
 
+  <!-- Modal: Scenario dupliceren -->
+  <div class="modal-overlay" id="modalDupliceerScenario" style="display:none;" onclick="closeModalOverlay(event,'modalDupliceerScenario')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Scenario dupliceren</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalDupliceerScenario')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="dupliceerScenarioId">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+          Maakt een nieuw scenario aan met dezelfde titel, doel, gegeven, wanneer, instructie en activiteiten als <strong id="dupliceerScenarioBron"></strong>. De koppeling naar een flow wordt niet overgenomen.
+        </p>
+        <div class="form-group">
+          <label>Scenario ID van het nieuwe scenario <span style="color:var(--danger);">*</span></label>
+          <input type="text" id="dupliceerScenarioCode" placeholder="Bijv. SC1-060">
+        </div>
+        <div id="alertDupliceerScenario" class="alert" style="display:none; margin-top:10px;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalDupliceerScenario')">Annuleren</button>
+        <button class="btn btn-primary" onclick="dupliceerScenario()">Dupliceren</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Activiteit -->
   <div class="modal-overlay" id="modalActivity" style="display:none;" onclick="closeModalOverlay(event,'modalActivity')">
     <div class="modal" style="max-width:640px;" onclick="event.stopPropagation()">
@@ -3454,6 +3479,7 @@
               </button>
               <button class="btn btn-outline btn-sm" onclick="openCopyModal('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> Kopieer van</button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="editScenario('${s.id}')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openDupliceerScenarioModal('${s.id}')" title="Scenario dupliceren"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
               <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteScenario('${s.id}','${s.title}')"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
               </div>
             </div>
@@ -3926,6 +3952,73 @@
       resultaat = resultaat.charAt(0).toUpperCase() + resultaat.slice(1) + '.';
       document.getElementById('scenarioInstructie').value = resultaat;
       showAlert('Voorstel gegenereerd — controleer en pas waar nodig aan vóór het opslaan.', 'success');
+    }
+
+    function openDupliceerScenarioModal(scenarioId) {
+      const s = scenarios.find(x => x.id === scenarioId);
+      if (!s) return;
+      document.getElementById('dupliceerScenarioId').value = scenarioId;
+      document.getElementById('dupliceerScenarioBron').textContent = `${s.code} — ${s.title}`;
+      document.getElementById('dupliceerScenarioCode').value = '';
+      document.getElementById('alertDupliceerScenario').style.display = 'none';
+      openModal('modalDupliceerScenario');
+    }
+
+    async function dupliceerScenario() {
+      const bronId = document.getElementById('dupliceerScenarioId').value;
+      const nieuweCode = document.getElementById('dupliceerScenarioCode').value.trim();
+      const bron = scenarios.find(x => x.id === bronId);
+      if (!bron) return;
+
+      if (!nieuweCode) {
+        showAlert('Vul een scenario ID in voor het nieuwe scenario.', 'error', 'alertDupliceerScenario');
+        return;
+      }
+      if (scenarios.some(s => s.code.toLowerCase() === nieuweCode.toLowerCase())) {
+        showAlert(`Scenario ID "${nieuweCode}" bestaat al — kies een andere.`, 'error', 'alertDupliceerScenario');
+        return;
+      }
+
+      // Nieuw scenario aanmaken met dezelfde inhoud, maar zonder
+      // flow-koppeling (die hoort bij flow_nodes, wordt hier bewust niet
+      // aangemaakt/gekopieerd).
+      const { data: nieuwScenario, error: scenarioError } = await sb.from('scenarios').insert({
+        ketentest_id: bron.ketentest_id,
+        code: nieuweCode,
+        title: bron.title,
+        description: bron.description,
+        gegeven: bron.gegeven,
+        wanneer: bron.wanneer,
+        instructie: bron.instructie,
+        wanneer_activiteit_toegevoegd: bron.wanneer_activiteit_toegevoegd,
+        sort_order: bron.sort_order,
+      }).select().single();
+
+      if (scenarioError) {
+        showAlert('Fout bij aanmaken van het scenario: ' + scenarioError.message, 'error', 'alertDupliceerScenario');
+        return;
+      }
+
+      // Alle activiteiten van het bronscenario 1-op-1 overnemen.
+      const bronActiviteiten = activities.filter(a => a.scenario_id === bronId);
+      if (bronActiviteiten.length) {
+        const nieuweActiviteiten = bronActiviteiten.map(a => ({
+          scenario_id: nieuwScenario.id,
+          description: a.description,
+          organisation_id: a.organisation_id,
+          acceptant_org_id: a.acceptant_org_id,
+          sort_order: a.sort_order,
+        }));
+        const { error: activiteitenError } = await sb.from('activities').insert(nieuweActiviteiten);
+        if (activiteitenError) {
+          showAlert('Scenario is aangemaakt, maar het kopiëren van de activiteiten is niet gelukt: ' + activiteitenError.message, 'error', 'alertDupliceerScenario');
+          return;
+        }
+      }
+
+      closeModal('modalDupliceerScenario');
+      await loadScenarios(); await loadActivities(); renderScenarios();
+      showAlert(`Scenario "${nieuweCode}" is aangemaakt met ${bronActiviteiten.length} activiteit${bronActiviteiten.length !== 1 ? 'en' : ''}.`, 'success');
     }
 
     function deleteScenario(id, title) {
