@@ -261,7 +261,7 @@
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=42"></script>
+  <script src="js/supabase-config.js?v=43"></script>
   <script>
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [], gonogoData = [];
@@ -1075,7 +1075,8 @@
             <div style="display:flex; flex-wrap:wrap; gap:5px;">
               ${pendingOrgIds.map(oid => {
                 const org = orgs.find(o => o.id === oid);
-                return `<span style="background:#fef3c7; color:#92400e; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:600;">${org?.name || org?.code || 'Onbekend'}</span>`;
+                const k = getOrgKleur(oid, orgs);
+                return `<span style="background:${k.bg}; color:${k.fg}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:600;">${org?.name || org?.code || 'Onbekend'}</span>`;
               }).join('')}
             </div>
           </div>`).join('') + `</div>`;

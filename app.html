@@ -111,7 +111,7 @@
       .sc-row-bar-wrap, .tile-counts { grid-column: 2 / span 3; }
       .sc-row-pills { grid-column: 1 / -1; justify-content: flex-start; }
     }
-    .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; }
+    .org-pill { background: var(--brand-light); color: var(--brand); border-radius: 99px; padding: 2px 9px; font-size: 11px; font-weight: 500; white-space: nowrap; text-align: center; }
     .my-org { background: var(--accent-light); color: #0f6e56; }
     @media (max-width: 700px) {
       .activity-row, .activity-header { grid-template-columns: 1fr; }
@@ -243,7 +243,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=42"></script>
+  <script src="js/supabase-config.js?v=43"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -1246,8 +1246,8 @@
             ${nOpen > 0 && (nOk > 0 || nNok > 0) ? `<span style="color:var(--warning);">○${nOpen}</span>` : ''}
           </div>
           <div class="sc-row-pills">
-            ${verantwoordelijken.map(o => `<span title="Verantwoordelijk: ${o.name}" style="background:var(--brand-light);color:var(--brand);border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
-            ${acceptanten.map(o => `<span title="Acceptant: ${o.name}" style="background:#fef3c7;color:#92400e;border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`).join('')}
+            ${verantwoordelijken.map(o => { const k = getOrgKleur(o.id, allOrgs); return `<span title="Verantwoordelijk: ${o.name}" style="background:${k.bg};color:${k.fg};border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`; }).join('')}
+            ${acceptanten.map(o => { const k = getOrgKleur(o.id, allOrgs); return `<span title="Acceptant: ${o.name}" style="background:${k.bg};color:${k.fg};border-radius:99px;padding:1px 7px;font-size:10px;font-weight:600;">${o.code||o.name}</span>`; }).join('')}
           </div>
         </div>`;
       }).join('');
@@ -1313,9 +1313,9 @@
 
           return `<div class="activity-row" id="row-${a.id}">
             <div style="color:var(--text-muted); font-size:12px;">${a.sort_order}</div>
-            <div>${orgName ? `<span class="org-pill">${orgCode || orgName}</span>` : '—'}</div>
+            <div>${orgName ? `<span class="org-pill" style="background:${getOrgKleur(a.organisation_id, allOrgs).bg};color:${getOrgKleur(a.organisation_id, allOrgs).fg};${a.organisation_id === myOrgId ? 'box-shadow:0 0 0 1.5px currentColor;' : ''}">${orgCode || orgName}</span>` : '—'}</div>
             <div style="font-size:13px;">${highlightNotificaties(a.description)}</div>
-            <div>${accName ? `<span class="org-pill ${isAcceptant ? 'my-org' : ''}" style="${!isAcceptant ? 'background:#fef3c7;color:#92400e;' : ''}">${accCode || accName}</span>` : '—'}</div>
+            <div>${accName ? `<span class="org-pill" style="background:${getOrgKleur(a.acceptant_org_id, allOrgs).bg};color:${getOrgKleur(a.acceptant_org_id, allOrgs).fg};${isAcceptant ? 'box-shadow:0 0 0 1.5px currentColor;' : ''}">${accCode || accName}</span>` : '—'}</div>
             <div style="display:flex; align-items:center; gap:6px; padding:8px 12px; overflow:visible; min-width:0;">
               ${isBlocked ? `
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="Activiteit #${prevAct.sort_order} moet eerst op OK gezet worden">
