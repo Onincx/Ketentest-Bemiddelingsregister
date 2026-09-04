@@ -882,6 +882,11 @@
           Maakt een nieuw scenario aan met dezelfde titel, doel, gegeven, wanneer, instructie en activiteiten als <strong id="dupliceerScenarioBron"></strong>. De koppeling naar een flow wordt niet overgenomen.
         </p>
         <div class="form-group">
+          <label>Doel-ketentest <span style="color:var(--danger);">*</span></label>
+          <select id="dupliceerScenarioKetentest"></select>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Standaard dezelfde ketentest — kies een andere om het scenario over te nemen naar een andere ketentest.</p>
+        </div>
+        <div class="form-group">
           <label>Scenario ID van het nieuwe scenario <span style="color:var(--danger);">*</span></label>
           <input type="text" id="dupliceerScenarioCode" placeholder="Bijv. SC1-060">
         </div>
@@ -3961,12 +3966,15 @@
       document.getElementById('dupliceerScenarioBron').textContent = `${s.code} — ${s.title}`;
       document.getElementById('dupliceerScenarioCode').value = '';
       document.getElementById('alertDupliceerScenario').style.display = 'none';
+      const select = document.getElementById('dupliceerScenarioKetentest');
+      select.innerHTML = ketentests.map(k => `<option value="${k.id}" ${k.id === s.ketentest_id ? 'selected' : ''}>${k.naam}${k.id === s.ketentest_id ? ' (huidige ketentest)' : ''}</option>`).join('');
       openModal('modalDupliceerScenario');
     }
 
     async function dupliceerScenario() {
       const bronId = document.getElementById('dupliceerScenarioId').value;
       const nieuweCode = document.getElementById('dupliceerScenarioCode').value.trim();
+      const doelKetentestId = document.getElementById('dupliceerScenarioKetentest').value;
       const bron = scenarios.find(x => x.id === bronId);
       if (!bron) return;
 
@@ -3974,16 +3982,23 @@
         showAlert('Vul een scenario ID in voor het nieuwe scenario.', 'error', 'alertDupliceerScenario');
         return;
       }
-      if (scenarios.some(s => s.code.toLowerCase() === nieuweCode.toLowerCase())) {
+      // Alleen een zinvolle vooraf-controle mogelijk tegen scenario's die
+      // al lokaal geladen zijn (de huidige ketentest) — bij een andere
+      // doel-ketentest is de database zelf de uiteindelijke controle.
+      if (doelKetentestId === bron.ketentest_id && scenarios.some(s => s.code.toLowerCase() === nieuweCode.toLowerCase())) {
         showAlert(`Scenario ID "${nieuweCode}" bestaat al — kies een andere.`, 'error', 'alertDupliceerScenario');
         return;
       }
 
       // Nieuw scenario aanmaken met dezelfde inhoud, maar zonder
       // flow-koppeling (die hoort bij flow_nodes, wordt hier bewust niet
-      // aangemaakt/gekopieerd).
+      // aangemaakt/gekopieerd) — in de gekozen doel-ketentest, die gelijk
+      // kan zijn aan de bron (dupliceren) of een andere ketentest
+      // (overnemen naar elders). Organisaties zijn gedeeld over alle
+      // ketentesten heen, dus de verantwoordelijke/acceptant-koppeling
+      // blijft altijd geldig.
       const { data: nieuwScenario, error: scenarioError } = await sb.from('scenarios').insert({
-        ketentest_id: bron.ketentest_id,
+        ketentest_id: doelKetentestId,
         code: nieuweCode,
         title: bron.title,
         description: bron.description,
@@ -4017,8 +4032,12 @@
       }
 
       closeModal('modalDupliceerScenario');
-      await loadScenarios(); await loadActivities(); renderScenarios();
-      showAlert(`Scenario "${nieuweCode}" is aangemaakt met ${bronActiviteiten.length} activiteit${bronActiviteiten.length !== 1 ? 'en' : ''}.`, 'success');
+      const isAndereKetentest = doelKetentestId !== bron.ketentest_id;
+      if (!isAndereKetentest) {
+        await loadScenarios(); await loadActivities(); renderScenarios();
+      }
+      const doelKetentestNaam = ketentests.find(k => k.id === doelKetentestId)?.naam || '';
+      showAlert(`Scenario "${nieuweCode}" is aangemaakt met ${bronActiviteiten.length} activiteit${bronActiviteiten.length !== 1 ? 'en' : ''}${isAndereKetentest ? ` in ketentest "${doelKetentestNaam}"` : ''}.`, 'success');
     }
 
     function deleteScenario(id, title) {
