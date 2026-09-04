@@ -261,8 +261,8 @@
         <div class="card" style="padding:0;">
           <div class="table-wrap">
             <table>
-              <thead><tr><th>Naam</th><th>Type</th><th></th></tr></thead>
-              <tbody id="notificationDefTable"><tr><td colspan="3" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+              <thead><tr><th>Naam</th><th>Type</th><th>Register</th><th></th></tr></thead>
+              <tbody id="notificationDefTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
             </table>
           </div>
         </div>
@@ -312,6 +312,14 @@
             </select>
           </div>
           <div class="form-group">
+            <label>Register <span style="color:var(--danger);">*</span></label>
+            <select id="notificationDefRegister">
+              <option value="Indicatieregister">Indicatieregister</option>
+              <option value="Bemiddelingsregister">Bemiddelingsregister</option>
+              <option value="Leveringsregister">Leveringsregister</option>
+            </select>
+          </div>
+          <div class="form-group">
             <label>Doelgroep</label>
             <select id="notificationDefDoelgroep">
               <option value="zorgaanbieder">Zorgaanbieder</option>
@@ -345,6 +353,7 @@
         <div class="modal-body">
           <div style="display:flex; gap:8px; margin-bottom:20px;">
             <span id="notifDetailTypeBadge"></span>
+            <span id="notifDetailRegisterBadge"></span>
             <span id="notifDetailDoelgroepBadge" style="background:var(--surface); border:1px solid var(--border); color:var(--text-muted); border-radius:99px; padding:2px 10px; font-size:11px; font-weight:600;"></span>
           </div>
           <div class="form-group">
@@ -358,6 +367,31 @@
         </div>
         <div class="modal-footer">
           <button class="btn btn-outline" onclick="closeModal('modalNotificationDetail')">Sluiten</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Notificatie kopiëren naar andere ketentest -->
+    <div class="modal-overlay" id="modalKopieerNotificatie" style="display:none;" onclick="closeModalOverlay(event,'modalKopieerNotificatie')">
+      <div class="modal" onclick="event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Notificatie kopiëren</h3>
+          <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKopieerNotificatie')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="kopieerNotificatieId">
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:14px;">
+            Maakt een kopie van <strong id="kopieerNotificatieBron"></strong> (met dezelfde type, register, doelgroep, documentatie en trigger) in de gekozen ketentest.
+          </p>
+          <div class="form-group">
+            <label>Doel-ketentest <span style="color:var(--danger);">*</span></label>
+            <select id="kopieerNotificatieKetentest"></select>
+          </div>
+          <div id="alertKopieerNotificatie" class="alert" style="display:none; margin-top:10px;"></div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-outline" onclick="closeModal('modalKopieerNotificatie')">Annuleren</button>
+          <button class="btn btn-primary" onclick="kopieerNotificatie()">Kopiëren</button>
         </div>
       </div>
     </div>
@@ -1114,6 +1148,11 @@
       informatief: { bg: '#dbeafe', color: '#1e40af', border: '#93c5fd' },
       verwijderd:  { bg: '#fee2e2', color: '#991b1b', border: '#fca5a5' },
     };
+    const REGISTER_COLORS = {
+      Indicatieregister:     { bg: '#eef2ff', color: '#3730a3', border: '#c7d2fe' },
+      Bemiddelingsregister:  { bg: '#f0fdf4', color: '#166534', border: '#bbf7d0' },
+      Leveringsregister:     { bg: '#f3e8ff', color: '#6b21a8', border: '#e9d5ff' },
+    };
     let adminActiveTab = null;
     const openSections = new Set(); // bijhoudt welke scenario's open zijn
     let activeTab = 'ketentests';
@@ -1481,7 +1520,7 @@
       if (!tb) return;
       const filtered = NOTIFICATIES.filter(n => (n.doelgroep || 'zorgaanbieder') === notifDoelgroep.manage);
       if (!filtered.length) {
-        tb.innerHTML = '<tr><td colspan="3"><div class="empty-state"><p>Nog geen notificaties voor deze doelgroep toegevoegd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen notificaties voor deze doelgroep toegevoegd.</p></div></td></tr>';
         return;
       }
       const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
@@ -1491,9 +1530,11 @@
         return a.naam.localeCompare(b.naam);
       }).map(n => {
         const c = NOTIF_COLORS[n.type];
+        const rc = REGISTER_COLORS[n.register] || REGISTER_COLORS.Bemiddelingsregister;
         return `<tr>
           <td><strong>${n.naam}</strong></td>
           <td><span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${typeLabels[n.type]}</span></td>
+          <td><span style="background:${rc.bg}; color:${rc.color}; border:1px solid ${rc.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700; white-space:nowrap;">${n.register || '—'}</span></td>
           <td style="text-align:right;">
             <button class="btn btn-outline btn-sm" onclick="viewNotificationDetail('${n.id}')" title="Details bekijken">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -1501,6 +1542,7 @@
             </button>
             ${window.isPageAdmin ? `
             <button class="btn btn-ghost btn-sm btn-icon" onclick="editNotificationDef('${n.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="openKopieerNotificatieModal('${n.id}')" title="Kopiëren naar andere ketentest"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
             <button class="btn btn-ghost btn-sm btn-icon" onclick="deleteNotificationDef('${n.id}','${n.naam.replace(/'/g,"\\'")}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></span></button>
             ` : ''}
           </td>
@@ -1515,6 +1557,8 @@
       const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
       document.getElementById('notifDetailNaam').textContent = n.naam;
       document.getElementById('notifDetailTypeBadge').outerHTML = `<span id="notifDetailTypeBadge" style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${typeLabels[n.type]}</span>`;
+      const rc = REGISTER_COLORS[n.register] || REGISTER_COLORS.Bemiddelingsregister;
+      document.getElementById('notifDetailRegisterBadge').outerHTML = `<span id="notifDetailRegisterBadge" style="background:${rc.bg}; color:${rc.color}; border:1px solid ${rc.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${n.register || '—'}</span>`;
       document.getElementById('notifDetailDoelgroepBadge').textContent = n.doelgroep === 'zorgkantoor' ? 'Zorgkantoor' : 'Zorgaanbieder';
       document.getElementById('notifDetailDocumentatie').textContent = n.documentatie || 'Geen documentatie ingevuld.';
       document.getElementById('notifDetailTrigger').textContent = n.trigger || 'Geen trigger ingevuld.';
@@ -1526,6 +1570,7 @@
       document.getElementById('notificationDefId').value = '';
       document.getElementById('notificationDefNaam').value = '';
       document.getElementById('notificationDefType').value = 'nieuw';
+      document.getElementById('notificationDefRegister').value = 'Bemiddelingsregister';
       document.getElementById('notificationDefDoelgroep').value = notifDoelgroep.manage;
       document.getElementById('notificationDefDocumentatie').value = '';
       document.getElementById('notificationDefTrigger').value = '';
@@ -1541,6 +1586,7 @@
       document.getElementById('notificationDefId').value = n.id;
       document.getElementById('notificationDefNaam').value = n.naam;
       document.getElementById('notificationDefType').value = n.type;
+      document.getElementById('notificationDefRegister').value = n.register;
       document.getElementById('notificationDefDoelgroep').value = n.doelgroep || 'zorgaanbieder';
       document.getElementById('notificationDefDocumentatie').value = n.documentatie || '';
       document.getElementById('notificationDefTrigger').value = n.trigger || '';
@@ -1554,17 +1600,19 @@
       const id = document.getElementById('notificationDefId').value;
       const naam = document.getElementById('notificationDefNaam').value.trim();
       const type = document.getElementById('notificationDefType').value;
+      const register = document.getElementById('notificationDefRegister').value;
       const doelgroep = document.getElementById('notificationDefDoelgroep').value;
       const documentatie = document.getElementById('notificationDefDocumentatie').value.trim();
       const triggerVeld = document.getElementById('notificationDefTrigger').value.trim();
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertNotificationDef'); return; }
+      if (!register) { showAlert('Kies een register.', 'error', 'alertNotificationDef'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('notification_definitions').update({ naam, type, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null }).eq('id', id);
+        const res = await sb.from('notification_definitions').update({ naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null });
+        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null });
         dbError = res.error;
       }
 
@@ -1602,6 +1650,53 @@
         showAlert('Notificatie verwijderd.', 'success');
       };
       openModal('modalConfirm');
+    }
+
+    function openKopieerNotificatieModal(id) {
+      if (!window.isPageAdmin) return;
+      const n = NOTIFICATIES.find(x => x.id === id);
+      if (!n) return;
+      document.getElementById('kopieerNotificatieId').value = id;
+      document.getElementById('kopieerNotificatieBron').textContent = n.naam;
+      document.getElementById('alertKopieerNotificatie').style.display = 'none';
+      const select = document.getElementById('kopieerNotificatieKetentest');
+      select.innerHTML = ketentests.map(k => `<option value="${k.id}" ${k.id === n.ketentest_id ? 'selected' : ''}>${k.naam}${k.id === n.ketentest_id ? ' (huidige ketentest)' : ''}</option>`).join('');
+      openModal('modalKopieerNotificatie');
+    }
+
+    async function kopieerNotificatie() {
+      const bronId = document.getElementById('kopieerNotificatieId').value;
+      const doelKetentestId = document.getElementById('kopieerNotificatieKetentest').value;
+      const bron = NOTIFICATIES.find(x => x.id === bronId);
+      if (!bron) return;
+
+      const { error } = await sb.from('notification_definitions').insert({
+        ketentest_id: doelKetentestId,
+        naam: bron.naam,
+        type: bron.type,
+        register: bron.register,
+        doelgroep: bron.doelgroep,
+        documentatie: bron.documentatie,
+        trigger: bron.trigger,
+      });
+
+      if (error) {
+        const msg = error.code === '23505'
+          ? 'Er bestaat al een notificatie met deze naam binnen de gekozen ketentest.'
+          : ('Fout bij kopiëren: ' + error.message);
+        showAlert(msg, 'error', 'alertKopieerNotificatie');
+        return;
+      }
+
+      closeModal('modalKopieerNotificatie');
+      const doelNaam = ketentests.find(k => k.id === doelKetentestId)?.naam || '';
+      const isAndereKetentest = doelKetentestId !== bron.ketentest_id;
+      if (!isAndereKetentest) {
+        await loadNotificationDefs();
+        renderNotificationDefTable();
+        renderNotifications();
+      }
+      showAlert(`Notificatie "${bron.naam}" is gekopieerd${isAndereKetentest ? ` naar ketentest "${doelNaam}"` : ''}.`, 'success');
     }
 
     // ---- BERICHTEN ----
