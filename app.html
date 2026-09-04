@@ -563,6 +563,72 @@
       rerenderScenario(scenarioId);
     }
 
+    // ---- EENMALIGE BLOKKEN (max. 1x per scenario, generiek) ----
+    // Zelfde soort gedrag als 'Algemeen' (compact tonen als ingevuld,
+    // bewerkmodus als nieuw/leeg), maar zonder de Algemeen-specifieke
+    // Clientnaam/zorgkantoor/flow-overerving — gewoon een simpel blok
+    // dat maximaal 1x per scenario voorkomt. Toont zichzelf niet als er
+    // bij Beheer nog geen enkel veld voor deze groep is aangemaakt.
+    function renderEenmaligBlok(scenarioId, groep, titel) {
+      const definities = kenmerkDefinities.filter(d => d.groep === groep).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
+      if (!definities.length) return '';
+
+      const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
+      const instantie = scenarioKenmerkInstanties.find(i => i.scenario_id === scenarioId && i.groep === groep);
+      const waarden = instantie ? getWaardenVoorInstantie(instantie.id) : {};
+      const isNieuw = !heeftIngevuldeWaarden(waarden);
+      const editKey = `${groep}-${scenarioId}`;
+      const inBewerkModus = isNieuw || kenmerkEditMode.has(editKey);
+
+      if (!inBewerkModus) {
+        return `<div style="margin:8px 0; padding:8px 14px; background:#f3f0fa; border:1px solid #d4c8ee; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="${groep}" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
+            <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">${titel}</span>
+            ${renderKenmerkCompact(definities, waarden)}
+          </div>
+          ${betrokken ? `<button class="btn btn-ghost btn-sm btn-icon" style="flex-shrink:0;" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>` : ''}
+        </div>`;
+      }
+
+      const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
+      const actieKnoppen = betrokken
+        ? `<div style="display:flex; gap:8px;">
+            ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
+            <button class="btn btn-sm btn-primary" onclick="saveEenmaligBlok('${scenarioId}','${groep}')">Opslaan</button>
+          </div>`
+        : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
+
+      return `<div style="margin:8px 0; padding:8px 14px; background:#f3f0fa; border:1px solid #d4c8ee; border-radius:var(--radius);" data-instantie-groep="${groep}" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
+          ${actieKnoppen}
+        </div>
+        <div id="kenmerkenAlert-${groep}-${scenarioId}" class="alert" style="display:none; margin-bottom:5px;"></div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px;">${velden}</div>
+      </div>`;
+    }
+
+    async function saveEenmaligBlok(scenarioId, groep) {
+      const alertId = `kenmerkenAlert-${groep}-${scenarioId}`;
+      const wrap = document.querySelector(`[data-instantie-groep="${groep}"][data-scenario-id="${scenarioId}"]`);
+      if (!wrap) return;
+      const inputs = wrap.querySelectorAll('[data-kenmerk-id]');
+      if (!valideerVelden(inputs, alertId)) return;
+
+      let instantie = scenarioKenmerkInstanties.find(i => i.scenario_id === scenarioId && i.groep === groep);
+      if (!instantie) {
+        const { data: { user } } = await sb.auth.getUser();
+        const { data, error } = await sb.from('scenario_kenmerk_instanties').insert({ scenario_id: scenarioId, groep, volgnummer: 1, created_by: user?.id || null }).select().single();
+        if (error) { showAlert('Fout bij aanmaken: ' + error.message, 'error', alertId); return; }
+        instantie = data;
+        scenarioKenmerkInstanties.push(instantie);
+      }
+
+      await slaWaardenOp(instantie.id, inputs, alertId);
+      kenmerkEditMode.delete(`${groep}-${scenarioId}`);
+      rerenderScenario(scenarioId);
+    }
+
     // ---- HERHAALBARE BLOKKEN (Toewijzing / Regierol) ----
     function renderHerhaalbaarBlok(scenarioId, groep, titel) {
       const definities = kenmerkDefinities.filter(d => d.groep === groep).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
@@ -862,7 +928,15 @@
     function rerenderScenario(scenarioId) {
       const houder = document.getElementById(`kenmerkenHouder-${scenarioId}`);
       if (!houder) return;
-      houder.innerHTML = renderAlgemeneKenmerken(scenarioId) + renderHerhaalbaarBlok(scenarioId, 'toewijzing', 'Toewijzing') + renderHerhaalbaarBlok(scenarioId, 'regierol', 'Regierol');
+      houder.innerHTML = renderAlgemeneKenmerken(scenarioId)
+        + renderHerhaalbaarBlok(scenarioId, 'toewijzing', 'Toewijzing')
+        + renderHerhaalbaarBlok(scenarioId, 'regierol', 'Regierol')
+        + renderHerhaalbaarBlok(scenarioId, 'leveringperiode', 'Leveringperiode')
+        + renderHerhaalbaarBlok(scenarioId, 'behandelingperiode', 'Behandelingperiode')
+        + renderHerhaalbaarBlok(scenarioId, 'verzoekaanbieder', 'VerzoekAanbieder')
+        + renderEenmaligBlok(scenarioId, 'uitstelperiode', 'Uitstelperiode')
+        + renderEenmaligBlok(scenarioId, 'afstel', 'Afstel')
+        + renderEenmaligBlok(scenarioId, 'verzoek', 'Verzoek');
     }
 
     function getClientnaam(scenarioId) {
@@ -1444,6 +1518,12 @@
             ${renderAlgemeneKenmerken(s.id)}
             ${renderHerhaalbaarBlok(s.id, 'toewijzing', 'Toewijzing')}
             ${renderHerhaalbaarBlok(s.id, 'regierol', 'Regierol')}
+            ${renderHerhaalbaarBlok(s.id, 'leveringperiode', 'Leveringperiode')}
+            ${renderHerhaalbaarBlok(s.id, 'behandelingperiode', 'Behandelingperiode')}
+            ${renderHerhaalbaarBlok(s.id, 'verzoekaanbieder', 'VerzoekAanbieder')}
+            ${renderEenmaligBlok(s.id, 'uitstelperiode', 'Uitstelperiode')}
+            ${renderEenmaligBlok(s.id, 'afstel', 'Afstel')}
+            ${renderEenmaligBlok(s.id, 'verzoek', 'Verzoek')}
           </div>
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
         </div>`;

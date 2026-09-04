@@ -621,6 +621,12 @@
             <option value="algemeen">Algemeen (1x per scenario)</option>
             <option value="toewijzing">Toewijzing (herhaalbaar blok)</option>
             <option value="regierol">Regierol (herhaalbaar blok)</option>
+            <option value="leveringperiode">Leveringperiode (herhaalbaar blok)</option>
+            <option value="behandelingperiode">Behandelingperiode (herhaalbaar blok)</option>
+            <option value="verzoekaanbieder">VerzoekAanbieder (herhaalbaar blok)</option>
+            <option value="uitstelperiode">Uitstelperiode (1x per scenario)</option>
+            <option value="afstel">Afstel (1x per scenario)</option>
+            <option value="verzoek">Verzoek (1x per scenario)</option>
           </select>
         </div>
         <div class="form-group">
@@ -1853,13 +1859,19 @@
       algemeen: { titel: 'Algemeen', toelichting: 'Staat altijd 1x bij elk scenario.' },
       toewijzing: { titel: 'Toewijzing', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Toewijzing 1", "Toewijzing 2", ... toe bij een scenario.' },
       regierol: { titel: 'Regierol', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Regierol 1", "Regierol 2", ... toe bij een scenario.' },
+      leveringperiode: { titel: 'Leveringperiode', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Leveringperiode 1", "Leveringperiode 2", ... toe bij een scenario.' },
+      behandelingperiode: { titel: 'Behandelingperiode', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Behandelingperiode 1", "Behandelingperiode 2", ... toe bij een scenario.' },
+      verzoekaanbieder: { titel: 'VerzoekAanbieder', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "VerzoekAanbieder 1", "VerzoekAanbieder 2", ... toe bij een scenario.' },
+      uitstelperiode: { titel: 'Uitstelperiode', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
+      afstel: { titel: 'Afstel', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
+      verzoek: { titel: 'Verzoek', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
     };
 
     function renderKenmerkDefTable() {
       const container = document.getElementById('kenmerkGroepen');
       if (!container) return;
 
-      container.innerHTML = ['algemeen', 'toewijzing', 'regierol'].map(groep => {
+      container.innerHTML = ['algemeen', 'toewijzing', 'regierol', 'leveringperiode', 'behandelingperiode', 'uitstelperiode', 'afstel', 'verzoek', 'verzoekaanbieder'].map(groep => {
         const items = KENMERKDEFINITIES.filter(k => k.groep === groep);
         const label = KENMERK_GROEP_LABELS[groep];
 
