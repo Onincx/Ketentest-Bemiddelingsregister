@@ -532,13 +532,11 @@
           : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
       }
 
-      return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius);" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
-          ${actieKnoppen}
-        </div>
-        <div id="kenmerkenAlert-algemeen-${bronScenarioId}" class="alert" style="display:none; margin-bottom:5px;"></div>
+      return `<div style="margin:8px 0; padding:8px 14px; background:#e3edfa; border:1px solid #9dc0e8; border-radius:var(--radius); display:flex; align-items:flex-end; flex-wrap:wrap; gap:6px 16px;" data-instantie-groep="algemeen" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${bronScenarioId}">
+        <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 6px; flex-shrink:0;">Algemeen${!isBron ? ' <span style="font-weight:400; text-transform:none; letter-spacing:0;">(van startscenario)</span>' : ''}</p>
         ${inhoud}
+        <div style="margin-left:auto; flex-shrink:0;">${actieKnoppen}</div>
+        <div id="kenmerkenAlert-algemeen-${bronScenarioId}" class="alert" style="display:none; width:100%; margin-top:5px;"></div>
       </div>`;
     }
 
@@ -578,9 +576,21 @@
       const waarden = instantie ? getWaardenVoorInstantie(instantie.id) : {};
       const isNieuw = !heeftIngevuldeWaarden(waarden);
       const editKey = `${groep}-${scenarioId}`;
-      const inBewerkModus = isNieuw || kenmerkEditMode.has(editKey);
+      // Anders dan 'Algemeen': begint niet automatisch in bewerkmodus
+      // als het nog leeg is — pas zodra de gebruiker daar zelf voor
+      // kiest, net als bij de herhaalbare blokken.
+      const inBewerkModus = kenmerkEditMode.has(editKey);
 
       if (!inBewerkModus) {
+        if (isNieuw) {
+          return `<div style="margin:8px 0; padding:8px 14px; background:#f3f0fa; border:1px solid #d4c8ee; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="display:flex; align-items:center; flex-wrap:wrap;">
+              <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">${titel}</span>
+              <span style="font-size:12px; color:var(--text-muted); font-style:italic; margin-left:10px;">Nog niet ingevuld.</span>
+            </div>
+            ${betrokken ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)">Invullen</button>` : ''}
+          </div>`;
+        }
         return `<div style="margin:8px 0; padding:8px 14px; background:#f3f0fa; border:1px solid #d4c8ee; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;" data-instantie-groep="${groep}" data-instantie-id="${instantie ? instantie.id : ''}" data-scenario-id="${scenarioId}">
           <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px;">
             <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">${titel}</span>
@@ -593,7 +603,7 @@
       const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
       const actieKnoppen = betrokken
         ? `<div style="display:flex; gap:8px;">
-            ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>` : ''}
+            <button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>
             <button class="btn btn-sm btn-primary" onclick="saveEenmaligBlok('${scenarioId}','${groep}')">Opslaan</button>
           </div>`
         : '<span style="font-size:11px; color:var(--text-muted);">Alleen te bewerken door betrokken organisaties</span>';
@@ -728,14 +738,21 @@
         ? `<p style="font-size:11px; color:var(--text-muted); font-style:italic; margin:0 0 8px;">Toont de gegevens van een eerder scenario in deze flow — pas iets aan om hier een eigen versie van te maken.</p>`
         : '';
 
+      const legeMelding = (!blokken && !blokkeerBericht)
+        ? `<span style="font-size:12px; color:var(--text-muted); font-style:italic; margin-left:10px;">Nog geen ${titel.toLowerCase()} toegevoegd.</span>`
+        : '';
+
       return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-          <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
+        <div style="display:flex; justify-content:space-between; align-items:center; ${blokken ? 'margin-bottom:5px;' : ''}">
+          <div style="display:flex; align-items:center; flex-wrap:wrap;">
+            <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
+            ${legeMelding}
+          </div>
           ${(betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
         </div>
         ${geerfdMelding}
         ${blokkeerBericht ? `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">${blokkeerBericht}</p>` : ''}
-        ${blokken || (blokkeerBericht ? '' : `<p style="font-size:12px; color:var(--text-muted); font-style:italic; margin:2px 0;">Nog geen ${titel.toLowerCase()} toegevoegd.</p>`)}
+        ${blokken}
         ${tijdlijn}
       </div>`;
     }
