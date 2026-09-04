@@ -334,6 +334,10 @@
             <label>Trigger <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
             <textarea id="notificationDefTrigger" placeholder="Wat veroorzaakt/triggert deze notificatie..."></textarea>
           </div>
+          <div class="form-group">
+            <label>Instructie <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
+            <textarea id="notificationDefInstructie" placeholder="Wat moet de gebruiker doen bij het ontvangen van deze notificatie..."></textarea>
+          </div>
           <div id="alertNotificationDef" class="alert" style="display:none;"></div>
         </div>
         <div class="modal-footer">
@@ -363,6 +367,10 @@
           <div class="form-group" style="margin-top:20px;">
             <label style="display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#92400e; background:#fef3c7; border:1px solid #fcd34d; border-radius:6px; padding:4px 10px; margin-bottom:10px;">⚡ Trigger</label>
             <p id="notifDetailTrigger" style="font-size:14px; color:var(--text); line-height:1.6; white-space:pre-wrap; background:var(--surface); border-left:3px solid #fcd34d; border-radius:var(--radius); padding:12px 14px;"></p>
+          </div>
+          <div class="form-group" style="margin-top:20px;">
+            <label style="display:inline-block; font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:0.06em; color:#3730a3; background:#eef2ff; border:1px solid #c7d2fe; border-radius:6px; padding:4px 10px; margin-bottom:10px;">📋 Instructie</label>
+            <p id="notifDetailInstructie" style="font-size:14px; color:var(--text); line-height:1.6; white-space:pre-wrap; background:var(--surface); border-left:3px solid #c7d2fe; border-radius:var(--radius); padding:12px 14px;"></p>
           </div>
         </div>
         <div class="modal-footer">
@@ -1562,6 +1570,7 @@
       document.getElementById('notifDetailDoelgroepBadge').textContent = n.doelgroep === 'zorgkantoor' ? 'Zorgkantoor' : 'Zorgaanbieder';
       document.getElementById('notifDetailDocumentatie').textContent = n.documentatie || 'Geen documentatie ingevuld.';
       document.getElementById('notifDetailTrigger').textContent = n.trigger || 'Geen trigger ingevuld.';
+      document.getElementById('notifDetailInstructie').textContent = n.instructie || 'Geen instructie ingevuld.';
       openModal('modalNotificationDetail');
     }
 
@@ -1574,6 +1583,7 @@
       document.getElementById('notificationDefDoelgroep').value = notifDoelgroep.manage;
       document.getElementById('notificationDefDocumentatie').value = '';
       document.getElementById('notificationDefTrigger').value = '';
+      document.getElementById('notificationDefInstructie').value = '';
       document.getElementById('modalNotificationTitle').textContent = 'Notificatie toevoegen';
       document.getElementById('alertNotificationDef').style.display = 'none';
       openModal('modalNotification');
@@ -1590,6 +1600,7 @@
       document.getElementById('notificationDefDoelgroep').value = n.doelgroep || 'zorgaanbieder';
       document.getElementById('notificationDefDocumentatie').value = n.documentatie || '';
       document.getElementById('notificationDefTrigger').value = n.trigger || '';
+      document.getElementById('notificationDefInstructie').value = n.instructie || '';
       document.getElementById('modalNotificationTitle').textContent = 'Notificatie bewerken';
       document.getElementById('alertNotificationDef').style.display = 'none';
       openModal('modalNotification');
@@ -1604,15 +1615,16 @@
       const doelgroep = document.getElementById('notificationDefDoelgroep').value;
       const documentatie = document.getElementById('notificationDefDocumentatie').value.trim();
       const triggerVeld = document.getElementById('notificationDefTrigger').value.trim();
+      const instructie = document.getElementById('notificationDefInstructie').value.trim();
       if (!naam) { showAlert('Vul een naam in.', 'error', 'alertNotificationDef'); return; }
       if (!register) { showAlert('Kies een register.', 'error', 'alertNotificationDef'); return; }
 
       let dbError;
       if (id) {
-        const res = await sb.from('notification_definitions').update({ naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null }).eq('id', id);
+        const res = await sb.from('notification_definitions').update({ naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null, instructie: instructie || null }).eq('id', id);
         dbError = res.error;
       } else {
-        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null });
+        const res = await sb.from('notification_definitions').insert({ ketentest_id: activeKetentest.id, naam, type, register, doelgroep, documentatie: documentatie || null, trigger: triggerVeld || null, instructie: instructie || null });
         dbError = res.error;
       }
 
@@ -1678,6 +1690,7 @@
         doelgroep: bron.doelgroep,
         documentatie: bron.documentatie,
         trigger: bron.trigger,
+        instructie: bron.instructie,
       });
 
       if (error) {
