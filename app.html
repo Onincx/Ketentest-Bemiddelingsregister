@@ -712,6 +712,16 @@
         // Bewerkmodus: ruimere kaartlay-out met echte invoervelden —
         // leent zich niet voor samenvoegen met de kop.
         const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
+        const toewijzingKoppelVeld = groep === 'leveringperiode' ? (() => {
+          const toewijzingen = haalToewijzingInstantiesOp(scenarioId);
+          return `<div style="width:190px;">
+            <label style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:flex; align-items:flex-end; min-height:26px; margin-bottom:2px; line-height:1.2;">Hoort bij toewijzing <span style="color:var(--danger);">*</span></label>
+            <select data-gekoppelde-instantie ${betrokken ? '' : 'disabled'} style="width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— kies —</option>
+              ${toewijzingen.map(t => `<option value="${t.id}" ${inst.gekoppelde_instantie_id === t.id ? 'selected' : ''}>Toewijzing ${t.volgnummer}</option>`).join('')}
+            </select>
+          </div>`;
+        })() : '';
         const actieKnoppen = betrokken ? `<div style="display:flex; gap:8px;">
             ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',false)">Annuleren</button>` : ''}
             <button class="btn btn-sm btn-outline" onclick="saveBlokInstantie('${inst.id}')">Opslaan</button>
@@ -726,7 +736,7 @@
               ${actieKnoppen}
             </div>
             <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
-            <div style="display:flex; flex-wrap:wrap; gap:14px;">${velden}</div>
+            <div style="display:flex; flex-wrap:wrap; gap:14px;">${toewijzingKoppelVeld}${velden}</div>
           </div>`,
         };
       });
@@ -747,8 +757,32 @@
       // Zoek de Ingangsdatum-/Einddatum-kenmerken van deze groep, voor de tijdlijn.
       const ingangsdatumDef = definities.find(d => d.naam.toLowerCase().includes('ingangsdatum'));
       const einddatumDef = definities.find(d => d.naam.toLowerCase().includes('einddatum'));
-      const tijdlijn = (ingangsdatumDef && einddatumDef)
-        ? renderTijdlijn(weergaveInstanties, ingangsdatumDef.id, einddatumDef.id, titel)
+
+      // Leveringperiode krijgt geen eigen tijdlijn — die hoort bij een
+      // toewijzing, en wordt in plaats daarvan als groen/rood bolletje
+      // getoond op de tijdlijn van die toewijzing (zie hieronder).
+      let markeringenPerToewijzing = null;
+      if (groep === 'toewijzing') {
+        const lpDefinities = kenmerkDefinities.filter(d => d.groep === 'leveringperiode');
+        const lpIngangsdatumDef = lpDefinities.find(d => d.naam.toLowerCase().includes('ingangsdatum'));
+        const lpEinddatumDef = lpDefinities.find(d => d.naam.toLowerCase().includes('einddatum'));
+        if (lpIngangsdatumDef && lpEinddatumDef) {
+          markeringenPerToewijzing = {};
+          weergaveInstanties.forEach(toewijzingInst => {
+            const gekoppeldeLeveringperiodes = scenarioKenmerkInstanties.filter(x => x.gekoppelde_instantie_id === toewijzingInst.id);
+            const markeringen = gekoppeldeLeveringperiodes.map(lp => {
+              const w = getWaardenVoorInstantie(lp.id);
+              const start = w[lpIngangsdatumDef.id] ? new Date(w[lpIngangsdatumDef.id]) : null;
+              const eind = w[lpEinddatumDef.id] ? new Date(w[lpEinddatumDef.id]) : null;
+              return { start, eind };
+            }).filter(m => m.start || m.eind);
+            if (markeringen.length) markeringenPerToewijzing[toewijzingInst.volgnummer] = markeringen;
+          });
+        }
+      }
+
+      const tijdlijn = (groep !== 'leveringperiode' && ingangsdatumDef && einddatumDef)
+        ? renderTijdlijn(weergaveInstanties, ingangsdatumDef.id, einddatumDef.id, titel, markeringenPerToewijzing)
         : '';
 
       const geerfdMelding = geerfdVan
@@ -781,7 +815,7 @@
 
     // Eenvoudige, proportionele tijdlijn op basis van ingangs-/
     // einddatum van elke instantie in deze groep.
-    function renderTijdlijn(instanties, ingangsdatumDefId, einddatumDefId, titel) {
+    function renderTijdlijn(instanties, ingangsdatumDefId, einddatumDefId, titel, markeringenPerInstantie) {
       const periodes = instanties.map(inst => {
         const w = getWaardenVoorInstantie(inst.id);
         const start = w[ingangsdatumDefId];
@@ -792,6 +826,14 @@
       if (!periodes.length) return '';
 
       const alleData = periodes.flatMap(p => [p.start, p.eind].filter(Boolean));
+      // Ook de data van gekoppelde markeringen (bijv. Leveringperiodes)
+      // meenemen in de schaalverdeling, zodat een bolletje nooit buiten
+      // de balk komt te vallen als die net iets eerder/later ligt.
+      if (markeringenPerInstantie) {
+        Object.values(markeringenPerInstantie).forEach(markeringen => {
+          markeringen.forEach(m => { if (m.start) alleData.push(m.start); if (m.eind) alleData.push(m.eind); });
+        });
+      }
       let min = new Date(Math.min(...alleData));
       let max = new Date(Math.max(...alleData));
       // Open einde (geen einddatum): geef wat ruimte na de laatst bekende datum.
@@ -806,11 +848,30 @@
         const tijdlijnLabel = idx === 0
           ? `<span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:56px; flex-shrink:0;">Tijdlijn</span>`
           : `<span style="width:56px; flex-shrink:0;"></span>`;
+
+        // Groen bolletje = ingangsdatum, rood bolletje = einddatum van
+        // een gekoppelde Leveringperiode, gepositioneerd op dezelfde
+        // schaal als de balk zelf.
+        const markeringen = markeringenPerInstantie?.[p.volgnummer] || [];
+        const bolletjes = markeringen.flatMap(m => {
+          const dots = [];
+          if (m.start) {
+            const pct = totaalMs ? ((m.start - min) / totaalMs) * 100 : 0;
+            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:9px; height:9px; background:#16a34a; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1px #16a34a; z-index:1;" title="Leveringperiode — ingangsdatum: ${m.start.toLocaleDateString('nl-NL')}"></div>`);
+          }
+          if (m.eind) {
+            const pct = totaalMs ? ((m.eind - min) / totaalMs) * 100 : 0;
+            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:9px; height:9px; background:#dc2626; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1px #dc2626; z-index:1;" title="Leveringperiode — einddatum: ${m.eind.toLocaleDateString('nl-NL')}"></div>`);
+          }
+          return dots;
+        }).join('');
+
         return `<div style="display:flex; align-items:center; gap:10px; ${idx === 0 ? '' : 'margin-top:4px;'}">
           ${tijdlijnLabel}
           <span style="font-size:10.5px; color:var(--text-muted); width:80px; flex-shrink:0;">${titel} ${p.volgnummer}</span>
           <div style="position:relative; flex:1; height:14px; background:#e8f0fb; border-radius:100px;">
             <div style="position:absolute; top:0; left:${linksPct}%; width:${breedtePct}%; height:100%; background:#3f7fc4; border-radius:100px;" title="${label}"></div>
+            ${bolletjes}
           </div>
           <span style="font-size:10px; color:var(--text-muted); white-space:nowrap;">${label}</span>
         </div>`;
@@ -917,10 +978,26 @@
       const wrap = document.querySelector(`[data-instantie-id="${instantieId}"]`);
       if (!wrap) return;
       const scenarioId = wrap.dataset.scenarioId;
+      const groep = wrap.dataset.instantieGroep;
       const alertId = `kenmerkenAlert-${instantieId}`;
       const inputs = wrap.querySelectorAll('[data-kenmerk-id]');
       if (!valideerVelden(inputs, alertId)) return;
+
+      const koppelSelect = wrap.querySelector('[data-gekoppelde-instantie]');
+      if (koppelSelect && !koppelSelect.value) {
+        showAlert('Kies bij welke toewijzing deze leveringperiode hoort.', 'error', alertId);
+        return;
+      }
+
       await slaWaardenOp(instantieId, inputs, alertId);
+
+      if (koppelSelect) {
+        const { error } = await sb.from('scenario_kenmerk_instanties').update({ gekoppelde_instantie_id: koppelSelect.value }).eq('id', instantieId);
+        if (error) { showAlert('Fout bij koppelen aan toewijzing: ' + error.message, 'error', alertId); return; }
+        const inst = scenarioKenmerkInstanties.find(i => i.id === instantieId);
+        if (inst) inst.gekoppelde_instantie_id = koppelSelect.value;
+      }
+
       kenmerkEditMode.delete(instantieId);
       rerenderScenario(scenarioId);
     }
@@ -1010,6 +1087,23 @@
     // brede zoektocht (BFS) zodat het ook bij vertakkingen werkt; bij
     // meerdere even-dichtbije voorgangers met data wordt de eerst
     // gevonden gebruikt.
+    // Welke Toewijzing-instanties horen bij dit scenario (eigen, of
+    // anders geërfd van een eerder scenario in de flow) — gebruikt om
+    // de 'Hoort bij toewijzing'-keuzelijst bij Leveringperiode te vullen.
+    function haalToewijzingInstantiesOp(scenarioId) {
+      const eigen = scenarioKenmerkInstanties
+        .filter(i => i.scenario_id === scenarioId && i.groep === 'toewijzing')
+        .sort((a, b) => a.volgnummer - b.volgnummer);
+      if (eigen.length) return eigen;
+      const bronScenarioId = vindVoorgangerMetData(scenarioId, 'toewijzing');
+      if (bronScenarioId) {
+        return scenarioKenmerkInstanties
+          .filter(i => i.scenario_id === bronScenarioId && i.groep === 'toewijzing')
+          .sort((a, b) => a.volgnummer - b.volgnummer);
+      }
+      return [];
+    }
+
     function vindVoorgangerMetData(scenarioId, groep) {
       const node = flowNodes.find(n => n.scenario_id === scenarioId);
       if (!node || !node.flow_id) return null;
