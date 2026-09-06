@@ -677,44 +677,40 @@
         }
       }
 
-      const blokken = weergaveInstanties.map(inst => {
+      // Elke instantie wordt opgesplitst in 'inhoud' (titel+velden) en
+      // 'iconen' (bewerken/verwijderen) — zodat de EERSTE, compacte
+      // instantie in dezelfde regel als het bloklabel getoond kan
+      // worden, wat het blok een stuk minder hoog maakt (het meest
+      // voorkomende geval is toch maar 1 instantie per scenario). Een
+      // instantie die zelf in bewerkmodus staat (kaart met
+      // invoervelden) leent zich daar niet voor en krijgt gewoon een
+      // eigen, volledige rij.
+      const instantieFragmenten = weergaveInstanties.map(inst => {
         const waarden = getWaardenVoorInstantie(inst.id);
 
-        // Geërfde data (nog geen eigen kopie bij dit scenario): altijd
-        // compact tonen. Potlood/prullenbak maken bij klikken eerst een
-        // eigen kopie aan (fork) en passen die vervolgens aan.
         if (geerfdVan) {
-          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #eddca0;">
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">
-              <strong style="font-size:12px; white-space:nowrap; color:var(--text-muted);">${titel} ${inst.volgnummer}</strong>
-              ${renderKenmerkCompact(definities, waarden)}
-            </div>
-            ${betrokken ? `<div style="display:flex; gap:2px; flex-shrink:0;">
-                <button class="btn btn-ghost btn-sm btn-icon" onclick="bewerkGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Bewerken (maakt een eigen kopie bij dit scenario)">${ICOON_POTLOOD}</button>
-                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Verwijderen (maakt een eigen kopie bij dit scenario)">${ICOON_PRULLENBAK}</button>
-              </div>` : ''}
-          </div>`;
+          return {
+            compact: true,
+            inhoud: `<strong style="font-size:12px; white-space:nowrap; color:var(--text-muted);">${titel} ${inst.volgnummer}</strong>${renderKenmerkCompact(definities, waarden)}`,
+            iconen: betrokken ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="bewerkGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Bewerken (maakt een eigen kopie bij dit scenario)">${ICOON_POTLOOD}</button>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderGeerfdeInstantie('${scenarioId}','${groep}','${inst.id}')" title="Verwijderen (maakt een eigen kopie bij dit scenario)">${ICOON_PRULLENBAK}</button>` : '',
+          };
         }
 
         const isNieuw = !heeftIngevuldeWaarden(waarden);
         const inBewerkModus = isNieuw || kenmerkEditMode.has(inst.id);
 
-        // Compact (al ingevuld, niet in bewerking): één dunne regel met
-        // titel, velden en iconen samen — geen apart kader/kop nodig.
         if (!inBewerkModus) {
-          return `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #eddca0;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
-            <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">
-              <strong style="font-size:12px; white-space:nowrap;">${titel} ${inst.volgnummer}</strong>
-              ${renderKenmerkCompact(definities, waarden)}
-            </div>
-            ${betrokken ? `<div style="display:flex; gap:2px; flex-shrink:0;">
-                <button class="btn btn-ghost btn-sm btn-icon" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>
-                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')" title="Verwijderen">${ICOON_PRULLENBAK}</button>
-              </div>` : ''}
-          </div>`;
+          return {
+            compact: true,
+            inhoud: `<strong style="font-size:12px; white-space:nowrap;">${titel} ${inst.volgnummer}</strong>${renderKenmerkCompact(definities, waarden)}`,
+            iconen: betrokken ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>
+                <button class="btn btn-ghost btn-sm btn-icon" style="color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')" title="Verwijderen">${ICOON_PRULLENBAK}</button>` : '',
+          };
         }
 
-        // Bewerkmodus: ruimere kaartlay-out met echte invoervelden.
+        // Bewerkmodus: ruimere kaartlay-out met echte invoervelden —
+        // leent zich niet voor samenvoegen met de kop.
         const velden = definities.map(d => renderKenmerkVeld(d, waarden[d.id] || '', betrokken, [])).join('');
         const actieKnoppen = betrokken ? `<div style="display:flex; gap:8px;">
             ${!isNieuw ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${inst.id}','${scenarioId}',false)">Annuleren</button>` : ''}
@@ -722,15 +718,31 @@
             <button class="btn btn-sm btn-outline" style="color:var(--danger); border-color:var(--danger);" onclick="verwijderBlokInstantie('${inst.id}','${scenarioId}','${groep}')">Verwijderen</button>
           </div>` : '';
 
-        return `<div style="border:1px solid #eddca0; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-            <strong style="font-size:13px;">${titel} ${inst.volgnummer}</strong>
-            ${actieKnoppen}
-          </div>
-          <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
-          <div style="display:flex; flex-wrap:wrap; gap:14px;">${velden}</div>
-        </div>`;
-      }).join('');
+        return {
+          compact: false,
+          volledigeRij: `<div style="border:1px solid #eddca0; border-radius:var(--radius); padding:14px; margin-bottom:12px;" data-instantie-groep="${groep}" data-instantie-id="${inst.id}" data-scenario-id="${scenarioId}">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+              <strong style="font-size:13px;">${titel} ${inst.volgnummer}</strong>
+              ${actieKnoppen}
+            </div>
+            <div id="kenmerkenAlert-${inst.id}" class="alert" style="display:none; margin-bottom:10px;"></div>
+            <div style="display:flex; flex-wrap:wrap; gap:14px;">${velden}</div>
+          </div>`,
+        };
+      });
+
+      // De eerste instantie mag met de kop samengevoegd worden, als die
+      // compact is (dus niet in bewerkmodus).
+      const eersteInstantie = instantieFragmenten[0];
+      const eersteMagSamen = !!(eersteInstantie && eersteInstantie.compact);
+      const restInstanties = instantieFragmenten.slice(eersteMagSamen ? 1 : 0).map(f =>
+        f.compact
+          ? `<div style="display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 4px; border-bottom:1px solid #eddca0;">
+              <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 16px;">${f.inhoud}</div>
+              <div style="display:flex; gap:2px; flex-shrink:0;">${f.iconen}</div>
+            </div>`
+          : f.volledigeRij
+      ).join('');
 
       // Zoek de Ingangsdatum-/Einddatum-kenmerken van deze groep, voor de tijdlijn.
       const ingangsdatumDef = definities.find(d => d.naam.toLowerCase().includes('ingangsdatum'));
@@ -743,20 +755,26 @@
         ? `<span style="font-size:11px; color:var(--text-muted); font-style:italic; margin-left:10px;" title="Pas iets aan om hier een eigen versie van te maken.">(geërfd van eerder scenario)</span>`
         : '';
 
-      const legeMelding = (!blokken && !blokkeerBericht)
+      const legeMelding = (!instantieFragmenten.length && !blokkeerBericht)
         ? `<span style="font-size:12px; color:var(--text-muted); font-style:italic; margin-left:10px;">Nog geen ${titel.toLowerCase()} toegevoegd.</span>`
         : '';
 
+      const toevoegenKnop = (betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : '';
+
       return `<div style="margin:8px 0; padding:8px 14px; background:#fdf6e8; border:1px solid #eddca0; border-radius:var(--radius);">
-        <div style="display:flex; justify-content:space-between; align-items:center; ${blokken ? 'margin-bottom:5px;' : ''}">
-          <div style="display:flex; align-items:center; flex-wrap:wrap;">
+        <div style="display:flex; justify-content:space-between; align-items:center; ${restInstanties ? 'margin-bottom:5px;' : ''}">
+          <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px 16px;">
             <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin:0;">${titel}</p>
             ${geerfdMelding}${legeMelding}
+            ${eersteMagSamen ? eersteInstantie.inhoud : ''}
           </div>
-          ${(betrokken && kanToevoegen) ? `<button class="btn btn-sm btn-outline" onclick="voegBlokToe('${scenarioId}','${groep}')">+ ${titel} toevoegen</button>` : ''}
+          <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+            ${eersteMagSamen ? `<div style="display:flex; gap:2px;">${eersteInstantie.iconen}</div>` : ''}
+            ${toevoegenKnop}
+          </div>
         </div>
         ${blokkeerBericht ? `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">${blokkeerBericht}</p>` : ''}
-        ${blokken}
+        ${restInstanties}
         ${tijdlijn}
       </div>`;
     }
@@ -780,12 +798,16 @@
       if (min.getTime() === max.getTime()) { max = new Date(min); max.setMonth(max.getMonth() + 1); }
       const totaalMs = max - min;
 
-      const rijen = periodes.map(p => {
+      const rijen = periodes.map((p, idx) => {
         const eindVoorWeergave = p.eind || max;
         const linksPct = totaalMs ? ((p.start - min) / totaalMs) * 100 : 0;
         const breedtePct = totaalMs ? Math.max(((eindVoorWeergave - p.start) / totaalMs) * 100, 1.5) : 100;
         const label = `${p.start.toLocaleDateString('nl-NL')} – ${p.eind ? p.eind.toLocaleDateString('nl-NL') : 'open'}`;
-        return `<div style="display:flex; align-items:center; gap:10px; margin-top:4px;">
+        const tijdlijnLabel = idx === 0
+          ? `<span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; width:56px; flex-shrink:0;">Tijdlijn</span>`
+          : `<span style="width:56px; flex-shrink:0;"></span>`;
+        return `<div style="display:flex; align-items:center; gap:10px; ${idx === 0 ? '' : 'margin-top:4px;'}">
+          ${tijdlijnLabel}
           <span style="font-size:10.5px; color:var(--text-muted); width:80px; flex-shrink:0;">${titel} ${p.volgnummer}</span>
           <div style="position:relative; flex:1; height:14px; background:#e8f0fb; border-radius:100px;">
             <div style="position:absolute; top:0; left:${linksPct}%; width:${breedtePct}%; height:100%; background:#3f7fc4; border-radius:100px;" title="${label}"></div>
@@ -795,7 +817,6 @@
       }).join('');
 
       return `<div style="margin-top:8px; padding-top:8px; border-top:1px solid #eddca0;">
-        <p style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:3px;">Tijdlijn</p>
         ${rijen}
       </div>`;
     }
