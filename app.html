@@ -857,11 +857,11 @@
           const dots = [];
           if (m.start) {
             const pct = totaalMs ? ((m.start - min) / totaalMs) * 100 : 0;
-            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:9px; height:9px; background:#16a34a; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1px #16a34a; z-index:1;" title="Leveringperiode — ingangsdatum: ${m.start.toLocaleDateString('nl-NL')}"></div>`);
+            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:22px; height:22px; background:#16a34a; border:3px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1.5px #16a34a, 0 1px 3px rgba(0,0,0,0.25); z-index:2;" title="Leveringperiode — ingangsdatum: ${m.start.toLocaleDateString('nl-NL')}"></div>`);
           }
           if (m.eind) {
             const pct = totaalMs ? ((m.eind - min) / totaalMs) * 100 : 0;
-            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:9px; height:9px; background:#dc2626; border:2px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1px #dc2626; z-index:1;" title="Leveringperiode — einddatum: ${m.eind.toLocaleDateString('nl-NL')}"></div>`);
+            dots.push(`<div style="position:absolute; top:50%; left:${pct}%; width:22px; height:22px; background:#dc2626; border:3px solid #fff; border-radius:50%; transform:translate(-50%,-50%); box-shadow:0 0 0 1.5px #dc2626, 0 1px 3px rgba(0,0,0,0.25); z-index:2;" title="Leveringperiode — einddatum: ${m.eind.toLocaleDateString('nl-NL')}"></div>`);
           }
           return dots;
         }).join('');
