@@ -415,7 +415,7 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Plakken & importeren
         </button>
-        <button class="btn btn-primary" onclick="openModal('modalScenario')">
+        <button class="btn btn-primary" onclick="openNieuwScenarioModal()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Scenario toevoegen
         </button>
       </div>
@@ -578,10 +578,35 @@
           <h1>Functionele kenmerken</h1>
           <p>Deze velden gelden overal hetzelfde: "Algemeen" staat 1x bij elk scenario; "Toewijzing" en "Regierol" zijn herhaalbare blokken die de betrokken organisaties zelf toevoegen bij een scenario.</p>
         </div>
-        <button class="btn btn-primary" onclick="openNewKenmerkModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Kenmerk toevoegen
-        </button>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-outline" onclick="openFunctioneelProcesIndex()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Index bekijken
+          </button>
+          <button class="btn btn-primary" onclick="openNewKenmerkModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Kenmerk toevoegen
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
+        <p class="eyebrow" style="margin-bottom:10px;">Functionele processen</p>
+        <div class="card" style="padding:16px 20px;">
+          <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">Vrij te benoemen processen (bijv. "Toewijzing wijzigen", "Levering beëindigen") die je aan scenario's kunt koppelen bij Scenario's beheren — zichtbaar als badge bij het scenario, en terug te vinden in de Index.</p>
+          <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; margin-bottom:14px;">
+            <div style="flex:1; min-width:200px;">
+              <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Naam</label>
+              <input type="text" id="procesNaam" placeholder="Bijv. Toewijzing wijzigen">
+            </div>
+            <div style="flex:2; min-width:240px;">
+              <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Omschrijving (optioneel)</label>
+              <input type="text" id="procesOmschrijving" placeholder="Korte toelichting">
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="voegFunctioneelProcesToe()">Toevoegen</button>
+          </div>
+          <div id="procesLijst"></div>
+        </div>
       </div>
 
       <div style="margin-bottom:20px;">
@@ -908,6 +933,10 @@
           </button>
           <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Dit is een automatisch, ruw voorstel — controleer en pas de tekst altijd zelf aan voordat je opslaat.</p>
         </div>
+        <div class="form-group">
+          <label>Functionele processen <span style="color:var(--text-muted); font-weight:400; font-size:12px;">— welke processen raakt dit scenario? (optioneel, meerdere mogelijk)</span></label>
+          <div id="scenarioProcessenLijst" style="display:flex; flex-wrap:wrap; gap:6px 16px; padding:8px 0;"></div>
+        </div>
       </div>
       <div id="alertScenario" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
@@ -943,6 +972,23 @@
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalDupliceerScenario')">Annuleren</button>
         <button class="btn btn-primary" onclick="dupliceerScenario()">Dupliceren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Index functionele processen -->
+  <div class="modal-overlay" id="modalProcesIndex" style="display:none;" onclick="closeModalOverlay(event,'modalProcesIndex')">
+    <div class="modal" style="max-width:640px;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Index: functionele processen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalProcesIndex')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body" style="max-height:65vh; overflow-y:auto;">
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">Per functioneel proces, welke scenario's dit raken.</p>
+        <div id="procesIndexInhoud"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalProcesIndex')">Sluiten</button>
       </div>
     </div>
   </div>
@@ -1253,7 +1299,7 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
     }
 
@@ -1346,7 +1392,7 @@
       // pagina berichten.html).
       if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok') return false;
       showTab(tab);
-      if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); }
+      if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); loadFunctioneleProcessen().then(renderProcesLijst); }
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
     }
@@ -1844,6 +1890,84 @@
 
 
     let KENMERKDEFINITIES = [];
+    let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
+
+    async function loadFunctioneleProcessen() {
+      if (!activeKetentest) { functioneleProcessen = []; scenarioFunctioneleProcessen = []; return; }
+      const [fp, sfp] = await Promise.all([
+        sb.from('functionele_processen').select('*').eq('ketentest_id', activeKetentest.id).order('naam'),
+        sb.from('scenario_functionele_processen').select('*').in('scenario_id', scenarios.map(s => s.id).length ? scenarios.map(s => s.id) : ['00000000-0000-0000-0000-000000000000']),
+      ]);
+      functioneleProcessen = fp.data || [];
+      scenarioFunctioneleProcessen = sfp.data || [];
+    }
+
+    function renderProcesLijst() {
+      const el = document.getElementById('procesLijst');
+      if (!el) return;
+      if (!functioneleProcessen.length) {
+        el.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); font-style:italic;">Nog geen processen toegevoegd.</p>';
+        return;
+      }
+      el.innerHTML = functioneleProcessen.map(p => {
+        const aantalScenarios = scenarioFunctioneleProcessen.filter(x => x.proces_id === p.id).length;
+        return `<div style="display:flex; align-items:center; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border);">
+          <div>
+            <strong style="font-size:13px;">${esc(p.naam)}</strong>
+            ${p.omschrijving ? `<span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${esc(p.omschrijving)}</span>` : ''}
+            <span style="font-size:11px; color:var(--text-muted); margin-left:8px;">(${aantalScenarios} scenario${aantalScenarios !== 1 ? "'s" : ''})</span>
+          </div>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderFunctioneelProces('${p.id}','${esc(p.naam).replace(/'/g, "\\'")}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+        </div>`;
+      }).join('');
+    }
+
+    async function voegFunctioneelProcesToe() {
+      const naam = document.getElementById('procesNaam').value.trim();
+      const omschrijving = document.getElementById('procesOmschrijving').value.trim();
+      if (!naam) { showAlert('Vul een naam in.', 'error'); return; }
+      const { data, error } = await sb.from('functionele_processen').insert({ ketentest_id: activeKetentest.id, naam, omschrijving: omschrijving || null }).select().single();
+      if (error) { showAlert('Fout bij toevoegen: ' + error.message, 'error'); return; }
+      functioneleProcessen.push(data);
+      document.getElementById('procesNaam').value = '';
+      document.getElementById('procesOmschrijving').value = '';
+      renderProcesLijst();
+      showAlert('Functioneel proces toegevoegd.', 'success');
+    }
+
+    function verwijderFunctioneelProces(id, naam) {
+      document.getElementById('confirmMsg').textContent = `Functioneel proces "${naam}" verwijderen? Dit haalt ook de koppeling bij alle scenario's weg.`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('functionele_processen').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        functioneleProcessen = functioneleProcessen.filter(p => p.id !== id);
+        scenarioFunctioneleProcessen = scenarioFunctioneleProcessen.filter(x => x.proces_id !== id);
+        renderProcesLijst();
+        showAlert('Functioneel proces verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
+    }
+
+    function openFunctioneelProcesIndex() {
+      const el = document.getElementById('procesIndexInhoud');
+      if (!functioneleProcessen.length) {
+        el.innerHTML = '<p style="font-size:13px; color:var(--text-muted); font-style:italic;">Nog geen functionele processen aangemaakt.</p>';
+      } else {
+        el.innerHTML = functioneleProcessen.map(p => {
+          const scenarioIds = scenarioFunctioneleProcessen.filter(x => x.proces_id === p.id).map(x => x.scenario_id);
+          const gekoppeldeScenarios = scenarios.filter(s => scenarioIds.includes(s.id)).sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+          return `<div style="margin-bottom:16px;">
+            <p style="font-weight:700; font-size:13px; margin-bottom:6px;">${esc(p.naam)}</p>
+            ${gekoppeldeScenarios.length
+              ? `<div style="display:flex; flex-wrap:wrap; gap:6px;">${gekoppeldeScenarios.map(s => `<span class="badge" style="background:var(--brand-light); color:var(--brand); font-size:11px;">${esc(s.code)}</span>`).join('')}</div>`
+              : `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen scenario's gekoppeld.</p>`}
+          </div>`;
+        }).join('');
+      }
+      openModal('modalProcesIndex');
+    }
+
     let ZORGKANTOORCODES = [];
     const KENMERK_VELDTYPE_LABELS = { tekst: 'Tekst', numeriek: 'Numeriek', datum: 'Datum', keuzelijst: 'Keuzelijst', zorgkantoorcode: 'Zorgkantoorcode (slim)' };
 
@@ -3772,6 +3896,32 @@
       else openSections.add(id);
     }
 
+    function renderScenarioProcessenCheckboxes(geselecteerdeIds) {
+      const el = document.getElementById('scenarioProcessenLijst');
+      if (!el) return;
+      if (!functioneleProcessen.length) {
+        el.innerHTML = '<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog geen processen aangemaakt — voeg deze eerst toe bij Functionele kenmerken.</p>';
+        return;
+      }
+      el.innerHTML = functioneleProcessen.map(p => `
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${p.id}" ${geselecteerdeIds.includes(p.id) ? 'checked' : ''}> ${esc(p.naam)}
+        </label>`).join('');
+    }
+
+    function openNieuwScenarioModal() {
+      document.getElementById('scenarioId').value = '';
+      document.getElementById('scenarioCode').value = '';
+      document.getElementById('scenarioTitle').value = '';
+      document.getElementById('scenarioDesc').value = '';
+      document.getElementById('scenarioGegeven').value = '';
+      document.getElementById('scenarioWanneer').value = '';
+      document.getElementById('scenarioInstructie').value = '';
+      document.getElementById('modalScenarioTitle').textContent = 'Scenario toevoegen';
+      renderScenarioProcessenCheckboxes([]);
+      openModal('modalScenario');
+    }
+
     function editScenario(id) {
       const s = scenarios.find(x => x.id === id);
       document.getElementById('scenarioId').value = s.id;
@@ -3781,6 +3931,8 @@
       document.getElementById('scenarioGegeven').value = s.gegeven || '';
       document.getElementById('scenarioWanneer').value = s.wanneer || '';
       document.getElementById('scenarioInstructie').value = s.instructie || '';
+      const gekoppeldeIds = scenarioFunctioneleProcessen.filter(x => x.scenario_id === id).map(x => x.proces_id);
+      renderScenarioProcessenCheckboxes(gekoppeldeIds);
       document.getElementById('modalScenarioTitle').textContent = 'Scenario bewerken';
       openModal('modalScenario');
     }
@@ -3986,12 +4138,25 @@
       if (!code || !title) { showAlert('Vul ID en titel in.', 'error', 'alertScenario'); return; }
 
       const isEdit = !!id;
+      let scenarioId = id;
 
       if (isEdit) {
         await sb.from('scenarios').update({ code, title, description, gegeven, wanneer, instructie }).eq('id', id);
       } else {
-        await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, instructie, ketentest_id: activeKetentest?.id });
+        const { data, error } = await sb.from('scenarios').insert({ code, title, description, gegeven, wanneer, instructie, ketentest_id: activeKetentest?.id }).select().single();
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertScenario'); return; }
+        scenarioId = data.id;
       }
+
+      // Gekoppelde functionele processen bijwerken: bestaande koppeling
+      // vervangen door de nu aangevinkte selectie.
+      const gekozenProcesIds = Array.from(document.querySelectorAll('#scenarioProcessenLijst input[type="checkbox"]:checked')).map(el => el.value);
+      await sb.from('scenario_functionele_processen').delete().eq('scenario_id', scenarioId);
+      if (gekozenProcesIds.length) {
+        await sb.from('scenario_functionele_processen').insert(gekozenProcesIds.map(procesId => ({ scenario_id: scenarioId, proces_id: procesId })));
+      }
+      await loadFunctioneleProcessen();
+
       closeModal('modalScenario');
       document.getElementById('scenarioId').value = '';
       document.getElementById('scenarioCode').value = '';

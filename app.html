@@ -74,6 +74,7 @@
     .notif-informatief{ background:#dbeafe; color:#1e40af; border-color:#93c5fd; }
     .notif-labels-wrap { display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
     .bericht-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; font-family:monospace; background:#ede9fe; color:#5b21b6; border:1px solid #c4b5fd; }
+    .proces-label { display:inline-flex; align-items:center; gap:4px; border-radius:4px; padding:2px 8px; font-size:10px; font-weight:600; letter-spacing:0.03em; white-space:nowrap; background:#ccfbf1; color:#0f766e; border:1px solid #5eead4; }
 
     /* Scenario tabs */
     .scenario-tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 20px; overflow-x: auto; flex-wrap: nowrap; }
@@ -250,6 +251,7 @@
     let currentUser = null, currentProfile = null;
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
+    let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
     // Welke blokken staan in bewerkmodus? Sleutel is de instantie-id,
     // of 'algemeen-<scenarioId>' voor het algemene blok. Puur
     // UI-state, niet opgeslagen — een blok met al ingevulde waarden
@@ -329,7 +331,7 @@
         return;
       }
 
-      const [a, r, fn, fe, fl, bv, kd, ki, zk] = await Promise.all([
+      const [a, r, fn, fe, fl, bv, kd, ki, zk, fp, sfp] = await Promise.all([
         fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to)),
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
@@ -339,7 +341,11 @@
         sb.from('kenmerk_definities').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde'),
         fetchAllRows((from, to) => sb.from('scenario_kenmerk_instanties').select('*').in('scenario_id', scenarioIds).order('volgnummer').range(from, to)),
         sb.from('organisatie_zorgkantoorcodes').select('*'),
+        sb.from('functionele_processen').select('*').eq('ketentest_id', activeKetentest.id).order('naam'),
+        fetchAllRows((from, to) => sb.from('scenario_functionele_processen').select('*').in('scenario_id', scenarioIds).range(from, to)),
       ]);
+      functioneleProcessen = fp.data || [];
+      scenarioFunctioneleProcessen = sfp.data || [];
       kenmerkDefinities = kd.data || [];
       scenarioKenmerkInstanties = ki.data || [];
       const instantieIds = scenarioKenmerkInstanties.map(i => i.id);
@@ -1292,6 +1298,19 @@
         '</div>';
     }
 
+    // Toont de aan dit scenario gekoppelde functionele processen (bijv.
+    // "Toewijzing wijzigen") als badges, zodat een tester in één oogopslag
+    // ziet welke processen dit scenario raakt.
+    function renderProcesLabels(scenarioId) {
+      const procesIds = scenarioFunctioneleProcessen.filter(x => x.scenario_id === scenarioId).map(x => x.proces_id);
+      if (!procesIds.length) return '';
+      const processen = functioneleProcessen.filter(p => procesIds.includes(p.id));
+      if (!processen.length) return '';
+      return '<div class="notif-labels-wrap">' +
+        processen.map(p => `<span class="proces-label" title="${p.omschrijving ? esc(p.omschrijving) : 'Functioneel proces: ' + esc(p.naam)}">⚙ ${esc(p.naam)}</span>`).join('') +
+        '</div>';
+    }
+
     function setNotifFilter(naam) {
       // null = filter wissen, anders toggle
       activeNotifFilter = (naam === null || activeNotifFilter === naam) ? null : naam;
@@ -1645,6 +1664,7 @@
           ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:8px 0;">${s.description}</p>` : ''}
           ${renderNotifLabels(getScenarioNotificaties(s.id), s.id)}
           ${renderBerichtLabels(getScenarioBerichten(s.id))}
+          ${renderProcesLabels(s.id)}
           ${(s.gegeven || s.wanneer) ? `
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:16px 0; padding:16px; background:var(--surface); border-radius:var(--radius); border:1px solid var(--border);">
               ${s.gegeven ? '<div><p style=\"font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:8px;\">Gegeven</p><p style=\"font-size:13px; line-height:1.7; white-space:pre-wrap;\">' + s.gegeven + '</p></div>' : ''}
