@@ -4627,7 +4627,8 @@
     }
 
     function deleteActivity(id, desc) {
-      const scenarioId = activities.find(a => a.id === id)?.scenario_id;
+      const teVerwijderen = activities.find(a => a.id === id);
+      const scenarioId = teVerwijderen?.scenario_id;
       document.getElementById('confirmMsg').textContent = `Activiteit "${desc}..." verwijderen?`;
       document.getElementById('confirmBtn').onclick = async () => {
         const { error } = await sb.from('activities').delete().eq('id', id);
@@ -4637,6 +4638,22 @@
           closeModal('modalConfirm');
           return;
         }
+
+        // Hernummer de overige activiteiten van dit scenario automatisch,
+        // zodat er geen gat in de volgorde ontstaat. Van laag naar hoog
+        // bijwerken is hier veilig: elke stap schuift een activiteit
+        // naar een net vrijgekomen (dus niet-botsend) nummer.
+        if (scenarioId && teVerwijderen) {
+          const teVerschuiven = activities
+            .filter(a => a.scenario_id === scenarioId && a.id !== id && a.sort_order > teVerwijderen.sort_order)
+            .sort((a, b) => a.sort_order - b.sort_order);
+          for (const a of teVerschuiven) {
+            const { error: schuifError } = await sb.from('activities').update({ sort_order: a.sort_order - 1 }).eq('id', a.id);
+            if (schuifError) { showAlert('Activiteit is verwijderd, maar hernummeren is niet volledig gelukt: ' + schuifError.message, 'error'); break; }
+            a.sort_order = a.sort_order - 1;
+          }
+        }
+
         closeModal('modalConfirm');
         await loadActivities(); renderScenarios();
         showAlert('Activiteit verwijderd.', 'success');
