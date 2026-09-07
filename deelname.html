@@ -206,9 +206,9 @@
             <p>Geef per flow aan of jullie organisatie deze gaat testen — vóórdat de ketentest wordt uitgevoerd.</p>
           </div>
           <div style="display:flex; gap:8px;">
-            <button class="btn btn-outline" onclick="exportDeelnameExcel()">
+            <button class="btn btn-outline" id="btnExportExcel" onclick="exportDeelnameExcel()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Excel
+              <span id="btnExportExcelLabel">Excel</span>
             </button>
             <button class="btn btn-outline" onclick="exportDeelnamePdf()">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -388,6 +388,10 @@
       refreshMijnActiesBadge(currentProfile?.organisation_id);
       myOrgId = currentProfile?.organisation_id || null;
       isCurrentAdmin = currentProfile?.role === 'admin';
+      if (isCurrentAdmin) {
+        const label = document.getElementById('btnExportExcelLabel');
+        if (label) label.textContent = 'Excel (alle organisaties)';
+      }
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
@@ -497,36 +501,46 @@
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
     }
 
-    // Bouwt voor de ingelogde organisatie de lijst flows (met daaronder
-    // hun scenario's) op, gedeeld door de Excel- en PDF-export.
-    function buildDeelnameExportData() {
-      return visibleFlows().map(f => {
-        const p = getParticipation(f.id, myOrgId);
-        const status = !p ? 'Nog niet beoordeeld' : (p.wants_to_test ? 'Wil testen' : 'Wil niet testen');
-        const reden = p && p.wants_to_test === false ? (p.reason || '') : '';
-        const scenIds = flowScenarioIds(f.id);
-        const scens = scenarios.filter(s => scenIds.includes(s.id))
-          .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
-        return { flow: f, status, reden, scens };
-      });
+    // Bouwt voor een specifieke organisatie de lijst flows (met daaronder
+    // hun scenario's) op — gedeeld door de Excel- en PDF-export. Alleen
+    // de flows waar déze organisatie ook daadwerkelijk bij betrokken is.
+    function buildDeelnameExportData(orgId) {
+      return visibleFlows()
+        .filter(f => betrokkenOrgIdsForFlow(f.id).includes(orgId))
+        .map(f => {
+          const p = getParticipation(f.id, orgId);
+          const status = !p ? 'Nog niet beoordeeld' : (p.wants_to_test ? 'Wil testen' : 'Wil niet testen');
+          const reden = p && p.wants_to_test === false ? (p.reason || '') : '';
+          const scenIds = flowScenarioIds(f.id);
+          const scens = scenarios.filter(s => scenIds.includes(s.id))
+            .sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }));
+          return { flow: f, status, reden, scens };
+        });
     }
 
     function exportDeelnameExcel() {
-      const orgNaam = currentProfile?.organisations?.name || 'organisatie';
+      const alleOrganisaties = isCurrentAdmin;
+      const orgLijst = alleOrganisaties
+        ? allInvolvedOrgs()
+        : [{ id: myOrgId, name: currentProfile?.organisations?.name || 'organisatie' }];
+
       const rows = [];
-      buildDeelnameExportData().forEach(({ flow, status, reden, scens }) => {
-        if (!scens.length) {
-          rows.push({ Flownummer: flow.nummer || '', Flownaam: flow.name, 'Deelname-status': status, Reden: reden, 'Scenario-code': '', 'Scenario-titel': '' });
-          return;
-        }
-        scens.forEach((s, i) => {
-          rows.push({
-            Flownummer: i === 0 ? (flow.nummer || '') : '',
-            Flownaam: i === 0 ? flow.name : '',
-            'Deelname-status': i === 0 ? status : '',
-            Reden: i === 0 ? reden : '',
-            'Scenario-code': s.code,
-            'Scenario-titel': s.title,
+      orgLijst.forEach(org => {
+        buildDeelnameExportData(org.id).forEach(({ flow, status, reden, scens }) => {
+          if (!scens.length) {
+            rows.push({ ...(alleOrganisaties ? { Organisatie: org.name } : {}), Flownummer: flow.nummer || '', Flownaam: flow.name, 'Deelname-status': status, Reden: reden, 'Scenario-code': '', 'Scenario-titel': '' });
+            return;
+          }
+          scens.forEach((s, i) => {
+            rows.push({
+              ...(alleOrganisaties ? { Organisatie: i === 0 ? org.name : '' } : {}),
+              Flownummer: i === 0 ? (flow.nummer || '') : '',
+              Flownaam: i === 0 ? flow.name : '',
+              'Deelname-status': i === 0 ? status : '',
+              Reden: i === 0 ? reden : '',
+              'Scenario-code': s.code,
+              'Scenario-titel': s.title,
+            });
           });
         });
       });
@@ -534,10 +548,15 @@
       if (!rows.length) { showAlert('Er zijn geen flows om te exporteren.', 'error', 'alertDeelname'); return; }
 
       const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [{ wch: 12 }, { wch: 42 }, { wch: 20 }, { wch: 32 }, { wch: 14 }, { wch: 42 }];
+      ws['!cols'] = alleOrganisaties
+        ? [{ wch: 24 }, { wch: 12 }, { wch: 42 }, { wch: 20 }, { wch: 32 }, { wch: 14 }, { wch: 42 }]
+        : [{ wch: 12 }, { wch: 42 }, { wch: 20 }, { wch: 32 }, { wch: 14 }, { wch: 42 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Deelname');
-      XLSX.writeFile(wb, `deelname-${orgNaam.replace(/[^a-z0-9]+/gi, '-')}-${todayStamp()}.xlsx`);
+      const bestandsnaam = alleOrganisaties
+        ? `deelname-alle-organisaties-${todayStamp()}.xlsx`
+        : `deelname-${(currentProfile?.organisations?.name || 'organisatie').replace(/[^a-z0-9]+/gi, '-')}-${todayStamp()}.xlsx`;
+      XLSX.writeFile(wb, bestandsnaam);
     }
 
     function exportDeelnamePdf() {
@@ -554,7 +573,7 @@
       doc.setTextColor(0);
       y += 26;
 
-      const data = buildDeelnameExportData();
+      const data = buildDeelnameExportData(myOrgId);
       if (!data.length) { showAlert('Er zijn geen flows om te exporteren.', 'error', 'alertDeelname'); return; }
 
       data.forEach(({ flow, status, reden, scens }) => {
