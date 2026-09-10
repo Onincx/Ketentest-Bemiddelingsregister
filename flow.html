@@ -230,6 +230,7 @@
     </span>
     <div style="margin-left:auto; display:flex; align-items:center; gap:6px; flex-shrink:0;">
       <select id="orgFilterSelect" style="display:none; font-size:12px; padding:5px 8px; border:1px solid #e5e7eb; border-radius:6px; color:#374151;"></select>
+      <button class="btn btn-sm btn-outline" id="of-betrokken" onclick="setOrgFilterMode('betrokken', this)">Betrokken</button>
       <button class="btn btn-sm" id="of-all" onclick="setOrgFilterMode('all', this)" style="background:#2563a8; color:#fff; border-color:#2563a8;">Alle</button>
       <button class="btn btn-sm btn-outline" id="of-acceptant" onclick="setOrgFilterMode('acceptant', this)">Acceptant</button>
       <button class="btn btn-sm btn-outline" id="of-verantwoordelijk" onclick="setOrgFilterMode('verantwoordelijk', this)">Verantwoordelijk</button>
@@ -632,6 +633,9 @@
       if (orgFilterMode === 'all' || !orgFilterOrgId) return true;
       const sids = flowScenarioIdsAll(flowId);
       const acts = activities.filter(a => sids.includes(a.scenario_id));
+      if (orgFilterMode === 'betrokken') {
+        return acts.some(a => a.acceptant_org_id === orgFilterOrgId || a.organisation_id === orgFilterOrgId);
+      }
       return orgFilterMode === 'acceptant'
         ? acts.some(a => a.acceptant_org_id === orgFilterOrgId)
         : acts.some(a => a.organisation_id === orgFilterOrgId);
@@ -868,12 +872,26 @@
       } else {
         select.style.display = 'none';
         orgFilterOrgId = currentProfile?.organisation_id || null;
+        // Dit was voorheen een bug: alleen orgFilterOrgId werd gezet,
+        // maar orgFilterMode bleef op 'all' staan — waardoor het
+        // automatische filter voor gewone gebruikers feitelijk nooit
+        // iets deed. Zet 'm nu ook daadwerkelijk op 'betrokken'
+        // (acceptant óf verantwoordelijk), en markeer die knop als actief.
+        orgFilterMode = 'betrokken';
+        const betrokkenBtn = document.getElementById('of-betrokken');
+        const alleBtn = document.getElementById('of-all');
+        if (betrokkenBtn && alleBtn) {
+          alleBtn.classList.add('btn-outline');
+          alleBtn.style.background = ''; alleBtn.style.color = ''; alleBtn.style.borderColor = '';
+          betrokkenBtn.classList.remove('btn-outline');
+          betrokkenBtn.style.background = '#2563a8'; betrokkenBtn.style.color = '#fff'; betrokkenBtn.style.borderColor = '#2563a8';
+        }
       }
     }
 
     function setOrgFilterMode(mode, btn) {
       orgFilterMode = mode;
-      document.querySelectorAll('#of-all, #of-acceptant, #of-verantwoordelijk').forEach(b => {
+      document.querySelectorAll('#of-betrokken, #of-all, #of-acceptant, #of-verantwoordelijk').forEach(b => {
         b.style.background = ''; b.style.color = ''; b.style.borderColor = '';
         b.classList.add('btn-outline');
       });
@@ -888,9 +906,11 @@
     function getOrgFilterClass(sid) {
       if (orgFilterMode === 'all' || !orgFilterOrgId) return '';
       const acts = activities.filter(a => a.scenario_id === sid);
-      const isMatch = orgFilterMode === 'acceptant'
-        ? acts.some(a => a.acceptant_org_id === orgFilterOrgId)
-        : acts.some(a => a.organisation_id === orgFilterOrgId);
+      const isMatch = orgFilterMode === 'betrokken'
+        ? acts.some(a => a.acceptant_org_id === orgFilterOrgId || a.organisation_id === orgFilterOrgId)
+        : orgFilterMode === 'acceptant'
+          ? acts.some(a => a.acceptant_org_id === orgFilterOrgId)
+          : acts.some(a => a.organisation_id === orgFilterOrgId);
       return isMatch ? ' org-filter-match' : ' org-filter-dim';
     }
 
