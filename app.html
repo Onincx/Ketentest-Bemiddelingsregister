@@ -1200,10 +1200,22 @@
       return Math.round((done / acts.length) * 100);
     }
 
+    // Scenario's waar de ingelogde organisatie daadwerkelijk bij
+    // betrokken is (verantwoordelijk of acceptant van minstens 1
+    // activiteit) — voor een gewone gebruiker/manager is dit de basis
+    // voor zowel de lijst als de tellers bovenaan. De beheerder ziet
+    // altijd alles.
+    function getBasisScenarios() {
+      if (currentProfile?.role === 'admin') return scenarios;
+      const myOrgId = currentProfile?.organisation_id;
+      return scenarios.filter(s => activities.some(a => a.scenario_id === s.id && (a.organisation_id === myOrgId || a.acceptant_org?.id === myOrgId)));
+    }
+
     function updateStats() {
-      const total = scenarios.length;
-      const ok = scenarios.filter(s => getScenarioStatus(s.id) === 'ok').length;
-      const nok = scenarios.filter(s => getScenarioStatus(s.id) === 'nok').length;
+      const basis = getBasisScenarios();
+      const total = basis.length;
+      const ok = basis.filter(s => getScenarioStatus(s.id) === 'ok').length;
+      const nok = basis.filter(s => getScenarioStatus(s.id) === 'nok').length;
       const open = total - ok - nok;
       document.getElementById('statTotal').textContent = total;
       document.getElementById('statOk').textContent = ok;
@@ -1421,16 +1433,18 @@
     function renderAll() {
       updateStats();
       const myOrgId = currentProfile?.organisation_id;
-      let filtered = scenarios;
+      const basisScenarios = getBasisScenarios();
 
-      if (activeFilter === 'ok') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'ok');
-      else if (activeFilter === 'nok') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'nok');
-      else if (activeFilter === 'open') filtered = scenarios.filter(s => getScenarioStatus(s.id) === 'open');
+      let filtered = basisScenarios;
+
+      if (activeFilter === 'ok') filtered = basisScenarios.filter(s => getScenarioStatus(s.id) === 'ok');
+      else if (activeFilter === 'nok') filtered = basisScenarios.filter(s => getScenarioStatus(s.id) === 'nok');
+      else if (activeFilter === 'open') filtered = basisScenarios.filter(s => getScenarioStatus(s.id) === 'open');
       else if (activeFilter === 'mine') {
-        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
+        filtered = basisScenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.acceptant_org?.id === myOrgId));
       }
       else if (activeFilter === 'mine-verantwoordelijk') {
-        filtered = scenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.organisation_id === myOrgId));
+        filtered = basisScenarios.filter(s => activities.some(a => a.scenario_id === s.id && a.organisation_id === myOrgId));
       }
       // Filter op notificatie
       if (activeNotifFilter) {
@@ -1438,7 +1452,7 @@
       }
 
       // Filter op actieve tab
-      const allPrefixes = [...new Set(scenarios.map(s => getScenarioPrefix(s.code)))].sort();
+      const allPrefixes = [...new Set(basisScenarios.map(s => getScenarioPrefix(s.code)))].sort();
       if (!activeTabPrefix && allPrefixes.length > 0) activeTabPrefix = allPrefixes[0];
       if (activeTabPrefix && activeTabPrefix !== '__all__') {
         filtered = filtered.filter(s => getScenarioPrefix(s.code) === activeTabPrefix);
