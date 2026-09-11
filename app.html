@@ -166,6 +166,7 @@
         <a href="admin.html?tab=kenmerken">Functionele kenmerken</a>
         <a href="admin.html?tab=ketentests">Ketentesten</a>
         <a href="admin.html?tab=scenarios">Scenario's beheren</a>
+        <a href="admin.html?tab=entrycriteria">Entry-criteria</a>
         <a href="admin.html?tab=logboek">Logboek</a>
       </div>
     </div>
@@ -184,6 +185,10 @@
 
   <div class="page-wrap">
     <div id="alert" class="alert" style="display:none;"></div>
+    <div id="entryCriteriaBanner" style="display:none; background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; border-radius:var(--radius); padding:14px 18px; margin-bottom:16px; font-size:13px; align-items:center; gap:10px;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span>Jouw organisatie mag nog geen activiteiten op OK/NOK zetten — de entry-criteria zijn nog niet (volledig) goedgekeurd door de beheerder. Ga naar <strong>Beheer → Entry-criteria</strong> om de vragen te beantwoorden.</span>
+    </div>
 
     <div id="noKetentestState" style="display:none;" class="empty-state" style="padding:60px 20px;">
       <p style="font-size:14px;">Er is nog geen ketentest aangemaakt. Vraag de beheerder om er een aan te maken via Beheer → Ketentesten.</p>
@@ -252,6 +257,19 @@
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
     let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
+    let entryCriteriaVraagOrgs = [], entryCriteriaGoedkeuring = [];
+
+    // Een organisatie is geblokkeerd (mag geen OK/NOK zetten) als er
+    // minstens 1 entry-criteria-vraag aan haar is toegewezen, en die nog
+    // niet is goedgekeurd door de beheerder. Zonder toegewezen vragen is
+    // er niets te blokkeren.
+    function isOrgEntryCriteriaGeblokkeerd(orgId) {
+      if (!orgId) return false;
+      const heeftVragen = entryCriteriaVraagOrgs.some(x => x.organisation_id === orgId);
+      if (!heeftVragen) return false;
+      const goedkeuring = entryCriteriaGoedkeuring.find(g => g.organisation_id === orgId);
+      return goedkeuring?.status !== 'goedgekeurd';
+    }
     // Welke blokken staan in bewerkmodus? Sleutel is de instantie-id,
     // of 'algemeen-<scenarioId>' voor het algemene blok. Puur
     // UI-state, niet opgeslagen — een blok met al ingevulde waarden
@@ -331,7 +349,7 @@
         return;
       }
 
-      const [a, r, fn, fe, fl, bv, kd, ki, zk, fp, sfp] = await Promise.all([
+      const [a, r, fn, fe, fl, bv, kd, ki, zk, fp, sfp, ecv] = await Promise.all([
         fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to)),
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
@@ -343,7 +361,17 @@
         sb.from('organisatie_zorgkantoorcodes').select('*'),
         sb.from('functionele_processen').select('*').eq('ketentest_id', activeKetentest.id).order('naam'),
         fetchAllRows((from, to) => sb.from('scenario_functionele_processen').select('*').in('scenario_id', scenarioIds).range(from, to)),
+        sb.from('entry_criteria_vragen').select('id').eq('ketentest_id', activeKetentest.id),
       ]);
+      const entryCriteriaVraagIds = (ecv.data || []).map(v => v.id);
+      const [eco, ecg] = await Promise.all([
+        entryCriteriaVraagIds.length
+          ? sb.from('entry_criteria_vraag_organisaties').select('*').in('vraag_id', entryCriteriaVraagIds)
+          : Promise.resolve({ data: [] }),
+        sb.from('entry_criteria_goedkeuring').select('*').eq('ketentest_id', activeKetentest.id),
+      ]);
+      entryCriteriaVraagOrgs = eco.data || [];
+      entryCriteriaGoedkeuring = ecg.data || [];
       functioneleProcessen = fp.data || [];
       scenarioFunctioneleProcessen = sfp.data || [];
       kenmerkDefinities = kd.data || [];
@@ -1435,6 +1463,12 @@
       const myOrgId = currentProfile?.organisation_id;
       const basisScenarios = getBasisScenarios();
 
+      const banner = document.getElementById('entryCriteriaBanner');
+      if (banner) {
+        const geblokkeerd = isOrgEntryCriteriaGeblokkeerd(myOrgId) && currentProfile?.role !== 'admin';
+        banner.style.display = geblokkeerd ? 'flex' : 'none';
+      }
+
       let filtered = basisScenarios;
 
       if (activeFilter === 'ok') filtered = basisScenarios.filter(s => getScenarioStatus(s.id) === 'ok');
@@ -1512,6 +1546,7 @@
       // Sorteer op volgnummer zodat we per activiteit de voorganger kunnen bepalen
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
       const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
+      const entryCriteriaGeblokkeerd = isOrgEntryCriteriaGeblokkeerd(myOrgId) && currentProfile?.role !== 'admin';
 
       return `<div class="activities-table-wrap" style="border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; margin-top:4px;">
         <div class="activity-header">
@@ -1546,7 +1581,7 @@
           // als er een acceptant is — die mag altijd zelf aan de bel
           // trekken dat iets niet goed is gegaan.
           const magNok = nietManagerOfGeblokkeerd && (isAcceptant || isVerantwZonderAcceptant || isVerantwMetAcceptant || currentProfile?.role === 'admin');
-          const canEdit = magOk || magNok;
+          const canEdit = (magOk || magNok) && !entryCriteriaGeblokkeerd;
           const orgName = a.organisations?.name || '';
           const orgCode = a.organisations?.code || '';
           const accName = a.acceptant_org?.name || '';
@@ -1580,6 +1615,11 @@
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px;" title="${esc(voorgaandScenarioCode)} moet eerst volledig op OK staan voordat dit scenario van start kan">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                   Wacht op ${esc(voorgaandScenarioCode)}
+                </div>
+              ` : entryCriteriaGeblokkeerd ? `
+                <div style="display:flex; align-items:center; gap:6px; color:#991b1b; font-size:12px;" title="Uw organisatie mag nog geen activiteiten op OK/NOK zetten — de entry-criteria zijn nog niet (volledig) goedgekeurd. Ga naar Beheer → Entry-criteria.">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                  Entry-criteria nog niet goedgekeurd
                 </div>
               ` : notStartedYet ? `
                 <div style="display:flex; align-items:center; gap:6px; color:#92400e; font-size:12px;" title="De ketentest start op ${new Date(activeKetentest.start_op).toLocaleString('nl-NL')}">

@@ -74,6 +74,7 @@
         <a href="admin.html?tab=kenmerken" data-tab="kenmerken" onclick="return navTab('kenmerken', event)">Functionele kenmerken</a>
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
         <a href="admin.html?tab=scenarios" data-tab="scenarios" onclick="return navTab('scenarios', event)">Scenario's beheren</a>
+        <a href="admin.html?tab=entrycriteria" data-tab="entrycriteria" onclick="return navTab('entrycriteria', event)">Entry-criteria</a>
         <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
         <a href="admin.html?tab=nok" data-tab="nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
       </div>
@@ -423,6 +424,25 @@
         <input type="text" id="scenarioSearch" placeholder="Zoek op code of titel..." oninput="renderScenarios()" style="width:100%; padding:8px 12px; border:1px solid var(--border); border-radius:var(--radius); font-size:13px;">
       </div>
       <div id="scenarioAdminList"></div>
+    </div>
+
+    <!-- TAB: Entry-criteria -->
+    <div id="tab-entrycriteria" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Entry-criteria</h1>
+          <p>Vragen per organisatie waarmee je vooraf toetst of een partij zelf voldoende heeft getest, voordat deze mag meedoen aan de ketentest.</p>
+        </div>
+        <button class="btn btn-primary" id="btnEntryCriteriaVraagToevoegen" onclick="openEntryCriteriaVraagModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Vraag toevoegen
+        </button>
+      </div>
+
+      <div id="entryCriteriaVragenSectie" style="margin-bottom:24px;"></div>
+
+      <p class="eyebrow" style="margin-bottom:10px;">Per organisatie</p>
+      <div id="entryCriteriaOrganisatiesSectie"></div>
     </div>
 
     <!-- TAB: Logboek -->
@@ -993,6 +1013,39 @@
     </div>
   </div>
 
+  <!-- Modal: Entry-criteria-vraag -->
+  <div class="modal-overlay" id="modalEntryCriteriaVraag" style="display:none;" onclick="closeModalOverlay(event,'modalEntryCriteriaVraag')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalEntryCriteriaVraagTitel">Vraag toevoegen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalEntryCriteriaVraag')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="entryCriteriaVraagId">
+        <div class="form-group">
+          <label>Vraag <span style="color:var(--danger);">*</span></label>
+          <textarea id="entryCriteriaVraagTekst" placeholder="Bijv. Is de koppelvlaktest tegen de laatste specificatie uitgevoerd?"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Antwoordtype <span style="color:var(--danger);">*</span></label>
+          <select id="entryCriteriaVraagType">
+            <option value="tekst">Vrije tekst</option>
+            <option value="ja_nee">Ja/Nee + verplichte toelichting</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Organisaties <span style="color:var(--text-muted); font-weight:400; font-size:12px;">— welke organisatie(s) krijgen deze vraag?</span></label>
+          <div id="entryCriteriaVraagOrgs" style="display:flex; flex-direction:column; gap:6px; max-height:220px; overflow-y:auto; padding:8px; border:1px solid var(--border); border-radius:6px;"></div>
+        </div>
+        <div id="alertEntryCriteriaVraag" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalEntryCriteriaVraag')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveEntryCriteriaVraag()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Modal: Activiteit -->
   <div class="modal-overlay" id="modalActivity" style="display:none;" onclick="closeModalOverlay(event,'modalActivity')">
     <div class="modal" style="max-width:640px;" onclick="event.stopPropagation()">
@@ -1275,12 +1328,13 @@
         // NOK-opvolging — er wordt hier bewust niets geladen dat alleen
         // voor beheerders relevant is (gebruikers, ketentestenlijst, etc.).
         document.getElementById('btnAddNotification')?.remove();
-        await Promise.all([loadOrgs(), loadScenarios(), loadNotificationDefs(), loadScenarioFlowMap()]);
+        document.getElementById('btnEntryCriteriaVraagToevoegen')?.remove();
+        await Promise.all([loadOrgs(), loadScenarios(), loadNotificationDefs(), loadScenarioFlowMap(), loadEntryCriteria()]);
         await loadActivities();
       }
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken'];
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria'];
 
       if (!window.isPageAdmin) {
         // Gewone gebruikers mogen alleen Notificaties of NOK-opvolging
@@ -1299,7 +1353,7 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen(), loadEntryCriteria()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
     }
 
@@ -1361,7 +1415,7 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
@@ -1379,6 +1433,7 @@
       if (tab === 'logboek') loadActivityLog();
       if (tab === 'berichten') loadBerichtDefs();
       if (tab === 'nok') loadNokOverview();
+      if (tab === 'entrycriteria') renderEntryCriteriaTab();
     }
 
     // Wisselt van tabblad zonder de pagina opnieuw te laden (gebruikt door
@@ -1390,7 +1445,7 @@
       // NOK-opvolging bekijken (Berichten-beheer is alleen voor
       // beheerders; gewone gebruikers gebruiken daarvoor de aparte
       // pagina berichten.html).
-      if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok') return false;
+      if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok' && tab !== 'entrycriteria') return false;
       showTab(tab);
       if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); loadFunctioneleProcessen().then(renderProcesLijst); }
       history.replaceState(null, '', 'admin.html?tab=' + tab);
@@ -1966,6 +2021,256 @@
         }).join('');
       }
       openModal('modalProcesIndex');
+    }
+
+    // ============================================================
+    // ENTRY-CRITERIA
+    // ============================================================
+    let entryCriteriaVragen = [], entryCriteriaVraagOrgs = [], entryCriteriaAntwoorden = [], entryCriteriaGoedkeuring = [];
+    let entryCriteriaJaNeeKeuzes = {}; // vraagId -> boolean, tijdelijke keuze in het formulier vóór opslaan
+
+    async function loadEntryCriteria() {
+      if (!activeKetentest) { entryCriteriaVragen = []; entryCriteriaVraagOrgs = []; entryCriteriaAntwoorden = []; entryCriteriaGoedkeuring = []; return; }
+      const [vr, gk] = await Promise.all([
+        sb.from('entry_criteria_vragen').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde'),
+        sb.from('entry_criteria_goedkeuring').select('*').eq('ketentest_id', activeKetentest.id),
+      ]);
+      entryCriteriaVragen = vr.data || [];
+      entryCriteriaGoedkeuring = gk.data || [];
+      const vraagIds = entryCriteriaVragen.map(v => v.id);
+      if (!vraagIds.length) { entryCriteriaVraagOrgs = []; entryCriteriaAntwoorden = []; return; }
+      const [vo, aw] = await Promise.all([
+        sb.from('entry_criteria_vraag_organisaties').select('*').in('vraag_id', vraagIds),
+        sb.from('entry_criteria_antwoorden').select('*').in('vraag_id', vraagIds),
+      ]);
+      entryCriteriaVraagOrgs = vo.data || [];
+      entryCriteriaAntwoorden = aw.data || [];
+    }
+
+    function renderEntryCriteriaTab() {
+      renderEntryCriteriaVragen();
+      renderEntryCriteriaOrganisaties();
+    }
+
+    function renderEntryCriteriaVragen() {
+      const el = document.getElementById('entryCriteriaVragenSectie');
+      if (!window.isPageAdmin) { el.innerHTML = ''; return; }
+      if (!entryCriteriaVragen.length) {
+        el.innerHTML = '<p style="font-size:13px; color:var(--text-muted); font-style:italic; margin-bottom:16px;">Nog geen vragen toegevoegd.</p>';
+        return;
+      }
+      el.innerHTML = `<div class="card" style="padding:0;"><div class="table-wrap"><table>
+        <thead><tr><th>Vraag</th><th>Antwoordtype</th><th>Organisaties</th><th></th></tr></thead>
+        <tbody>${entryCriteriaVragen.map(v => {
+          const orgIds = entryCriteriaVraagOrgs.filter(x => x.vraag_id === v.id).map(x => x.organisation_id);
+          const orgNamen = orgs.filter(o => orgIds.includes(o.id)).map(o => o.name).join(', ') || '—';
+          return `<tr>
+            <td style="max-width:320px;">${esc(v.vraag)}</td>
+            <td style="white-space:nowrap;">${v.antwoordtype === 'ja_nee' ? 'Ja/Nee + toelichting' : 'Vrije tekst'}</td>
+            <td style="font-size:12px; color:var(--text-muted);">${esc(orgNamen)}</td>
+            <td style="text-align:right; white-space:nowrap;">
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openEntryCriteriaVraagModal('${v.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderEntryCriteriaVraag('${v.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div></div>`;
+    }
+
+    function openEntryCriteriaVraagModal(id) {
+      if (!window.isPageAdmin) return;
+      const v = id ? entryCriteriaVragen.find(x => x.id === id) : null;
+      document.getElementById('entryCriteriaVraagId').value = id || '';
+      document.getElementById('entryCriteriaVraagTekst').value = v?.vraag || '';
+      document.getElementById('entryCriteriaVraagType').value = v?.antwoordtype || 'tekst';
+      const gekoppeldeOrgIds = v ? entryCriteriaVraagOrgs.filter(x => x.vraag_id === v.id).map(x => x.organisation_id) : [];
+      document.getElementById('entryCriteriaVraagOrgs').innerHTML = orgs.map(o => `
+        <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${o.id}" ${gekoppeldeOrgIds.includes(o.id) ? 'checked' : ''}> ${esc(o.name)}
+        </label>`).join('');
+      document.getElementById('modalEntryCriteriaVraagTitel').textContent = id ? 'Vraag bewerken' : 'Vraag toevoegen';
+      document.getElementById('alertEntryCriteriaVraag').style.display = 'none';
+      openModal('modalEntryCriteriaVraag');
+    }
+
+    async function saveEntryCriteriaVraag() {
+      const id = document.getElementById('entryCriteriaVraagId').value;
+      const vraag = document.getElementById('entryCriteriaVraagTekst').value.trim();
+      const antwoordtype = document.getElementById('entryCriteriaVraagType').value;
+      const gekozenOrgIds = Array.from(document.querySelectorAll('#entryCriteriaVraagOrgs input:checked')).map(el => el.value);
+      if (!vraag) { showAlert('Vul een vraag in.', 'error', 'alertEntryCriteriaVraag'); return; }
+      if (!gekozenOrgIds.length) { showAlert('Kies minstens 1 organisatie.', 'error', 'alertEntryCriteriaVraag'); return; }
+
+      let vraagId = id;
+      if (id) {
+        const { error } = await sb.from('entry_criteria_vragen').update({ vraag, antwoordtype }).eq('id', id);
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertEntryCriteriaVraag'); return; }
+      } else {
+        const { data, error } = await sb.from('entry_criteria_vragen').insert({ ketentest_id: activeKetentest.id, vraag, antwoordtype, volgorde: entryCriteriaVragen.length }).select().single();
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertEntryCriteriaVraag'); return; }
+        vraagId = data.id;
+      }
+
+      // Organisatiekoppeling vervangen door de nu aangevinkte selectie.
+      await sb.from('entry_criteria_vraag_organisaties').delete().eq('vraag_id', vraagId);
+      const { error: koppelError } = await sb.from('entry_criteria_vraag_organisaties').insert(gekozenOrgIds.map(orgId => ({ vraag_id: vraagId, organisation_id: orgId })));
+      if (koppelError) { showAlert('Vraag is opgeslagen, maar koppelen aan organisaties is niet gelukt: ' + koppelError.message, 'error', 'alertEntryCriteriaVraag'); return; }
+
+      closeModal('modalEntryCriteriaVraag');
+      await loadEntryCriteria();
+      renderEntryCriteriaTab();
+      showAlert('Vraag opgeslagen.', 'success');
+    }
+
+    function verwijderEntryCriteriaVraag(id) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = 'Deze vraag verwijderen? Dit verwijdert ook eventuele antwoorden op deze vraag.';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('entry_criteria_vragen').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        await loadEntryCriteria();
+        renderEntryCriteriaTab();
+        showAlert('Vraag verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
+    }
+
+    // Toont, per organisatie die minstens 1 vraag toegewezen heeft
+    // gekregen, de vragen + antwoorden + status. Een manager van die
+    // organisatie kan hier de eigen vragen beantwoorden; de beheerder
+    // keurt na volledige beantwoording goed of af.
+    function renderEntryCriteriaOrganisaties() {
+      const el = document.getElementById('entryCriteriaOrganisatiesSectie');
+      const orgIdsMetVragen = [...new Set(entryCriteriaVraagOrgs.map(x => x.organisation_id))];
+      if (!orgIdsMetVragen.length) {
+        el.innerHTML = '<p style="font-size:13px; color:var(--text-muted); font-style:italic;">Nog geen organisaties met toegewezen vragen.</p>';
+        return;
+      }
+      const relevantOrgs = orgs.filter(o => orgIdsMetVragen.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
+      // Voor een niet-beheerder alleen de eigen organisatie tonen.
+      const teTonenOrgs = window.isPageAdmin ? relevantOrgs : relevantOrgs.filter(o => o.id === currentProfile?.organisation_id);
+
+      if (!teTonenOrgs.length) {
+        el.innerHTML = '<p style="font-size:13px; color:var(--text-muted); font-style:italic;">Voor jouw organisatie zijn geen entry-criteria-vragen toegewezen.</p>';
+        return;
+      }
+
+      el.innerHTML = teTonenOrgs.map(org => {
+        const vraagIdsVoorOrg = entryCriteriaVraagOrgs.filter(x => x.organisation_id === org.id).map(x => x.vraag_id);
+        const vragenVoorOrg = entryCriteriaVragen.filter(v => vraagIdsVoorOrg.includes(v.id));
+        const goedkeuring = entryCriteriaGoedkeuring.find(g => g.organisation_id === org.id);
+        const status = goedkeuring?.status || 'wachtend';
+        const magBeantwoorden = !window.isPageAdmin && currentProfile?.organisation_id === org.id && currentProfile?.role === 'manager';
+        const isVergrendeld = status === 'goedgekeurd';
+
+        const vraagRijen = vragenVoorOrg.map(v => {
+          const antwoord = entryCriteriaAntwoorden.find(a => a.vraag_id === v.id && a.organisation_id === org.id);
+
+          if (magBeantwoorden && !isVergrendeld) {
+            const jaNeeKnoppen = v.antwoordtype === 'ja_nee' ? `<div style="display:flex; gap:10px; margin-bottom:8px;">
+                <button type="button" class="btn btn-sm ${antwoord?.antwoord_ja_nee === true ? 'btn-primary' : 'btn-outline'}" onclick="kiesEntryCriteriaJaNee('${v.id}',true,this)">Ja</button>
+                <button type="button" class="btn btn-sm ${antwoord?.antwoord_ja_nee === false ? '' : 'btn-outline'}" style="${antwoord?.antwoord_ja_nee === false ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="kiesEntryCriteriaJaNee('${v.id}',false,this)">Nee</button>
+              </div>` : '';
+            return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
+              <p style="font-size:13px; font-weight:600; margin-bottom:8px;">${esc(v.vraag)}</p>
+              ${jaNeeKnoppen}
+              <textarea id="entryCriteriaToelichting-${v.id}" placeholder="Toelichting${v.antwoordtype === 'ja_nee' ? ' (verplicht)' : ''}..." style="width:100%; min-height:60px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${antwoord?.toelichting || ''}</textarea>
+            </div>`;
+          }
+
+          return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
+            <p style="font-size:13px; font-weight:600; margin-bottom:6px;">${esc(v.vraag)}</p>
+            ${v.antwoordtype === 'ja_nee' && antwoord ? `<p style="font-size:13px; margin-bottom:4px;"><strong>${antwoord.antwoord_ja_nee ? 'Ja' : 'Nee'}</strong></p>` : ''}
+            <p style="font-size:13px; color:var(--text-muted); white-space:pre-wrap;">${antwoord ? (antwoord.toelichting ? esc(antwoord.toelichting) : '') : 'Nog niet beantwoord.'}</p>
+          </div>`;
+        }).join('');
+
+        const alleBeantwoord = vragenVoorOrg.every(v => entryCriteriaAntwoorden.some(a => a.vraag_id === v.id && a.organisation_id === org.id));
+        const statusInfo = status === 'goedgekeurd' ? { bg: '#dcfce7', fg: '#166534', label: '✓ Goedgekeurd' }
+          : status === 'afgekeurd' ? { bg: '#fee2e2', fg: '#991b1b', label: '✗ Afgekeurd' }
+          : { bg: '#fef3c7', fg: '#92400e', label: '⏳ Wachtend' };
+
+        let actieBlok = '';
+        if (magBeantwoorden && !isVergrendeld) {
+          actieBlok = `<button class="btn btn-primary btn-sm" onclick="opslaanEntryCriteriaAntwoorden('${org.id}')">Antwoorden opslaan</button>`;
+        } else if (window.isPageAdmin && alleBeantwoord) {
+          actieBlok = `<div style="margin-top:10px;">
+            <textarea id="entryCriteriaGoedkeuringToelichting-${org.id}" placeholder="Toelichting (verplicht bij afkeuren)..." style="width:100%; min-height:50px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; margin-bottom:8px; font-family:inherit;"></textarea>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-primary btn-sm" onclick="beoordeelEntryCriteria('${org.id}','goedgekeurd')">Goedkeuren</button>
+              <button class="btn btn-sm" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="beoordeelEntryCriteria('${org.id}','afgekeurd')">Afkeuren</button>
+            </div>
+          </div>`;
+        } else if (window.isPageAdmin && !alleBeantwoord) {
+          actieBlok = `<p style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog niet alle vragen zijn beantwoord door de organisatie.</p>`;
+        }
+
+        return `<div class="card" style="padding:16px 20px; margin-bottom:14px; border-top:3px solid ${statusInfo.fg};">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
+            <strong style="font-size:14px;">${esc(org.name)}</strong>
+            <span class="badge" style="background:${statusInfo.bg}; color:${statusInfo.fg}; font-size:11px;">${statusInfo.label}</span>
+          </div>
+          ${vraagRijen}
+          ${goedkeuring?.toelichting ? `<p style="font-size:12px; color:var(--text-muted); font-style:italic; margin-top:-6px; margin-bottom:10px;">Toelichting beheerder: ${esc(goedkeuring.toelichting)}</p>` : ''}
+          ${actieBlok}
+        </div>`;
+      }).join('');
+    }
+
+    function kiesEntryCriteriaJaNee(vraagId, waarde, btn) {
+      entryCriteriaJaNeeKeuzes[vraagId] = waarde;
+      const container = btn.parentElement;
+      container.querySelectorAll('button').forEach(b => { b.className = 'btn btn-sm btn-outline'; b.style.cssText = ''; });
+      if (waarde) { btn.className = 'btn btn-sm btn-primary'; }
+      else { btn.className = 'btn btn-sm'; btn.style.cssText = 'background:var(--danger); color:#fff; border-color:var(--danger);'; }
+    }
+
+    async function opslaanEntryCriteriaAntwoorden(orgId) {
+      const vraagIdsVoorOrg = entryCriteriaVraagOrgs.filter(x => x.organisation_id === orgId).map(x => x.vraag_id);
+      const vragenVoorOrg = entryCriteriaVragen.filter(v => vraagIdsVoorOrg.includes(v.id));
+
+      const teVerwerken = [];
+      for (const v of vragenVoorOrg) {
+        const bestaandAntwoord = entryCriteriaAntwoorden.find(a => a.vraag_id === v.id && a.organisation_id === orgId);
+        const toelichting = document.getElementById(`entryCriteriaToelichting-${v.id}`)?.value.trim() || '';
+        const jaNeeWaarde = v.antwoordtype === 'ja_nee' ? (entryCriteriaJaNeeKeuzes[v.id] ?? bestaandAntwoord?.antwoord_ja_nee ?? null) : null;
+
+        if (v.antwoordtype === 'ja_nee' && jaNeeWaarde === null) { showAlert(`Kies Ja of Nee bij: "${v.vraag}"`, 'error'); return; }
+        if (!toelichting) { showAlert(`Vul een toelichting in bij: "${v.vraag}"`, 'error'); return; }
+
+        teVerwerken.push({ vraagId: v.id, bestaandAntwoord, jaNeeWaarde, toelichting });
+      }
+
+      for (const { vraagId, bestaandAntwoord, jaNeeWaarde, toelichting } of teVerwerken) {
+        const payload = { vraag_id: vraagId, organisation_id: orgId, antwoord_ja_nee: jaNeeWaarde, toelichting, beantwoord_door: currentUser?.id || null, beantwoord_op: new Date().toISOString() };
+        const { error } = bestaandAntwoord
+          ? await sb.from('entry_criteria_antwoorden').update(payload).eq('id', bestaandAntwoord.id)
+          : await sb.from('entry_criteria_antwoorden').insert(payload);
+        if (error) { showAlert('Fout bij opslaan van antwoorden: ' + error.message, 'error'); return; }
+      }
+
+      entryCriteriaJaNeeKeuzes = {};
+      await loadEntryCriteria();
+      renderEntryCriteriaOrganisaties();
+      showAlert('Antwoorden opgeslagen. De beheerder beoordeelt deze nu.', 'success');
+    }
+
+    async function beoordeelEntryCriteria(orgId, status) {
+      if (!window.isPageAdmin) return;
+      const toelichting = document.getElementById(`entryCriteriaGoedkeuringToelichting-${orgId}`)?.value.trim() || '';
+      if (status === 'afgekeurd' && !toelichting) { showAlert('Vul een toelichting in bij afkeuren.', 'error'); return; }
+
+      const bestaand = entryCriteriaGoedkeuring.find(g => g.organisation_id === orgId);
+      const payload = { ketentest_id: activeKetentest.id, organisation_id: orgId, status, toelichting: toelichting || null, beoordeeld_door: currentUser?.id || null, beoordeeld_op: new Date().toISOString() };
+      const { error } = bestaand
+        ? await sb.from('entry_criteria_goedkeuring').update(payload).eq('id', bestaand.id)
+        : await sb.from('entry_criteria_goedkeuring').insert(payload);
+      if (error) { showAlert('Fout bij beoordelen: ' + error.message, 'error'); return; }
+
+      await loadEntryCriteria();
+      renderEntryCriteriaOrganisaties();
+      showAlert(status === 'goedgekeurd' ? 'Organisatie goedgekeurd — mag nu OK/NOK zetten.' : 'Organisatie afgekeurd.', 'success');
     }
 
     let ZORGKANTOORCODES = [];
