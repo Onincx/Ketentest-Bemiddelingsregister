@@ -1027,6 +1027,10 @@
           <textarea id="entryCriteriaVraagTekst" placeholder="Bijv. Is de koppelvlaktest tegen de laatste specificatie uitgevoerd?"></textarea>
         </div>
         <div class="form-group">
+          <label>Toelichting <span style="color:var(--text-muted); font-weight:400; font-size:12px;">— optioneel, verschijnt als (ℹ)-tooltip bij de vraag</span></label>
+          <textarea id="entryCriteriaVraagToelichting" placeholder="Extra uitleg of achtergrond bij deze vraag..."></textarea>
+        </div>
+        <div class="form-group">
           <label>Antwoordtype <span style="color:var(--danger);">*</span></label>
           <select id="entryCriteriaVraagType">
             <option value="tekst">Vrije tekst</option>
@@ -2047,6 +2051,16 @@
       entryCriteriaAntwoorden = aw.data || [];
     }
 
+    // Rendert de vraagtekst, met een (ℹ)-icoontje erachter als er een
+    // toelichting is ingevuld — de volledige toelichting verschijnt dan
+    // als tooltip bij het hooveren over dat icoontje.
+    function renderVraagMetToelichting(v) {
+      const icoon = v.toelichting
+        ? ` <span title="${esc(v.toelichting)}" style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--brand-light); color:var(--brand); font-size:10px; font-weight:700; font-style:normal; cursor:help; vertical-align:middle;">i</span>`
+        : '';
+      return esc(v.vraag) + icoon;
+    }
+
     function renderEntryCriteriaTab() {
       renderEntryCriteriaVragen();
       renderEntryCriteriaOrganisaties();
@@ -2065,7 +2079,7 @@
           const orgIds = entryCriteriaVraagOrgs.filter(x => x.vraag_id === v.id).map(x => x.organisation_id);
           const orgNamen = orgs.filter(o => orgIds.includes(o.id)).map(o => o.name).join(', ') || '—';
           return `<tr>
-            <td style="max-width:320px;">${esc(v.vraag)}</td>
+            <td style="max-width:320px;">${renderVraagMetToelichting(v)}</td>
             <td style="white-space:nowrap;">${v.antwoordtype === 'ja_nee' ? 'Ja/Nee + toelichting' : 'Vrije tekst'}</td>
             <td style="font-size:12px; color:var(--text-muted);">${esc(orgNamen)}</td>
             <td style="text-align:right; white-space:nowrap;">
@@ -2082,6 +2096,7 @@
       const v = id ? entryCriteriaVragen.find(x => x.id === id) : null;
       document.getElementById('entryCriteriaVraagId').value = id || '';
       document.getElementById('entryCriteriaVraagTekst').value = v?.vraag || '';
+      document.getElementById('entryCriteriaVraagToelichting').value = v?.toelichting || '';
       document.getElementById('entryCriteriaVraagType').value = v?.antwoordtype || 'tekst';
       const gekoppeldeOrgIds = v ? entryCriteriaVraagOrgs.filter(x => x.vraag_id === v.id).map(x => x.organisation_id) : [];
       document.getElementById('entryCriteriaVraagOrgs').innerHTML = orgs.map(o => `
@@ -2096,6 +2111,7 @@
     async function saveEntryCriteriaVraag() {
       const id = document.getElementById('entryCriteriaVraagId').value;
       const vraag = document.getElementById('entryCriteriaVraagTekst').value.trim();
+      const toelichting = document.getElementById('entryCriteriaVraagToelichting').value.trim();
       const antwoordtype = document.getElementById('entryCriteriaVraagType').value;
       const gekozenOrgIds = Array.from(document.querySelectorAll('#entryCriteriaVraagOrgs input:checked')).map(el => el.value);
       if (!vraag) { showAlert('Vul een vraag in.', 'error', 'alertEntryCriteriaVraag'); return; }
@@ -2103,10 +2119,10 @@
 
       let vraagId = id;
       if (id) {
-        const { error } = await sb.from('entry_criteria_vragen').update({ vraag, antwoordtype }).eq('id', id);
+        const { error } = await sb.from('entry_criteria_vragen').update({ vraag, antwoordtype, toelichting: toelichting || null }).eq('id', id);
         if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertEntryCriteriaVraag'); return; }
       } else {
-        const { data, error } = await sb.from('entry_criteria_vragen').insert({ ketentest_id: activeKetentest.id, vraag, antwoordtype, volgorde: entryCriteriaVragen.length }).select().single();
+        const { data, error } = await sb.from('entry_criteria_vragen').insert({ ketentest_id: activeKetentest.id, vraag, antwoordtype, toelichting: toelichting || null, volgorde: entryCriteriaVragen.length }).select().single();
         if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertEntryCriteriaVraag'); return; }
         vraagId = data.id;
       }
@@ -2173,14 +2189,14 @@
                 <button type="button" class="btn btn-sm ${antwoord?.antwoord_ja_nee === false ? '' : 'btn-outline'}" style="${antwoord?.antwoord_ja_nee === false ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="kiesEntryCriteriaJaNee('${v.id}',false,this)">Nee</button>
               </div>` : '';
             return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
-              <p style="font-size:13px; font-weight:600; margin-bottom:8px;">${esc(v.vraag)}</p>
+              <p style="font-size:13px; font-weight:600; margin-bottom:8px;">${renderVraagMetToelichting(v)}</p>
               ${jaNeeKnoppen}
               <textarea id="entryCriteriaToelichting-${v.id}" placeholder="Toelichting${v.antwoordtype === 'ja_nee' ? ' (verplicht)' : ''}..." style="width:100%; min-height:60px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${antwoord?.toelichting || ''}</textarea>
             </div>`;
           }
 
           return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
-            <p style="font-size:13px; font-weight:600; margin-bottom:6px;">${esc(v.vraag)}</p>
+            <p style="font-size:13px; font-weight:600; margin-bottom:6px;">${renderVraagMetToelichting(v)}</p>
             ${v.antwoordtype === 'ja_nee' && antwoord ? `<p style="font-size:13px; margin-bottom:4px;"><strong>${antwoord.antwoord_ja_nee ? 'Ja' : 'Nee'}</strong></p>` : ''}
             <p style="font-size:13px; color:var(--text-muted); white-space:pre-wrap;">${antwoord ? (antwoord.toelichting ? esc(antwoord.toelichting) : '') : 'Nog niet beantwoord.'}</p>
           </div>`;
