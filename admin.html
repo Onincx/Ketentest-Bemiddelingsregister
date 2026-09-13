@@ -36,6 +36,9 @@
     .actie-regel.danger { color: var(--danger); }
     .actie-regel.danger:hover { background: #fef2f2; border-color: var(--danger); }
     .actie-regel svg { flex-shrink: 0; }
+    .ec-tooltip-wrap { position:relative; display:inline-block; vertical-align:middle; }
+    .ec-tooltip-text { display:none; position:absolute; left:0; top:22px; z-index:50; width:260px; background:#1f2937; color:#fff; font-size:12px; font-weight:400; font-style:normal; line-height:1.5; padding:8px 10px; border-radius:6px; box-shadow:0 4px 12px rgba(0,0,0,0.2); white-space:normal; text-transform:none; letter-spacing:normal; }
+    .ec-tooltip-wrap:hover .ec-tooltip-text { display:block; }
   </style>
 </head>
 <body>
@@ -2031,7 +2034,8 @@
     // ENTRY-CRITERIA
     // ============================================================
     let entryCriteriaVragen = [], entryCriteriaVraagOrgs = [], entryCriteriaAntwoorden = [], entryCriteriaGoedkeuring = [];
-    let entryCriteriaJaNeeKeuzes = {}; // vraagId -> boolean, tijdelijke keuze in het formulier vóór opslaan
+    let entryCriteriaBuffer = {}; // vraagId -> { ja_nee, toelichting }, tijdelijke antwoorden vóór opslaan
+    let entryCriteriaHuidigeVraagIndex = 0; // welke vraag de manager nu ziet in de wizard
 
     async function loadEntryCriteria() {
       if (!activeKetentest) { entryCriteriaVragen = []; entryCriteriaVraagOrgs = []; entryCriteriaAntwoorden = []; entryCriteriaGoedkeuring = []; return; }
@@ -2055,10 +2059,11 @@
     // toelichting is ingevuld — de volledige toelichting verschijnt dan
     // als tooltip bij het hooveren over dat icoontje.
     function renderVraagMetToelichting(v) {
-      const icoon = v.toelichting
-        ? ` <span title="${esc(v.toelichting)}" style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--brand-light); color:var(--brand); font-size:10px; font-weight:700; font-style:normal; cursor:help; vertical-align:middle;">i</span>`
-        : '';
-      return esc(v.vraag) + icoon;
+      if (!v.toelichting) return esc(v.vraag);
+      return `${esc(v.vraag)} <span class="ec-tooltip-wrap">
+        <span style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background:var(--brand-light); color:var(--brand); font-size:10px; font-weight:700; font-style:normal; cursor:help;">i</span>
+        <span class="ec-tooltip-text">${esc(v.toelichting)}</span>
+      </span>`;
     }
 
     function renderEntryCriteriaTab() {
@@ -2179,22 +2184,49 @@
         const status = goedkeuring?.status || 'wachtend';
         const magBeantwoorden = !window.isPageAdmin && currentProfile?.organisation_id === org.id && currentProfile?.role === 'manager';
         const isVergrendeld = status === 'goedgekeurd';
+        const statusInfo = status === 'goedgekeurd' ? { bg: '#dcfce7', fg: '#166534', label: '✓ Goedgekeurd' }
+          : status === 'afgekeurd' ? { bg: '#fee2e2', fg: '#991b1b', label: '✗ Afgekeurd' }
+          : { bg: '#fef3c7', fg: '#92400e', label: '⏳ Wachtend' };
 
+        // ---- Manager, nog niet goedgekeurd: één vraag tegelijk (wizard) ----
+        if (magBeantwoorden && !isVergrendeld && vragenVoorOrg.length) {
+          vragenVoorOrg.forEach(v => {
+            if (!(v.id in entryCriteriaBuffer)) {
+              const bestaand = entryCriteriaAntwoorden.find(a => a.vraag_id === v.id && a.organisation_id === org.id);
+              entryCriteriaBuffer[v.id] = { ja_nee: bestaand?.antwoord_ja_nee ?? null, toelichting: bestaand?.toelichting || '' };
+            }
+          });
+
+          const idx = Math.max(0, Math.min(entryCriteriaHuidigeVraagIndex, vragenVoorOrg.length - 1));
+          const v = vragenVoorOrg[idx];
+          const buf = entryCriteriaBuffer[v.id];
+
+          const jaNeeKnoppen = v.antwoordtype === 'ja_nee' ? `<div style="display:flex; gap:10px; margin-bottom:10px;">
+              <button type="button" class="btn btn-sm ${buf.ja_nee === true ? 'btn-primary' : 'btn-outline'}" onclick="zetEntryCriteriaBuffer('${v.id}','ja_nee',true)">Ja</button>
+              <button type="button" class="btn btn-sm ${buf.ja_nee === false ? '' : 'btn-outline'}" style="${buf.ja_nee === false ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="zetEntryCriteriaBuffer('${v.id}','ja_nee',false)">Nee</button>
+            </div>` : '';
+
+          return `<div class="card" style="padding:16px 20px; margin-bottom:14px; border-top:3px solid ${statusInfo.fg};">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <strong style="font-size:14px;">${esc(org.name)}</strong>
+              <span class="badge" style="background:${statusInfo.bg}; color:${statusInfo.fg}; font-size:11px;">${statusInfo.label}</span>
+            </div>
+            <p style="font-size:12px; color:var(--text-muted); margin-bottom:8px;">Vraag ${idx + 1} van ${vragenVoorOrg.length}</p>
+            <p style="font-size:15px; font-weight:600; margin-bottom:14px;">${renderVraagMetToelichting(v)}</p>
+            ${jaNeeKnoppen}
+            <textarea id="entryCriteriaWizardToelichting" oninput="zetEntryCriteriaBuffer('${v.id}','toelichting',this.value)" placeholder="Toelichting${v.antwoordtype === 'ja_nee' ? ' (verplicht)' : ''}..." style="width:100%; min-height:80px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${esc(buf.toelichting)}</textarea>
+            <div style="display:flex; justify-content:space-between; margin-top:16px;">
+              <button class="btn btn-outline btn-sm" onclick="entryCriteriaVorige()" ${idx === 0 ? 'disabled' : ''}>← Vorige</button>
+              ${idx < vragenVoorOrg.length - 1
+                ? `<button class="btn btn-primary btn-sm" onclick="entryCriteriaVolgende(${vragenVoorOrg.length})">Volgende →</button>`
+                : `<button class="btn btn-primary btn-sm" onclick="opslaanEntryCriteriaAntwoorden('${org.id}')">Antwoorden indienen</button>`}
+            </div>
+          </div>`;
+        }
+
+        // ---- Beheerder (review) of alleen-lezen: alle vragen + antwoorden gestapeld ----
         const vraagRijen = vragenVoorOrg.map(v => {
           const antwoord = entryCriteriaAntwoorden.find(a => a.vraag_id === v.id && a.organisation_id === org.id);
-
-          if (magBeantwoorden && !isVergrendeld) {
-            const jaNeeKnoppen = v.antwoordtype === 'ja_nee' ? `<div style="display:flex; gap:10px; margin-bottom:8px;">
-                <button type="button" class="btn btn-sm ${antwoord?.antwoord_ja_nee === true ? 'btn-primary' : 'btn-outline'}" onclick="kiesEntryCriteriaJaNee('${v.id}',true,this)">Ja</button>
-                <button type="button" class="btn btn-sm ${antwoord?.antwoord_ja_nee === false ? '' : 'btn-outline'}" style="${antwoord?.antwoord_ja_nee === false ? 'background:var(--danger); color:#fff; border-color:var(--danger);' : ''}" onclick="kiesEntryCriteriaJaNee('${v.id}',false,this)">Nee</button>
-              </div>` : '';
-            return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
-              <p style="font-size:13px; font-weight:600; margin-bottom:8px;">${renderVraagMetToelichting(v)}</p>
-              ${jaNeeKnoppen}
-              <textarea id="entryCriteriaToelichting-${v.id}" placeholder="Toelichting${v.antwoordtype === 'ja_nee' ? ' (verplicht)' : ''}..." style="width:100%; min-height:60px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${antwoord?.toelichting || ''}</textarea>
-            </div>`;
-          }
-
           return `<div style="margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border);">
             <p style="font-size:13px; font-weight:600; margin-bottom:6px;">${renderVraagMetToelichting(v)}</p>
             ${v.antwoordtype === 'ja_nee' && antwoord ? `<p style="font-size:13px; margin-bottom:4px;"><strong>${antwoord.antwoord_ja_nee ? 'Ja' : 'Nee'}</strong></p>` : ''}
@@ -2203,14 +2235,9 @@
         }).join('');
 
         const alleBeantwoord = vragenVoorOrg.every(v => entryCriteriaAntwoorden.some(a => a.vraag_id === v.id && a.organisation_id === org.id));
-        const statusInfo = status === 'goedgekeurd' ? { bg: '#dcfce7', fg: '#166534', label: '✓ Goedgekeurd' }
-          : status === 'afgekeurd' ? { bg: '#fee2e2', fg: '#991b1b', label: '✗ Afgekeurd' }
-          : { bg: '#fef3c7', fg: '#92400e', label: '⏳ Wachtend' };
 
         let actieBlok = '';
-        if (magBeantwoorden && !isVergrendeld) {
-          actieBlok = `<button class="btn btn-primary btn-sm" onclick="opslaanEntryCriteriaAntwoorden('${org.id}')">Antwoorden opslaan</button>`;
-        } else if (window.isPageAdmin && alleBeantwoord) {
+        if (window.isPageAdmin && alleBeantwoord) {
           actieBlok = `<div style="margin-top:10px;">
             <textarea id="entryCriteriaGoedkeuringToelichting-${org.id}" placeholder="Toelichting (verplicht bij afkeuren)..." style="width:100%; min-height:50px; font-size:13px; padding:8px; border:1px solid var(--border); border-radius:6px; margin-bottom:8px; font-family:inherit;"></textarea>
             <div style="display:flex; gap:8px;">
@@ -2234,12 +2261,22 @@
       }).join('');
     }
 
-    function kiesEntryCriteriaJaNee(vraagId, waarde, btn) {
-      entryCriteriaJaNeeKeuzes[vraagId] = waarde;
-      const container = btn.parentElement;
-      container.querySelectorAll('button').forEach(b => { b.className = 'btn btn-sm btn-outline'; b.style.cssText = ''; });
-      if (waarde) { btn.className = 'btn btn-sm btn-primary'; }
-      else { btn.className = 'btn btn-sm'; btn.style.cssText = 'background:var(--danger); color:#fff; border-color:var(--danger);'; }
+    function zetEntryCriteriaBuffer(vraagId, veld, waarde) {
+      if (!entryCriteriaBuffer[vraagId]) entryCriteriaBuffer[vraagId] = { ja_nee: null, toelichting: '' };
+      entryCriteriaBuffer[vraagId][veld] = waarde;
+      // Bij Ja/Nee opnieuw renderen voor de knop-highlight; bij tekst
+      // typen niet opnieuw renderen (zou de cursor uit het veld halen).
+      if (veld === 'ja_nee') renderEntryCriteriaOrganisaties();
+    }
+
+    function entryCriteriaVorige() {
+      entryCriteriaHuidigeVraagIndex = Math.max(0, entryCriteriaHuidigeVraagIndex - 1);
+      renderEntryCriteriaOrganisaties();
+    }
+
+    function entryCriteriaVolgende(aantalVragen) {
+      entryCriteriaHuidigeVraagIndex = Math.min(aantalVragen - 1, entryCriteriaHuidigeVraagIndex + 1);
+      renderEntryCriteriaOrganisaties();
     }
 
     async function opslaanEntryCriteriaAntwoorden(orgId) {
@@ -2249,8 +2286,9 @@
       const teVerwerken = [];
       for (const v of vragenVoorOrg) {
         const bestaandAntwoord = entryCriteriaAntwoorden.find(a => a.vraag_id === v.id && a.organisation_id === orgId);
-        const toelichting = document.getElementById(`entryCriteriaToelichting-${v.id}`)?.value.trim() || '';
-        const jaNeeWaarde = v.antwoordtype === 'ja_nee' ? (entryCriteriaJaNeeKeuzes[v.id] ?? bestaandAntwoord?.antwoord_ja_nee ?? null) : null;
+        const buf = entryCriteriaBuffer[v.id] || { ja_nee: null, toelichting: '' };
+        const toelichting = (buf.toelichting || '').trim();
+        const jaNeeWaarde = v.antwoordtype === 'ja_nee' ? buf.ja_nee : null;
 
         if (v.antwoordtype === 'ja_nee' && jaNeeWaarde === null) { showAlert(`Kies Ja of Nee bij: "${v.vraag}"`, 'error'); return; }
         if (!toelichting) { showAlert(`Vul een toelichting in bij: "${v.vraag}"`, 'error'); return; }
@@ -2266,7 +2304,8 @@
         if (error) { showAlert('Fout bij opslaan van antwoorden: ' + error.message, 'error'); return; }
       }
 
-      entryCriteriaJaNeeKeuzes = {};
+      entryCriteriaBuffer = {};
+      entryCriteriaHuidigeVraagIndex = 0;
       await loadEntryCriteria();
       renderEntryCriteriaOrganisaties();
       showAlert('Antwoorden opgeslagen. De beheerder beoordeelt deze nu.', 'success');
