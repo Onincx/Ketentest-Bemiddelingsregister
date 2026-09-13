@@ -1341,10 +1341,10 @@
       const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria'];
 
       if (!window.isPageAdmin) {
-        // Gewone gebruikers mogen alleen Notificaties of NOK-opvolging
-        // bekijken op deze pagina, ongeacht welke andere link ze zouden
-        // proberen te volgen.
-        const nonAdminTab = requestedTab === 'nok' ? 'nok' : 'notifications';
+        // Gewone gebruikers mogen alleen Notificaties, NOK-opvolging of
+        // Entry-criteria bekijken op deze pagina, ongeacht welke andere
+        // link ze zouden proberen te volgen.
+        const nonAdminTab = (requestedTab === 'nok' || requestedTab === 'entrycriteria') ? requestedTab : 'notifications';
         showTab(nonAdminTab);
         return;
       }
