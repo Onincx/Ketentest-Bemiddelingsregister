@@ -213,9 +213,7 @@
     }
 
     function redirectToLanding(profile) {
-      if (profile?.role === 'admin') window.location.href = 'admin.html';
-      else if (profile?.role === 'manager') window.location.href = 'dashboard.html';
-      else window.location.href = 'app.html';
+      window.location.href = 'home.html';
     }
 
     function chooseKetentest(id) {
