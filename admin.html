@@ -1572,19 +1572,11 @@
     // live doorzocht.
     function verzamelNotificatieGebruik(notifs) {
       return notifs.map(n => {
-        let matchingScenarios, verantwoordelijkeOrgIds;
-        if (window._scanResults && window._scanResults[n.naam] !== undefined) {
-          const codes = window._scanResults[n.naam].scenarios;
-          matchingScenarios = scenarios.filter(s => codes.includes(s.code));
-          verantwoordelijkeOrgIds = [...window._scanResults[n.naam].orgIds];
-        } else {
-          const pat = buildPattern(n.naam);
-          const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
-          const matchendeScenarioIds = new Set(matchendeActiviteiten.map(a => a.scenario_id));
-          matchingScenarios = scenarios.filter(s => matchendeScenarioIds.has(s.id));
-          verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
-        }
-        return { notificatie: n, matchingScenarios, verantwoordelijkeOrgIds };
+        const pat = buildPattern(n.naam);
+        const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
+        const matchingScenarios = scenarios.filter(s => matchendeActiviteiten.some(a => a.scenario_id === s.id));
+        const verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
+        return { notificatie: n, matchendeActiviteiten, matchingScenarios, verantwoordelijkeOrgIds };
       });
     }
 
@@ -1718,7 +1710,12 @@
 
       wrap.innerHTML = relevantOrgs.map(org => {
         const k = getOrgKleur(org.id, orgs);
-        const rijenVoorOrg = gebruik.filter(g => g.verantwoordelijkeOrgIds.includes(org.id));
+        const rijenVoorOrg = gebruik
+          .filter(g => g.verantwoordelijkeOrgIds.includes(org.id))
+          .map(g => ({
+            notificatie: g.notificatie,
+            matchingScenarios: scenarios.filter(s => g.matchendeActiviteiten.some(a => a.scenario_id === s.id && a.organisation_id === org.id)),
+          }));
 
         return `<div style="margin-bottom:24px;">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
