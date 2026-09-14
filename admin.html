@@ -1510,9 +1510,9 @@
       let totalFound = 0;
 
       // Scan alle activiteiten en sla gevonden notificaties op als markering
-      const scanResults = {}; // notificatienaam → [scenario codes]
+      const scanResults = {}; // notificatienaam → { scenarios: [codes], orgIds: Set }
 
-      NOTIFICATIES.forEach(n => { scanResults[n.naam] = []; });
+      NOTIFICATIES.forEach(n => { scanResults[n.naam] = { scenarios: [], orgIds: new Set() }; });
 
       activities.forEach(a => {
         const text = a.description || '';
@@ -1520,10 +1520,11 @@
           const pattern = buildPattern(n.naam);
           if (pattern.test(text)) {
             const s = scenarios.find(x => x.id === a.scenario_id);
-            if (s && !scanResults[n.naam].includes(s.code)) {
-              scanResults[n.naam].push(s.code);
+            if (s && !scanResults[n.naam].scenarios.includes(s.code)) {
+              scanResults[n.naam].scenarios.push(s.code);
               totalFound++;
             }
+            if (a.organisation_id) scanResults[n.naam].orgIds.add(a.organisation_id);
           }
         });
       });
@@ -1533,7 +1534,7 @@
 
       // Toon resultaat
       const resultEl = document.getElementById('scanResult');
-      const usedCount = Object.values(scanResults).filter(v => v.length > 0).length;
+      const usedCount = Object.values(scanResults).filter(v => v.scenarios.length > 0).length;
       resultEl.style.display = '';
       resultEl.className = 'alert alert-success';
       resultEl.innerHTML = `Scan voltooid: <strong>${usedCount}</strong> van de ${NOTIFICATIES.length} notificaties gevonden in de activiteiten.`;
@@ -1582,22 +1583,25 @@
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Notificatie</th>
                   <th style="text-align:center; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Gebruik</th>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Scenario's</th>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Verantwoordelijke partij(en)</th>
                 </tr>
               </thead>
               <tbody>
                 ${notifs.map(n => {
                   // Gebruik scanresultaten als beschikbaar, anders live zoeken
-                  let matchingScenarios;
+                  let matchingScenarios, verantwoordelijkeOrgIds;
                   if (window._scanResults && window._scanResults[n.naam] !== undefined) {
-                    const codes = window._scanResults[n.naam];
+                    const codes = window._scanResults[n.naam].scenarios;
                     matchingScenarios = scenarios.filter(s => codes.includes(s.code));
+                    verantwoordelijkeOrgIds = [...window._scanResults[n.naam].orgIds];
                   } else {
                     const pat = buildPattern(n.naam);
-                    matchingScenarios = scenarios.filter(s => {
-                      const acts = activities.filter(a => a.scenario_id === s.id);
-                      return acts.some(a => { pat.lastIndex=0; return pat.test(a.description||''); });
-                    });
+                    const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
+                    const matchendeScenarioIds = new Set(matchendeActiviteiten.map(a => a.scenario_id));
+                    matchingScenarios = scenarios.filter(s => matchendeScenarioIds.has(s.id));
+                    verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
                   }
+                  const verantwoordelijkeOrgs = orgs.filter(o => verantwoordelijkeOrgIds.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
                   const count = matchingScenarios.length;
                   const inUse = count > 0;
 
@@ -1616,6 +1620,13 @@
                             ${matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('')}
                            </div>`
                         : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">Nog niet gebruikt</span>`}
+                    </td>
+                    <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
+                      ${verantwoordelijkeOrgs.length
+                        ? `<div style="display:flex; flex-wrap:wrap; gap:4px;">
+                            ${verantwoordelijkeOrgs.map(o => { const k = getOrgKleur(o.id, orgs); return `<span style="display:inline-block; background:${k.bg}; color:${k.fg}; border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600;">${o.name}</span>`; }).join('')}
+                           </div>`
+                        : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">–</span>`}
                     </td>
                   </tr>`;
                 }).join('')}
