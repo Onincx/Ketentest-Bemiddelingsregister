@@ -284,9 +284,16 @@
             Scan activiteiten
           </button>
         </div>
-        <div style="display:flex; gap:8px; margin-bottom:16px;">
-          <button class="btn btn-sm" id="notifdg-usage-zorgaanbieder" onclick="setNotifDoelgroep('usage','zorgaanbieder',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Zorgaanbieder</button>
-          <button class="btn btn-sm btn-outline" id="notifdg-usage-zorgkantoor" onclick="setNotifDoelgroep('usage','zorgkantoor',this)">Zorgkantoor</button>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-sm" id="notifdg-usage-zorgaanbieder" onclick="setNotifDoelgroep('usage','zorgaanbieder',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Zorgaanbieder</button>
+            <button class="btn btn-sm btn-outline" id="notifdg-usage-zorgkantoor" onclick="setNotifDoelgroep('usage','zorgkantoor',this)">Zorgkantoor</button>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <span style="font-size:12px; color:var(--text-muted); align-self:center; margin-right:2px;">Weergave:</span>
+            <button class="btn btn-sm" id="notifview-notificatie" onclick="setNotifUsageView('notificatie',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Per notificatie</button>
+            <button class="btn btn-sm btn-outline" id="notifview-organisatie" onclick="setNotifUsageView('organisatie',this)">Per organisatie</button>
+          </div>
         </div>
         <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
         <div id="notificationsOverview"></div>
@@ -1545,7 +1552,44 @@
       renderNotifications();
     }
 
+    let notifUsageView = 'notificatie'; // 'notificatie' | 'organisatie'
+
+    function setNotifUsageView(view, btn) {
+      notifUsageView = view;
+      document.querySelectorAll('#notifview-notificatie, #notifview-organisatie').forEach(b => {
+        b.className = 'btn btn-sm btn-outline';
+        b.style.cssText = '';
+      });
+      btn.className = 'btn btn-sm';
+      btn.style.cssText = 'background:#2563a8;color:#fff;border-color:#2563a8;';
+      renderNotifications();
+    }
+
+    // Verzamelt voor elke notificatie (binnen de gekozen doelgroep) de
+    // scenario's en verantwoordelijke organisaties waarin die voorkomt —
+    // gedeeld door zowel de 'per notificatie'- als de 'per organisatie'-
+    // weergave, op basis van scanresultaten indien beschikbaar, anders
+    // live doorzocht.
+    function verzamelNotificatieGebruik(notifs) {
+      return notifs.map(n => {
+        let matchingScenarios, verantwoordelijkeOrgIds;
+        if (window._scanResults && window._scanResults[n.naam] !== undefined) {
+          const codes = window._scanResults[n.naam].scenarios;
+          matchingScenarios = scenarios.filter(s => codes.includes(s.code));
+          verantwoordelijkeOrgIds = [...window._scanResults[n.naam].orgIds];
+        } else {
+          const pat = buildPattern(n.naam);
+          const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
+          const matchendeScenarioIds = new Set(matchendeActiviteiten.map(a => a.scenario_id));
+          matchingScenarios = scenarios.filter(s => matchendeScenarioIds.has(s.id));
+          verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
+        }
+        return { notificatie: n, matchingScenarios, verantwoordelijkeOrgIds };
+      });
+    }
+
     function renderNotifications() {
+      if (notifUsageView === 'organisatie') { renderNotificationsPerOrg(); return; }
       const wrap = document.getElementById('notificationsOverview');
       if (!wrap) return;
 
@@ -1637,6 +1681,81 @@
       });
 
       wrap.innerHTML = html;
+    }
+
+    // Toont, per organisatie (die verantwoordelijk is voor minstens 1
+    // activiteit waarin een notificatie voorkomt), welke notificaties dat
+    // zijn en in welke scenario's — het omgekeerde van de 'per
+    // notificatie'-weergave hierboven.
+    function renderNotificationsPerOrg() {
+      const wrap = document.getElementById('notificationsOverview');
+      if (!wrap) return;
+
+      if (!NOTIFICATIES.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Nog geen notificaties toegevoegd. Klik op \u2018Notificatie toevoegen\u2019 hierboven.</p></div>';
+        return;
+      }
+
+      const notifsVoorDoelgroep = NOTIFICATIES.filter(n => (n.doelgroep || 'zorgaanbieder') === notifDoelgroep.usage);
+      if (!notifsVoorDoelgroep.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Geen notificaties voor deze doelgroep.</p></div>';
+        return;
+      }
+
+      const gebruik = verzamelNotificatieGebruik(notifsVoorDoelgroep);
+
+      // Verzamel alle organisaties die ergens verantwoordelijk zijn voor
+      // minstens 1 van deze notificaties.
+      const orgIdsMetGebruik = [...new Set(gebruik.flatMap(g => g.verantwoordelijkeOrgIds))];
+      const relevantOrgs = orgs.filter(o => orgIdsMetGebruik.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
+
+      if (!relevantOrgs.length) {
+        wrap.innerHTML = '<div class="empty-state"><p>Nog geen enkele notificatie van deze doelgroep is teruggevonden in de activiteiten. Klik op \u2018Scan activiteiten\u2019.</p></div>';
+        return;
+      }
+
+      const typeLabels = { nieuw: 'Nieuw', gewijzigd: 'Gewijzigd', informatief: 'Informatief', verwijderd: 'Verwijderd' };
+
+      wrap.innerHTML = relevantOrgs.map(org => {
+        const k = getOrgKleur(org.id, orgs);
+        const rijenVoorOrg = gebruik.filter(g => g.verantwoordelijkeOrgIds.includes(org.id));
+
+        return `<div style="margin-bottom:24px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+            <span style="display:inline-block; background:${k.bg}; color:${k.fg}; border-radius:99px; padding:3px 14px; font-size:12px; font-weight:700;">${org.name}</span>
+            <span style="font-size:13px; color:var(--text-muted);">${rijenVoorOrg.length} notificatie${rijenVoorOrg.length !== 1 ? 's' : ''}</span>
+          </div>
+          <div class="card" style="padding:0; overflow:hidden;">
+            <table style="width:100%; border-collapse:collapse; font-size:13px;">
+              <thead>
+                <tr>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Notificatie</th>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Type</th>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Scenario's</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rijenVoorOrg.map(({ notificatie: n, matchingScenarios }) => {
+                  const c = NOTIF_COLORS[n.type];
+                  return `<tr>
+                    <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
+                      <strong style="color:${c.color};">${n.naam}</strong>
+                    </td>
+                    <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
+                      <span style="background:${c.bg}; color:${c.color}; border:1px solid ${c.border}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${typeLabels[n.type]}</span>
+                    </td>
+                    <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
+                      <div style="display:flex; flex-wrap:wrap; gap:4px;">
+                        ${matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('')}
+                      </div>
+                    </td>
+                  </tr>`;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+      }).join('');
     }
 
     // ---- NOTIFICATIES BEHEREN ----
