@@ -98,7 +98,8 @@
       const { error } = await sb.auth.updateUser({ password });
 
       if (error) {
-        showAlert('Er ging iets mis. De uitnodigingslink is mogelijk verlopen. Vraag de beheerder om een nieuwe uitnodiging.');
+        console.error('Fout bij wachtwoord opslaan (sb.auth.updateUser):', error);
+        showAlert(`Er ging iets mis. De uitnodigingslink is mogelijk verlopen, al eerder gebruikt, of al "voorgeladen" door een e-mailbeveiligingsfilter voordat de link daadwerkelijk werd geopend. Vraag de beheerder om een nieuwe uitnodiging. (Technische melding: ${error.message})`);
         btn.innerHTML = 'Wachtwoord opslaan en inloggen'; btn.disabled = false;
         return;
       }
@@ -115,10 +116,20 @@
       document.getElementById('successWrap').style.display = 'block';
 
       setTimeout(async () => {
-        const profile = await getUserProfile((await getCurrentUser()).id);
-        window.location.href = profile?.role === 'admin' ? 'admin.html' : 'app.html';
+        window.location.href = 'home.html';
       }, 2000);
     }
+
+    // Vroege controle: is er überhaupt een geldige (herstel-)sessie
+    // vanuit de link? Zo niet, laat dat meteen zien in plaats van pas na
+    // het invullen van een wachtwoord.
+    (async () => {
+      const currentUser = await getCurrentUser();
+      if (!currentUser) {
+        showAlert('Deze uitnodigings-/herstellink is niet (meer) geldig — mogelijk al gebruikt, verlopen, of al "voorgeladen" door een e-mailbeveiligingsfilter voordat de link daadwerkelijk werd geopend. Vraag de beheerder om een nieuwe uitnodiging.');
+        document.getElementById('saveBtn').disabled = true;
+      }
+    })();
   </script>
 </body>
 </html>
