@@ -216,6 +216,53 @@
       openModal('modalConfirm');
     }
 
+    function openKgEditModal(id) {
+      if (!window.isPageAdmin) return;
+      const r = kgUzoviAgbRijen.find(x => x.id === id);
+      if (!r) return;
+      document.getElementById('kgEditId').value = r.id;
+      const betrokkenOrgs = betrokkenOrgsVoorKetentest();
+      document.getElementById('kgEditOrgSelect').innerHTML = betrokkenOrgs.map(o => `<option value="${o.id}" ${o.id === r.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+      vulKgEditUzoviOpties(r.uzovi_code);
+      document.getElementById('kgEditAgbInput').value = r.agb_code;
+      document.getElementById('kgEditModelSelect').value = r.model;
+      document.getElementById('alertKgEdit').style.display = 'none';
+      openModal('modalKgEdit');
+    }
+
+    function vulKgEditUzoviOpties(geselecteerdeCode) {
+      const orgId = document.getElementById('kgEditOrgSelect').value;
+      const select = document.getElementById('kgEditUzoviSelect');
+      const codes = zorgkantoorcodes.filter(z => z.organisation_id === orgId);
+      if (!codes.length) { select.innerHTML = '<option value="">— geen UZOVI-codes bekend voor deze organisatie —</option>'; return; }
+      select.innerHTML = codes.map(z => `<option value="${esc(z.code)}" ${z.code === geselecteerdeCode ? 'selected' : ''}>${esc(z.code)}</option>`).join('');
+    }
+
+    async function saveKgEdit() {
+      const id = document.getElementById('kgEditId').value;
+      const orgId = document.getElementById('kgEditOrgSelect').value;
+      const uzovi = document.getElementById('kgEditUzoviSelect').value;
+      const agb = document.getElementById('kgEditAgbInput').value.trim();
+      const model = document.getElementById('kgEditModelSelect').value;
+
+      if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgEdit'); return; }
+      if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgEdit'); return; }
+      if (!/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet precies 8 cijfers zijn.', 'error', 'alertKgEdit'); return; }
+      if (!model) { showAlert('Kies een model.', 'error', 'alertKgEdit'); return; }
+
+      const { data, error } = await sb.from('kerngegevens_uzovi_agb')
+        .update({ organisation_id: orgId, uzovi_code: uzovi, agb_code: agb, model })
+        .eq('id', id).select().single();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgEdit'); return; }
+
+      const idx = kgUzoviAgbRijen.findIndex(r => r.id === id);
+      if (idx !== -1) kgUzoviAgbRijen[idx] = data;
+      closeModal('modalKgEdit');
+      renderKgUzoviAgbTable();
+      showAlert('Rij bijgewerkt.', 'success');
+    }
+
     function renderKgUzoviAgbTable() {
       const tb = document.getElementById('kgUzoviAgbTable');
       if (!kgUzoviAgbRijen.length) {
@@ -237,8 +284,11 @@
           <td><strong>${esc(r.uzovi_code)}</strong></td>
           <td>${esc(r.agb_code)}</td>
           <td><span style="background:${m.bg}; color:${m.fg}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${esc(m.label)}</span></td>
-          <td style="text-align:right;">
-            ${window.isPageAdmin ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderKgUzoviAgb('${r.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>` : ''}
+          <td style="text-align:right; white-space:nowrap;">
+            ${window.isPageAdmin ? `
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openKgEditModal('${r.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderKgUzoviAgb('${r.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+            ` : ''}
           </td>
         </tr>`;
       }).join('');
@@ -292,6 +342,43 @@
       window.location.href = 'index.html';
     }
   </script>
+
+  <!-- Modal: rij bewerken -->
+  <div class="modal-overlay" id="modalKgEdit" style="display:none;" onclick="closeModalOverlay(event,'modalKgEdit')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Rij bewerken</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKgEdit')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kgEditId">
+        <div class="form-group">
+          <label>Organisatie</label>
+          <select id="kgEditOrgSelect" onchange="vulKgEditUzoviOpties()"></select>
+        </div>
+        <div class="form-group">
+          <label>UZOVI-code</label>
+          <select id="kgEditUzoviSelect"></select>
+        </div>
+        <div class="form-group">
+          <label>AGB-code (8 cijfers)</label>
+          <input type="text" id="kgEditAgbInput" maxlength="8" placeholder="12345678">
+        </div>
+        <div class="form-group">
+          <label>Model</label>
+          <select id="kgEditModelSelect">
+            <option value="estafette">Estafette</option>
+            <option value="netwerk">Netwerk</option>
+          </select>
+        </div>
+        <div id="alertKgEdit" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKgEdit')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKgEdit()">Opslaan</button>
+      </div>
+    </div>
+  </div>
 
   <!-- Modal: bevestiging -->
   <div class="modal-overlay" id="modalConfirm" style="display:none;" onclick="closeModalOverlay(event,'modalConfirm')">
