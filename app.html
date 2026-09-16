@@ -475,6 +475,15 @@
     // vervangen (Clientnaam + de rest van de indicatiegegevens staan nu
     // hier samen).
     function renderIndicatiebesluitBlok(scenarioId) {
+      try {
+        return renderIndicatiebesluitBlokInner(scenarioId);
+      } catch (err) {
+        console.error('Fout bij renderen van Indicatiebesluit-blok voor scenario', scenarioId, ':', err);
+        return `<div style="margin:8px 0; padding:8px 14px; background:#fee2e2; border:1px solid #fca5a5; color:#991b1b; border-radius:var(--radius); font-size:12px;">Er ging iets mis bij het tonen van het Indicatiebesluit-blok (zie browserconsole voor details).</div>`;
+      }
+    }
+
+    function renderIndicatiebesluitBlokInner(scenarioId) {
       if (!isStartVanFlow(scenarioId)) return '';
 
       const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
