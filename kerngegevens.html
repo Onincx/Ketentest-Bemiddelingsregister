@@ -103,6 +103,14 @@
             <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">AGB-code (8 cijfers)</label>
             <input type="text" id="kgAgbInput" maxlength="8" placeholder="12345678" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
           </div>
+          <div style="min-width:150px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Model</label>
+            <select id="kgModelSelect" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— kies —</option>
+              <option value="estafette">Estafette</option>
+              <option value="netwerk">Netwerk</option>
+            </select>
+          </div>
           <button class="btn btn-primary" onclick="voegKgUzoviAgbToe()">Toevoegen</button>
         </div>
         <div id="alertKgUzoviAgb" class="alert" style="display:none; margin-top:12px;"></div>
@@ -116,10 +124,11 @@
                 <th>Organisatie</th>
                 <th>UZOVI-code</th>
                 <th>AGB-code</th>
+                <th>Model</th>
                 <th></th>
               </tr>
             </thead>
-            <tbody id="kgUzoviAgbTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <tbody id="kgUzoviAgbTable"><tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -169,16 +178,19 @@
       const orgId = document.getElementById('kgOrgSelect').value;
       const uzovi = document.getElementById('kgUzoviSelect').value;
       const agb = document.getElementById('kgAgbInput').value.trim();
+      const model = document.getElementById('kgModelSelect').value;
 
       if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgUzoviAgb'); return; }
       if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgUzoviAgb'); return; }
       if (!/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet precies 8 cijfers zijn.', 'error', 'alertKgUzoviAgb'); return; }
+      if (!model) { showAlert('Kies een model (Estafette of Netwerk).', 'error', 'alertKgUzoviAgb'); return; }
 
       const { data, error } = await sb.from('kerngegevens_uzovi_agb').insert({
         ketentest_id: activeKetentest.id,
         organisation_id: orgId,
         uzovi_code: uzovi,
         agb_code: agb,
+        model,
         created_by: currentUser?.id || null,
       }).select().single();
 
@@ -186,6 +198,7 @@
 
       kgUzoviAgbRijen.push(data);
       document.getElementById('kgAgbInput').value = '';
+      document.getElementById('kgModelSelect').value = '';
       renderKgUzoviAgbTable();
       showAlert('Rij toegevoegd.', 'success', 'alertKgUzoviAgb');
     }
@@ -206,9 +219,10 @@
     function renderKgUzoviAgbTable() {
       const tb = document.getElementById('kgUzoviAgbTable');
       if (!kgUzoviAgbRijen.length) {
-        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen UZOVI-/AGB-codes toegevoegd.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><p>Nog geen UZOVI-/AGB-codes toegevoegd.</p></div></td></tr>';
         return;
       }
+      const modelInfo = { estafette: { bg: '#fef3c7', fg: '#92400e', label: 'Estafette' }, netwerk: { bg: '#dbeafe', fg: '#1e40af', label: 'Netwerk' } };
       const rijen = [...kgUzoviAgbRijen].sort((a, b) => {
         const naamA = orgs.find(o => o.id === a.organisation_id)?.name || '';
         const naamB = orgs.find(o => o.id === b.organisation_id)?.name || '';
@@ -217,10 +231,12 @@
       tb.innerHTML = rijen.map(r => {
         const org = orgs.find(o => o.id === r.organisation_id);
         const k = org ? getOrgKleur(org.id, orgs) : { bg: '#f3f4f6', fg: '#6b7280' };
+        const m = modelInfo[r.model] || { bg: '#f3f4f6', fg: '#6b7280', label: r.model || '—' };
         return `<tr>
           <td><span class="org-pill" style="background:${k.bg}; color:${k.fg};">${esc(org?.name || 'Onbekend')}</span></td>
           <td><strong>${esc(r.uzovi_code)}</strong></td>
           <td>${esc(r.agb_code)}</td>
+          <td><span style="background:${m.bg}; color:${m.fg}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${esc(m.label)}</span></td>
           <td style="text-align:right;">
             ${window.isPageAdmin ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderKgUzoviAgb('${r.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>` : ''}
           </td>
