@@ -221,23 +221,34 @@
 
     <!-- SUBTAB: Indicatiebesluiten -->
     <div id="kg-tab-indicatie" style="display:none;">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-        <p style="font-size:12.5px; color:var(--text-muted); margin:0;">Ingevuld door gebruikers vanuit Testscenario's, bij een startscenario van een flow.</p>
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+        <div>
+          <p style="font-size:12.5px; color:var(--text-muted); margin:0 0 8px;">Ingevuld door gebruikers vanuit Testscenario's, bij een startscenario van een flow.</p>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted);">Concessiehouder</label>
+            <select id="kgIndicatieConcessiehouderFilter" onchange="renderKgIndicatieTable()" style="padding:6px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">Alle</option>
+            </select>
+          </div>
+        </div>
         <button class="btn btn-outline" id="btnKgIndicatieExport" style="display:none;" onclick="exporteerIndicatiebesluiten()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
           Exporteer naar Excel
         </button>
       </div>
       <div class="card" style="padding:0;">
-        <div class="table-wrap">
-          <table>
+        <div class="table-wrap" style="overflow-x:auto;">
+          <table style="white-space:nowrap;">
             <thead>
               <tr>
-                <th>Scenario</th>
+                <th>Clientnaam</th>
                 <th>Fictief BSN</th>
                 <th>Datum afgifte</th>
                 <th>Datum ingang</th>
+                <th>Concessiehouder</th>
                 <th>UZOVI</th>
+                <th>Postcode</th>
+                <th>Plaats</th>
                 <th>Adres</th>
                 <th>Grondslag 1</th>
                 <th>Grondslag 2</th>
@@ -250,7 +261,7 @@
                 <th>VoorkeurAanbieder</th>
               </tr>
             </thead>
-            <tbody id="kgIndicatieTable"><tr><td colspan="15" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <tbody id="kgIndicatieTable"><tr><td colspan="18" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -708,26 +719,64 @@
     }
 
     // ---- INDICATIEBESLUITEN (alleen-lezen + Excel-export) ----
+    // Bepaalt de organisatie (concessiehouder) die bij het UZOVI-veld van
+    // dit indicatiebesluit hoort, via de koppeling in UZOVI en AGB.
+    function bepaalConcessiehouder(r) {
+      const koppeling = kgUzoviAgbRijen.find(u => u.uzovi_code === r.uzovi);
+      return koppeling ? orgs.find(o => o.id === koppeling.organisation_id) : null;
+    }
+
+    // Vindt de postcode/plaats die bij de combinatie UZOVI + Adres van dit
+    // indicatiebesluit hoort, via White listed postcodes.
+    function vindPostcodePlaats(r) {
+      return kgPostcodeRijen.find(p => p.uzovi_code === r.uzovi && p.adres === r.adres) || null;
+    }
+
+    function vulKgIndicatieConcessiehouderFilter() {
+      const select = document.getElementById('kgIndicatieConcessiehouderFilter');
+      const huidig = select.value;
+      const concessiehouders = [...new Map(
+        indicatiebesluiten.map(r => bepaalConcessiehouder(r)).filter(Boolean).map(o => [o.id, o])
+      ).values()].sort((a, b) => a.name.localeCompare(b.name));
+      select.innerHTML = '<option value="">Alle</option>' + concessiehouders.map(o => `<option value="${o.id}" ${o.id === huidig ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+    }
+
+    // De op dit moment gefilterde set indicatiebesluiten — gedeeld door
+    // zowel de tabelweergave als de export, zodat een export nooit meer
+    // bevat dan wat er op dat moment ook echt op het scherm staat.
+    function gefilterdeIndicatiebesluiten() {
+      const concessiehouderId = document.getElementById('kgIndicatieConcessiehouderFilter')?.value || '';
+      if (!concessiehouderId) return indicatiebesluiten;
+      return indicatiebesluiten.filter(r => bepaalConcessiehouder(r)?.id === concessiehouderId);
+    }
+
     function renderKgIndicatieTable() {
+      vulKgIndicatieConcessiehouderFilter();
       const tb = document.getElementById('kgIndicatieTable');
-      if (!indicatiebesluiten.length) {
-        tb.innerHTML = '<tr><td colspan="15"><div class="empty-state"><p>Nog geen indicatiebesluiten ingevuld.</p></div></td></tr>';
+      const gefilterd = gefilterdeIndicatiebesluiten();
+      if (!gefilterd.length) {
+        tb.innerHTML = `<tr><td colspan="18"><div class="empty-state"><p>${indicatiebesluiten.length ? 'Geen indicatiebesluiten voor deze concessiehouder.' : 'Nog geen indicatiebesluiten ingevuld.'}</p></div></td></tr>`;
         return;
       }
       const fmtDatum = d => d ? new Date(d).toLocaleDateString('nl-NL') : '—';
-      const rijen = [...indicatiebesluiten].sort((a, b) => {
+      const rijen = [...gefilterd].sort((a, b) => {
         const codeA = scenarios.find(s => s.id === a.scenario_id)?.code || '';
         const codeB = scenarios.find(s => s.id === b.scenario_id)?.code || '';
         return codeA.localeCompare(codeB, undefined, { numeric: true });
       });
       tb.innerHTML = rijen.map(r => {
         const scenario = scenarios.find(s => s.id === r.scenario_id);
+        const concessiehouder = bepaalConcessiehouder(r);
+        const pc = vindPostcodePlaats(r);
         return `<tr>
           <td><strong>${esc(scenario?.code || 'Onbekend')}</strong></td>
           <td>${esc(r.fictief_bsn || '—')}</td>
           <td>${fmtDatum(r.datum_afgifte)}</td>
           <td>${fmtDatum(r.datum_ingang)}</td>
+          <td>${esc(concessiehouder?.name || '—')}</td>
           <td>${esc(r.uzovi || '—')}</td>
+          <td>${esc(pc?.postcode || '—')}</td>
+          <td>${esc(pc?.plaats || '—')}</td>
           <td>${esc(r.adres || '—')}</td>
           <td>${esc(r.grondslag_1 || '—')}</td>
           <td>${esc(r.grondslag_2 || '—')}</td>
@@ -743,15 +792,21 @@
     }
 
     function exporteerIndicatiebesluiten() {
-      if (!indicatiebesluiten.length) { showAlert('Er zijn geen indicatiebesluiten om te exporteren.', 'error'); return; }
-      const rows = indicatiebesluiten.map(r => {
+      const gefilterd = gefilterdeIndicatiebesluiten();
+      if (!gefilterd.length) { showAlert('Er zijn geen indicatiebesluiten om te exporteren.', 'error'); return; }
+      const rows = gefilterd.map(r => {
         const scenario = scenarios.find(s => s.id === r.scenario_id);
+        const concessiehouder = bepaalConcessiehouder(r);
+        const pc = vindPostcodePlaats(r);
         return {
-          Scenario: scenario?.code || '',
+          Clientnaam: scenario?.code || '',
           'Fictief BSN': r.fictief_bsn || '',
           'Datum afgifte': r.datum_afgifte || '',
           'Datum ingang': r.datum_ingang || '',
+          Concessiehouder: concessiehouder?.name || '',
           UZOVI: r.uzovi || '',
+          Postcode: pc?.postcode || '',
+          Plaats: pc?.plaats || '',
           Adres: r.adres || '',
           'Grondslag 1': r.grondslag_1 || '',
           'Grondslag 2': r.grondslag_2 || '',
@@ -765,7 +820,7 @@
         };
       });
       const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Indicatiebesluiten');
       const datumStamp = new Date().toISOString().slice(0, 10);
