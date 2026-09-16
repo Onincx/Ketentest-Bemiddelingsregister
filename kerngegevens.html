@@ -139,6 +139,15 @@
   <script src="js/supabase-config.js?v=43"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\"/g,'&quot;'); }
+    function openModal(id) { document.getElementById(id).style.display = 'flex'; }
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+      ['alertKgUzoviAgb', 'alertKgEdit'].forEach(a => {
+        const el = document.getElementById(a);
+        if (el) el.style.display = 'none';
+      });
+    }
+    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
     let currentUser = null, currentProfile = null, activeKetentest = null;
     let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [];
 
