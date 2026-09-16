@@ -260,6 +260,7 @@
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
     let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
     let entryCriteriaVraagOrgs = [], entryCriteriaGoedkeuring = [];
+    let kerngegevensUzoviAgb = [], kerngegevensPostcodes = [], indicatieGrondslagen = [], indicatieZzpCodes = [], indicatiebesluiten = [];
 
     // Een organisatie is geblokkeerd (mag geen OK/NOK zetten) als er
     // minstens 1 entry-criteria-vraag aan haar is toegewezen, en die nog
@@ -374,6 +375,23 @@
       ]);
       entryCriteriaVraagOrgs = eco.data || [];
       entryCriteriaGoedkeuring = ecg.data || [];
+
+      // Data voor het Indicatiebesluit-formulier (alleen relevant bij
+      // startscenario's van een flow) — apart geladen omdat het niets
+      // met de rest van deze Promise.all te maken heeft.
+      const [kua, kpc, ig, izz, ibz] = await Promise.all([
+        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('indicatie_grondslagen').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
+        sb.from('indicatie_zzp_codes').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
+        scenarioIds.length ? fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
+      ]);
+      kerngegevensUzoviAgb = kua.data || [];
+      kerngegevensPostcodes = kpc.data || [];
+      indicatieGrondslagen = ig.data || [];
+      indicatieZzpCodes = izz.data || [];
+      indicatiebesluiten = ibz.data || [];
+
       functioneleProcessen = fp.data || [];
       scenarioFunctioneleProcessen = sfp.data || [];
       kenmerkDefinities = kd.data || [];
@@ -490,6 +508,155 @@
       rerenderScenario(scenarioId);
     }
 
+    // Niet zomaar de eerste activiteit van een scenario pakken — die is
+    // vaak geen zorgkantoor. Zoek in volgorde de eerste activiteit
+    // waarvan de verantwoordelijke organisatie daadwerkelijk
+    // zorgkantoorcodes heeft. Gebruikt door zowel het 'Algemeen'-blok
+    // als het Indicatiebesluit-formulier.
+    function bepaalVerantwZorgkantoorOrgId(scenarioId) {
+      const activiteitenOpVolgorde = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order);
+      for (const a of activiteitenOpVolgorde) {
+        const kandidaatOrgId = a.organisation_id || a.organisations?.id;
+        if (kandidaatOrgId && zorgkantoorcodes.some(z => z.organisation_id === kandidaatOrgId)) {
+          return kandidaatOrgId;
+        }
+      }
+      return null;
+    }
+
+    // Toont, alleen bij een startscenario van een flow, het
+    // Indicatiebesluit-blok — vergelijkbaar met een eenmalig
+    // kenmerken-blok, maar met een eigen tabel (indicatiebesluiten) in
+    // plaats van de generieke kenmerken-tabellen, omdat het ook los bij
+    // Kerngegevens getoond en geëxporteerd moet worden.
+    function renderIndicatiebesluitBlok(scenarioId) {
+      if (!isStartVanFlow(scenarioId)) return '';
+
+      const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
+      const bestaand = indicatiebesluiten.find(x => x.scenario_id === scenarioId);
+      const isNieuw = !bestaand;
+      const editKey = `indicatiebesluit-${scenarioId}`;
+      const inBewerkModus = kenmerkEditMode.has(editKey);
+
+      if (!inBewerkModus) {
+        if (isNieuw) {
+          return `<div style="margin:8px 0; padding:8px 14px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div style="display:flex; align-items:center; flex-wrap:wrap;">
+              <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Indicatiebesluit</span>
+              <span style="font-size:12px; color:var(--text-muted); font-style:italic; margin-left:10px;">Nog niet ingevuld.</span>
+            </div>
+            ${betrokken ? `<button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)">Invullen</button>` : ''}
+          </div>`;
+        }
+        return `<div style="margin:8px 0; padding:8px 14px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:var(--radius); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+          <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 18px; font-size:12px;">
+            <span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Indicatiebesluit</span>
+            <span>Afgifte: <strong>${bestaand.datum_afgifte ? new Date(bestaand.datum_afgifte).toLocaleDateString('nl-NL') : '—'}</strong></span>
+            <span>Ingang: <strong>${bestaand.datum_ingang ? new Date(bestaand.datum_ingang).toLocaleDateString('nl-NL') : '—'}</strong></span>
+            <span>UZOVI: <strong>${esc(bestaand.uzovi || '—')}</strong></span>
+          </div>
+          ${betrokken ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',true)" title="Bewerken">${ICOON_POTLOOD}</button>` : ''}
+        </div>`;
+      }
+
+      const scenario = scenarios.find(s => s.id === scenarioId);
+      const verantwOrgId = bepaalVerantwZorgkantoorOrgId(scenarioId);
+      const uzoviOpties = [...new Set(kerngegevensUzoviAgb.filter(r => r.organisation_id === verantwOrgId).map(r => r.uzovi_code))];
+      const alleUzoviOpties = [...new Set(kerngegevensUzoviAgb.map(r => r.uzovi_code))];
+      const huidigeUzovi = bestaand?.uzovi || '';
+      const adresOpties = [...new Set(kerngegevensPostcodes.filter(r => r.uzovi_code === huidigeUzovi).map(r => r.adres))];
+      const huidigeUzoviUitvoerend = bestaand?.uzovi_uitvoerend_zk || '';
+      const agbOpties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === huidigeUzoviUitvoerend).map(r => r.agb_code))];
+      const grondslagWaarden = indicatieGrondslagen.map(g => g.waarde);
+      const zzpWaarden = indicatieZzpCodes.map(z => z.waarde);
+
+      const labelStijl = 'font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:flex; align-items:flex-end; min-height:26px; margin-bottom:2px; line-height:1.2;';
+      const veldStijl = 'width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px;';
+      const selectOpties = (waarden, huidig, placeholder) => `<option value="">${placeholder}</option>` + waarden.map(w => `<option value="${esc(w)}" ${w === huidig ? 'selected' : ''}>${esc(w)}</option>`).join('');
+
+      return `<div style="margin:8px 0; padding:14px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:var(--radius);" data-indicatiebesluit-scenario="${scenarioId}">
+        <p style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:12px;">Indicatiebesluit</p>
+        <div id="indicatiebesluitAlert-${scenarioId}" class="alert" style="display:none; margin-bottom:10px;"></div>
+        <div style="display:flex; flex-wrap:wrap; gap:14px; margin-bottom:14px;">
+          <div style="width:190px;"><label style="${labelStijl}">Clientnaam</label><input type="text" value="${esc(scenario?.code || '')}" disabled style="${veldStijl} background:var(--surface); color:var(--text-muted);"></div>
+          <div style="width:170px;"><label style="${labelStijl}">Datum afgifte</label><input type="date" id="indDatumAfgifte-${scenarioId}" value="${bestaand?.datum_afgifte || ''}" style="${veldStijl}"></div>
+          <div style="width:170px;"><label style="${labelStijl}">Datum ingang</label><input type="date" id="indDatumIngang-${scenarioId}" value="${bestaand?.datum_ingang || ''}" style="${veldStijl}"></div>
+          <div style="width:170px;"><label style="${labelStijl}">UZOVI</label><select id="indUzovi-${scenarioId}" onchange="vulIndicatieAdresOpties('${scenarioId}')" style="${veldStijl}">${selectOpties(uzoviOpties, huidigeUzovi, '— kies —')}</select></div>
+          <div style="width:220px;"><label style="${labelStijl}">Adres</label><select id="indAdres-${scenarioId}" style="${veldStijl}">${selectOpties(adresOpties, bestaand?.adres || '', '— kies —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">1e grondslag</label><select id="indGrondslag1-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_1 || '', '— geen —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">2e grondslag</label><select id="indGrondslag2-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_2 || '', '— geen —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">3e grondslag</label><select id="indGrondslag3-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_3 || '', '— geen —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">4e grondslag</label><select id="indGrondslag4-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_4 || '', '— geen —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">ZZP-code 1</label><select id="indZzp1-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_1 || '', '— geen —')}</select></div>
+          <div style="width:170px;"><label style="${labelStijl}">ZZP-code 2</label><select id="indZzp2-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_2 || '', '— geen —')}</select></div>
+          <div style="width:190px;"><label style="${labelStijl}">VoorkeurClient</label><input type="text" id="indVoorkeurClient-${scenarioId}" value="${esc(bestaand?.voorkeur_client || '')}" style="${veldStijl}"></div>
+          <div style="width:170px;"><label style="${labelStijl}">UZOVI-uitvoerendZK</label><select id="indUzoviUitvoerend-${scenarioId}" onchange="vulIndicatieAgbOpties('${scenarioId}')" style="${veldStijl}">${selectOpties(alleUzoviOpties, huidigeUzoviUitvoerend, '— kies —')}</select></div>
+          <div style="width:190px;"><label style="${labelStijl}">VoorkeurAanbieder</label><select id="indVoorkeurAanbieder-${scenarioId}" style="${veldStijl}">${selectOpties(agbOpties, bestaand?.voorkeur_aanbieder || '', '— kies —')}</select></div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-outline" onclick="toggleKenmerkEditMode('${editKey}','${scenarioId}',false)">Annuleren</button>
+          <button class="btn btn-sm btn-primary" onclick="saveIndicatiebesluit('${scenarioId}')">Opslaan</button>
+        </div>
+      </div>`;
+    }
+
+    function vulIndicatieAdresOpties(scenarioId) {
+      const uzoviWaarde = document.getElementById(`indUzovi-${scenarioId}`).value;
+      const select = document.getElementById(`indAdres-${scenarioId}`);
+      const opties = [...new Set(kerngegevensPostcodes.filter(r => r.uzovi_code === uzoviWaarde).map(r => r.adres))];
+      select.innerHTML = '<option value="">— kies —</option>' + opties.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+    }
+
+    function vulIndicatieAgbOpties(scenarioId) {
+      const uzoviWaarde = document.getElementById(`indUzoviUitvoerend-${scenarioId}`).value;
+      const select = document.getElementById(`indVoorkeurAanbieder-${scenarioId}`);
+      const opties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === uzoviWaarde).map(r => r.agb_code))];
+      select.innerHTML = '<option value="">— kies —</option>' + opties.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
+    }
+
+    async function saveIndicatiebesluit(scenarioId) {
+      const alertId = `indicatiebesluitAlert-${scenarioId}`;
+      const veld = id => document.getElementById(`${id}-${scenarioId}`)?.value || null;
+
+      const payload = {
+        ketentest_id: activeKetentest.id,
+        scenario_id: scenarioId,
+        datum_afgifte: veld('indDatumAfgifte'),
+        datum_ingang: veld('indDatumIngang'),
+        uzovi: veld('indUzovi'),
+        adres: veld('indAdres'),
+        grondslag_1: veld('indGrondslag1'),
+        grondslag_2: veld('indGrondslag2'),
+        grondslag_3: veld('indGrondslag3'),
+        grondslag_4: veld('indGrondslag4'),
+        zzp_code_1: veld('indZzp1'),
+        zzp_code_2: veld('indZzp2'),
+        voorkeur_client: veld('indVoorkeurClient'),
+        uzovi_uitvoerend_zk: veld('indUzoviUitvoerend'),
+        voorkeur_aanbieder: veld('indVoorkeurAanbieder'),
+      };
+
+      const bestaand = indicatiebesluiten.find(x => x.scenario_id === scenarioId);
+      let resultaat;
+      if (bestaand) {
+        resultaat = await sb.from('indicatiebesluiten')
+          .update({ ...payload, updated_at: new Date().toISOString(), updated_by: currentUser?.id || null })
+          .eq('id', bestaand.id).select().single();
+      } else {
+        resultaat = await sb.from('indicatiebesluiten')
+          .insert({ ...payload, created_by: currentUser?.id || null })
+          .select().single();
+      }
+
+      if (resultaat.error) { showAlert('Fout bij opslaan: ' + resultaat.error.message, 'error', alertId); return; }
+
+      const idx = indicatiebesluiten.findIndex(x => x.scenario_id === scenarioId);
+      if (idx !== -1) indicatiebesluiten[idx] = resultaat.data; else indicatiebesluiten.push(resultaat.data);
+
+      kenmerkEditMode.delete(`indicatiebesluit-${scenarioId}`);
+      rerenderScenario(scenarioId);
+    }
+
     function renderAlgemeneKenmerken(scenarioId) {
       const definities = kenmerkDefinities.filter(d => d.groep === 'algemeen').sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
       const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
@@ -510,18 +677,11 @@
       const inBewerkModus = isBron && (isNieuw || kenmerkEditMode.has(editKey));
 
       // Niet zomaar de eerste activiteit van het scenario pakken — die is
-      // vaak geen zorgkantoor. Loop in volgorde door de activiteiten
-      // heen tot er een gevonden is waarvan de verantwoordelijke
-      // organisatie daadwerkelijk zorgkantoorcodes heeft.
-      const activiteitenOpVolgorde = activities.filter(a => a.scenario_id === bronScenarioId).sort((a, b) => a.sort_order - b.sort_order);
-      let verantwOrgId = null;
-      for (const a of activiteitenOpVolgorde) {
-        const kandidaatOrgId = a.organisation_id || a.organisations?.id;
-        if (kandidaatOrgId && zorgkantoorcodes.some(z => z.organisation_id === kandidaatOrgId)) {
-          verantwOrgId = kandidaatOrgId;
-          break;
-        }
-      }
+      // vaak geen zorgkantoor. Zoek de activiteit waarvan de
+      // verantwoordelijke organisatie daadwerkelijk zorgkantoorcodes
+      // heeft (gedeelde hulpfunctie, ook gebruikt door het
+      // Indicatiebesluit-formulier).
+      const verantwOrgId = bepaalVerantwZorgkantoorOrgId(bronScenarioId);
       const relevanteZkCodes = zorgkantoorcodes.filter(z => z.organisation_id === verantwOrgId);
 
       const clientnaamVeldEdit = `<div style="width:190px;">
@@ -1084,6 +1244,7 @@
       const houder = document.getElementById(`kenmerkenHouder-${scenarioId}`);
       if (!houder) return;
       houder.innerHTML = renderAlgemeneKenmerken(scenarioId)
+        + renderIndicatiebesluitBlok(scenarioId)
         + renderHerhaalbaarBlok(scenarioId, 'toewijzing', 'Toewijzing')
         + renderHerhaalbaarBlok(scenarioId, 'regierol', 'Regierol')
         + renderHerhaalbaarBlok(scenarioId, 'leveringperiode', 'Leveringperiode')
@@ -1728,6 +1889,7 @@
             </div>` : ''}
           <div id="kenmerkenHouder-${s.id}">
             ${renderAlgemeneKenmerken(s.id)}
+            ${renderIndicatiebesluitBlok(s.id)}
             ${renderHerhaalbaarBlok(s.id, 'toewijzing', 'Toewijzing')}
             ${renderHerhaalbaarBlok(s.id, 'regierol', 'Regierol')}
             ${renderHerhaalbaarBlok(s.id, 'leveringperiode', 'Leveringperiode')}

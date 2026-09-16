@@ -642,6 +642,29 @@
       </div>
 
       <div style="margin-bottom:20px;">
+        <p class="eyebrow" style="margin-bottom:10px;">Indicatie</p>
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">Waardenlijsten voor het Indicatiebesluit-formulier (in te vullen vanuit Testscenario's bij een startscenario van een flow).</p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+          <div class="card" style="padding:16px 20px;">
+            <p style="font-size:13px; font-weight:700; margin-bottom:10px;">Grondslag</p>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <input type="text" id="grondslagNieuw" placeholder="Nieuwe waarde">
+              <button class="btn btn-outline btn-sm" onclick="voegIndicatieWaardeToe('grondslag')">Toevoegen</button>
+            </div>
+            <div id="grondslagLijst"></div>
+          </div>
+          <div class="card" style="padding:16px 20px;">
+            <p style="font-size:13px; font-weight:700; margin-bottom:10px;">ZZP-codes</p>
+            <div style="display:flex; gap:8px; margin-bottom:12px;">
+              <input type="text" id="zzpNieuw" placeholder="Nieuwe waarde">
+              <button class="btn btn-outline btn-sm" onclick="voegIndicatieWaardeToe('zzp')">Toevoegen</button>
+            </div>
+            <div id="zzpLijst"></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-bottom:20px;">
         <p class="eyebrow" style="margin-bottom:10px;">Zorgkantoorcodes per organisatie</p>
         <div class="card" style="padding:16px 20px;">
           <div style="display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap;">
@@ -1369,7 +1392,7 @@
       // Orgs must load first so loadActivities can resolve acceptant_org
       await loadOrgs();
       await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen(), loadEntryCriteria()]);
+      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen(), loadEntryCriteria(), loadIndicatieLijsten()]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
     }
 
@@ -1463,7 +1486,7 @@
       // pagina berichten.html).
       if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok' && tab !== 'entrycriteria') return false;
       showTab(tab);
-      if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); loadFunctioneleProcessen().then(renderProcesLijst); }
+      if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); loadFunctioneleProcessen().then(renderProcesLijst); loadIndicatieLijsten().then(renderIndicatieLijsten); }
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
     }
@@ -2157,6 +2180,56 @@
         }).join('');
       }
       openModal('modalProcesIndex');
+    }
+
+    // ============================================================
+    // INDICATIE: GRONDSLAG + ZZP-CODES (simpele waardenlijsten)
+    // ============================================================
+    let indicatieGrondslagen = [], indicatieZzpCodes = [];
+
+    async function loadIndicatieLijsten() {
+      if (!activeKetentest) { indicatieGrondslagen = []; indicatieZzpCodes = []; return; }
+      const [g, z] = await Promise.all([
+        sb.from('indicatie_grondslagen').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
+        sb.from('indicatie_zzp_codes').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
+      ]);
+      indicatieGrondslagen = g.data || [];
+      indicatieZzpCodes = z.data || [];
+    }
+
+    function renderIndicatieLijsten() {
+      const renderLijst = (elId, lijst, soort) => {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        if (!lijst.length) { el.innerHTML = '<p style="font-size:12.5px; color:var(--text-muted); font-style:italic;">Nog geen waarden toegevoegd.</p>'; return; }
+        el.innerHTML = lijst.map(item => `<div style="display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); font-size:13px;">
+          <span>${esc(item.waarde)}</span>
+          <button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderIndicatieWaarde('${soort}','${item.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+        </div>`).join('');
+      };
+      renderLijst('grondslagLijst', indicatieGrondslagen, 'grondslag');
+      renderLijst('zzpLijst', indicatieZzpCodes, 'zzp');
+    }
+
+    async function voegIndicatieWaardeToe(soort) {
+      const inputId = soort === 'grondslag' ? 'grondslagNieuw' : 'zzpNieuw';
+      const tabel = soort === 'grondslag' ? 'indicatie_grondslagen' : 'indicatie_zzp_codes';
+      const waarde = document.getElementById(inputId).value.trim();
+      if (!waarde) return;
+      const { data, error } = await sb.from(tabel).insert({ ketentest_id: activeKetentest.id, waarde }).select().single();
+      if (error) { showAlert('Fout bij toevoegen: ' + error.message, 'error'); return; }
+      if (soort === 'grondslag') indicatieGrondslagen.push(data); else indicatieZzpCodes.push(data);
+      document.getElementById(inputId).value = '';
+      renderIndicatieLijsten();
+    }
+
+    async function verwijderIndicatieWaarde(soort, id) {
+      const tabel = soort === 'grondslag' ? 'indicatie_grondslagen' : 'indicatie_zzp_codes';
+      const { error } = await sb.from(tabel).delete().eq('id', id);
+      if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+      if (soort === 'grondslag') indicatieGrondslagen = indicatieGrondslagen.filter(x => x.id !== id);
+      else indicatieZzpCodes = indicatieZzpCodes.filter(x => x.id !== id);
+      renderIndicatieLijsten();
     }
 
     // ============================================================

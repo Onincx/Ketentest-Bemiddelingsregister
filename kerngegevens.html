@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kerngegevens — Ketentest Bemiddelingsregister</title>
   <link rel="stylesheet" href="css/style.css?v=29">
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -68,6 +69,7 @@
   </nav>
 
   <div class="page-wrap">
+    <div id="alert" class="alert" style="display:none;"></div>
     <div class="page-header">
       <div class="page-header-left">
         <h1>Kerngegevens</h1>
@@ -82,6 +84,7 @@
       <button class="tab-btn active" id="kg-tab-btn-uzoviagb" onclick="showKgTab('uzoviagb')">UZOVI en AGB-codes</button>
       <button class="tab-btn" id="kg-tab-btn-postcodes" onclick="showKgTab('postcodes')">White listed postcodes</button>
       <button class="tab-btn" id="kg-tab-btn-bsn" onclick="showKgTab('bsn')">Fictieve BSN's</button>
+      <button class="tab-btn" id="kg-tab-btn-indicatie" onclick="showKgTab('indicatie')">Indicatiebesluiten</button>
     </div>
 
     <!-- SUBTAB: UZOVI en AGB-codes -->
@@ -209,6 +212,42 @@
 
       <div id="kgBsnOverzicht"></div>
     </div>
+
+    <!-- SUBTAB: Indicatiebesluiten -->
+    <div id="kg-tab-indicatie" style="display:none;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+        <p style="font-size:12.5px; color:var(--text-muted); margin:0;">Ingevuld door gebruikers vanuit Testscenario's, bij een startscenario van een flow.</p>
+        <button class="btn btn-outline" id="btnKgIndicatieExport" style="display:none;" onclick="exporteerIndicatiebesluiten()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exporteer naar Excel
+        </button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Datum afgifte</th>
+                <th>Datum ingang</th>
+                <th>UZOVI</th>
+                <th>Adres</th>
+                <th>Grondslag 1</th>
+                <th>Grondslag 2</th>
+                <th>Grondslag 3</th>
+                <th>Grondslag 4</th>
+                <th>ZZP-code 1</th>
+                <th>ZZP-code 2</th>
+                <th>VoorkeurClient</th>
+                <th>UZOVI-uitvoerendZK</th>
+                <th>VoorkeurAanbieder</th>
+              </tr>
+            </thead>
+            <tbody id="kgIndicatieTable"><tr><td colspan="14" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -225,7 +264,7 @@
     }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
     let currentUser = null, currentProfile = null, activeKetentest = null;
-    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [], kgBsnRijen = [];
+    let orgs = [], activities = [], scenarios = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [], kgBsnRijen = [], indicatiebesluiten = [];
 
     function showKgTab(tab) {
       document.getElementById('kg-tab-uzoviagb').style.display = tab === 'uzoviagb' ? '' : 'none';
@@ -234,6 +273,8 @@
       document.getElementById('kg-tab-btn-postcodes').classList.toggle('active', tab === 'postcodes');
       document.getElementById('kg-tab-bsn').style.display = tab === 'bsn' ? '' : 'none';
       document.getElementById('kg-tab-btn-bsn').classList.toggle('active', tab === 'bsn');
+      document.getElementById('kg-tab-indicatie').style.display = tab === 'indicatie' ? '' : 'none';
+      document.getElementById('kg-tab-btn-indicatie').classList.toggle('active', tab === 'indicatie');
     }
 
     function betrokkenOrgsVoorKetentest() {
@@ -641,6 +682,69 @@
       }).join('');
     }
 
+    // ---- INDICATIEBESLUITEN (alleen-lezen + Excel-export) ----
+    function renderKgIndicatieTable() {
+      const tb = document.getElementById('kgIndicatieTable');
+      if (!indicatiebesluiten.length) {
+        tb.innerHTML = '<tr><td colspan="14"><div class="empty-state"><p>Nog geen indicatiebesluiten ingevuld.</p></div></td></tr>';
+        return;
+      }
+      const fmtDatum = d => d ? new Date(d).toLocaleDateString('nl-NL') : '—';
+      const rijen = [...indicatiebesluiten].sort((a, b) => {
+        const codeA = scenarios.find(s => s.id === a.scenario_id)?.code || '';
+        const codeB = scenarios.find(s => s.id === b.scenario_id)?.code || '';
+        return codeA.localeCompare(codeB, undefined, { numeric: true });
+      });
+      tb.innerHTML = rijen.map(r => {
+        const scenario = scenarios.find(s => s.id === r.scenario_id);
+        return `<tr>
+          <td><strong>${esc(scenario?.code || 'Onbekend')}</strong></td>
+          <td>${fmtDatum(r.datum_afgifte)}</td>
+          <td>${fmtDatum(r.datum_ingang)}</td>
+          <td>${esc(r.uzovi || '—')}</td>
+          <td>${esc(r.adres || '—')}</td>
+          <td>${esc(r.grondslag_1 || '—')}</td>
+          <td>${esc(r.grondslag_2 || '—')}</td>
+          <td>${esc(r.grondslag_3 || '—')}</td>
+          <td>${esc(r.grondslag_4 || '—')}</td>
+          <td>${esc(r.zzp_code_1 || '—')}</td>
+          <td>${esc(r.zzp_code_2 || '—')}</td>
+          <td>${esc(r.voorkeur_client || '—')}</td>
+          <td>${esc(r.uzovi_uitvoerend_zk || '—')}</td>
+          <td>${esc(r.voorkeur_aanbieder || '—')}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function exporteerIndicatiebesluiten() {
+      if (!indicatiebesluiten.length) { showAlert('Er zijn geen indicatiebesluiten om te exporteren.', 'error'); return; }
+      const rows = indicatiebesluiten.map(r => {
+        const scenario = scenarios.find(s => s.id === r.scenario_id);
+        return {
+          Scenario: scenario?.code || '',
+          'Datum afgifte': r.datum_afgifte || '',
+          'Datum ingang': r.datum_ingang || '',
+          UZOVI: r.uzovi || '',
+          Adres: r.adres || '',
+          'Grondslag 1': r.grondslag_1 || '',
+          'Grondslag 2': r.grondslag_2 || '',
+          'Grondslag 3': r.grondslag_3 || '',
+          'Grondslag 4': r.grondslag_4 || '',
+          'ZZP-code 1': r.zzp_code_1 || '',
+          'ZZP-code 2': r.zzp_code_2 || '',
+          VoorkeurClient: r.voorkeur_client || '',
+          'UZOVI-uitvoerendZK': r.uzovi_uitvoerend_zk || '',
+          VoorkeurAanbieder: r.voorkeur_aanbieder || '',
+        };
+      });
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Indicatiebesluiten');
+      const datumStamp = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `indicatiebesluiten-${datumStamp}.xlsx`);
+    }
+
     (async () => {
       const user = await requireAuth();
       if (!user) return;
@@ -665,14 +769,17 @@
       if (!result) return;
       activeKetentest = result.active;
 
-      const scenarioIds = (await sb.from('scenarios').select('id').eq('ketentest_id', activeKetentest.id)).data?.map(s => s.id) || [];
-      const [o, a, zk, kg, pc, bsn] = await Promise.all([
+      const scenarioData = (await sb.from('scenarios').select('id,code').eq('ketentest_id', activeKetentest.id)).data || [];
+      scenarios = scenarioData;
+      const scenarioIds = scenarioData.map(s => s.id);
+      const [o, a, zk, kg, pc, bsn, ind] = await Promise.all([
         sb.from('organisations').select('*'),
         scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
         sb.from('organisatie_zorgkantoorcodes').select('*'),
         sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
         fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', activeKetentest.id).range(from, to)),
+        scenarioIds.length ? fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
       ]);
       orgs = o.data || [];
       activities = a.data || [];
@@ -680,6 +787,7 @@
       kgUzoviAgbRijen = kg.data || [];
       kgPostcodeRijen = pc.data || [];
       kgBsnRijen = bsn.data || [];
+      indicatiebesluiten = ind.data || [];
 
       if (window.isPageAdmin) {
         document.getElementById('kgUzoviAgbForm').style.display = '';
@@ -688,9 +796,11 @@
         vulKgPcOrgSelect();
         document.getElementById('kgBsnForm').style.display = '';
         vulKgBsnOrgSelect();
+        document.getElementById('btnKgIndicatieExport').style.display = '';
       }
       renderKgUzoviAgbTable();
       renderKgPostcodesTable();
+      renderKgIndicatieTable();
       renderKgBsnOverzicht();
     })();
 
