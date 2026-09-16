@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kerngegevens — Ketentest Bemiddelingsregister</title>
+  <link rel="stylesheet" href="css/style.css?v=29">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- ZIN Header -->
+  <div style="background:#ffffff;">
+    <img src="ZinBanner.png" alt="Zorginstituut Nederland" style="width:100%; max-width:960px; display:block; margin:0 auto;">
+  </div>
+  <style>
+    .topnav { background: #39870c !important; }
+    .topnav-logo { color: #fff !important; }
+    .topnav a { color: rgba(255,255,255,0.85) !important; }
+    .topnav a:hover, .topnav a.active { color: #fff !important; }
+  </style>
+
+  <nav class="topnav">
+    <a href="home.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Home</a>
+    <a href="dashboard.html" id="navDashboardLink" style="display:none;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <div class="nav-dropdown">
+      <a href="app.html" id="navKetentestLink">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="10" y1="6" x2="21" y2="6"/><line x1="10" y1="12" x2="21" y2="12"/><line x1="10" y1="18" x2="21" y2="18"/><polyline points="3 6 4 7 6 5"/><polyline points="3 12 4 13 6 11"/><polyline points="3 18 4 19 6 17"/></svg>
+        Ketentest <span class="nav-dropdown-caret">▾</span>
+      </a>
+      <div class="nav-dropdown-menu">
+        <span id="navScenariosSlot"></span>
+        <a href="flow.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg> Flow</a>
+        <a href="deelname.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg> Deelname</a>
+        <span id="navNotifBerichtenSlot"></span>
+        <a href="admin.html?tab=nok"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> NOK-opvolging</a>
+        <a href="admin.html?tab=entrycriteria"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Entry-criteria</a>
+        <a href="kerngegevens.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg> Kerngegevens</a>
+      </div>
+    </div>
+    <a href="mijn-acties.html"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> Voortgang</a>
+    <div class="nav-dropdown" id="adminLink" style="display:none;">
+      <a href="admin.html">Beheer <span class="nav-dropdown-caret">▾</span></a>
+      <div class="nav-dropdown-menu">
+        <a href="admin.html?tab=organisations">Organisaties</a>
+        <a href="admin.html?tab=users">Gebruikers</a>
+        <a href="admin.html?tab=notifications">Notificaties</a>
+        <a href="admin.html?tab=berichten">Berichten</a>
+        <a href="admin.html?tab=kenmerken">Functionele kenmerken</a>
+        <a href="admin.html?tab=ketentests">Ketentesten</a>
+        <a href="admin.html?tab=scenarios">Scenario's beheren</a>
+        <a href="admin.html?tab=logboek">Logboek</a>
+      </div>
+    </div>
+    <span id="ketentestLabel" style="display:none; background:rgba(255,255,255,0.15); color:#fff; border-radius:99px; padding:4px 14px; font-size:12px; font-weight:700; margin-left:16px;"></span>
+    <span id="nokBadge" style="display:none; background:#fee2e2; color:#7f1d1d; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='admin.html?tab=nok'" title="Klik om naar NOK-opvolging te gaan"></span>
+    <span id="mijnActiesBadge" style="display:none; background:#dbeafe; color:#1e3a8a; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='mijn-acties.html'" title="Klik om naar Mijn acties te gaan"></span>
+    <span id="gonogoBadge" style="display:none; background:#fef3c7; color:#92400e; border-radius:99px; padding:3px 12px; font-size:12px; font-weight:700; margin-left:8px; cursor:pointer;" onclick="window.location.href='dashboard.html'" title="Klik om naar het Dashboard te gaan"></span>
+    <div class="topnav-right">
+      <span class="topnav-user" id="navUser"></span>
+      <span id="navOrg" style="background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.85); border-radius:99px; padding:2px 10px; font-size:12px; margin-left:4px;"></span>
+      <button class="btn btn-ghost btn-sm" style="color:rgba(255,255,255,0.7);" onclick="doLogout()">Uitloggen</button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>Kerngegevens</h1>
+        <p>Vaste gegevens die bij deze ketentest horen.</p>
+      </div>
+    </div>
+
+    <!-- Subtabbladen — dit is bewust code, geen door de beheerder
+         configureerbaar systeem: elke sectie is maatwerk en wordt per
+         stuk toegevoegd wanneer nodig. -->
+    <div class="tab-bar" style="margin-bottom:20px;">
+      <button class="tab-btn active" id="kg-tab-btn-uzoviagb" onclick="showKgTab('uzoviagb')">UZOVI en AGB-codes</button>
+    </div>
+
+    <!-- SUBTAB: UZOVI en AGB-codes -->
+    <div id="kg-tab-uzoviagb">
+      <div id="kgUzoviAgbForm" class="card" style="padding:18px 20px; margin-bottom:20px; display:none;">
+        <p class="eyebrow" style="margin-bottom:12px;">Rij toevoegen</p>
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+          <div style="min-width:220px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Organisatie</label>
+            <select id="kgOrgSelect" onchange="vulKgUzoviOpties()" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— kies —</option>
+            </select>
+          </div>
+          <div style="min-width:200px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">UZOVI-code</label>
+            <select id="kgUzoviSelect" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— eerst organisatie kiezen —</option>
+            </select>
+          </div>
+          <div style="min-width:160px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">AGB-code (8 cijfers)</label>
+            <input type="text" id="kgAgbInput" maxlength="8" placeholder="12345678" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          </div>
+          <button class="btn btn-primary" onclick="voegKgUzoviAgbToe()">Toevoegen</button>
+        </div>
+        <div id="alertKgUzoviAgb" class="alert" style="display:none; margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Organisatie</th>
+                <th>UZOVI-code</th>
+                <th>AGB-code</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="kgUzoviAgbTable"><tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="js/supabase-config.js?v=43"></script>
+  <script>
+    function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\"/g,'&quot;'); }
+    let currentUser = null, currentProfile = null, activeKetentest = null;
+    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [];
+
+    function showKgTab(tab) {
+      // Nu nog maar 1 tab; deze functie bestaat al wel zodat een
+      // volgende sectie er straks eenvoudig bij kan (zelfde patroon als
+      // elders in de tool: knop + div per sectie, hier aan toevoegen).
+      document.getElementById('kg-tab-uzoviagb').style.display = tab === 'uzoviagb' ? '' : 'none';
+      document.getElementById('kg-tab-btn-uzoviagb').classList.toggle('active', tab === 'uzoviagb');
+    }
+
+    function betrokkenOrgsVoorKetentest() {
+      const orgIds = new Set();
+      activities.forEach(a => {
+        if (a.organisation_id) orgIds.add(a.organisation_id);
+        if (a.acceptant_org_id) orgIds.add(a.acceptant_org_id);
+      });
+      return orgs.filter(o => orgIds.has(o.id)).sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    function vulKgOrgSelect() {
+      const select = document.getElementById('kgOrgSelect');
+      const betrokkenOrgs = betrokkenOrgsVoorKetentest();
+      select.innerHTML = '<option value="">— kies —</option>' + betrokkenOrgs.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+    }
+
+    function vulKgUzoviOpties() {
+      const orgId = document.getElementById('kgOrgSelect').value;
+      const select = document.getElementById('kgUzoviSelect');
+      if (!orgId) { select.innerHTML = '<option value="">— eerst organisatie kiezen —</option>'; return; }
+      const codes = zorgkantoorcodes.filter(z => z.organisation_id === orgId);
+      if (!codes.length) { select.innerHTML = '<option value="">— geen UZOVI-codes bekend voor deze organisatie —</option>'; return; }
+      select.innerHTML = '<option value="">— kies —</option>' + codes.map(z => `<option value="${esc(z.code)}">${esc(z.code)}</option>`).join('');
+    }
+
+    async function voegKgUzoviAgbToe() {
+      const orgId = document.getElementById('kgOrgSelect').value;
+      const uzovi = document.getElementById('kgUzoviSelect').value;
+      const agb = document.getElementById('kgAgbInput').value.trim();
+
+      if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgUzoviAgb'); return; }
+      if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgUzoviAgb'); return; }
+      if (!/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet precies 8 cijfers zijn.', 'error', 'alertKgUzoviAgb'); return; }
+
+      const { data, error } = await sb.from('kerngegevens_uzovi_agb').insert({
+        ketentest_id: activeKetentest.id,
+        organisation_id: orgId,
+        uzovi_code: uzovi,
+        agb_code: agb,
+        created_by: currentUser?.id || null,
+      }).select().single();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgUzoviAgb'); return; }
+
+      kgUzoviAgbRijen.push(data);
+      document.getElementById('kgAgbInput').value = '';
+      renderKgUzoviAgbTable();
+      showAlert('Rij toegevoegd.', 'success', 'alertKgUzoviAgb');
+    }
+
+    function verwijderKgUzoviAgb(id) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = 'Deze rij verwijderen?';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kerngegevens_uzovi_agb').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        kgUzoviAgbRijen = kgUzoviAgbRijen.filter(r => r.id !== id);
+        renderKgUzoviAgbTable();
+      };
+      openModal('modalConfirm');
+    }
+
+    function renderKgUzoviAgbTable() {
+      const tb = document.getElementById('kgUzoviAgbTable');
+      if (!kgUzoviAgbRijen.length) {
+        tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen UZOVI-/AGB-codes toegevoegd.</p></div></td></tr>';
+        return;
+      }
+      const rijen = [...kgUzoviAgbRijen].sort((a, b) => {
+        const naamA = orgs.find(o => o.id === a.organisation_id)?.name || '';
+        const naamB = orgs.find(o => o.id === b.organisation_id)?.name || '';
+        return naamA.localeCompare(naamB);
+      });
+      tb.innerHTML = rijen.map(r => {
+        const org = orgs.find(o => o.id === r.organisation_id);
+        const k = org ? getOrgKleur(org.id, orgs) : { bg: '#f3f4f6', fg: '#6b7280' };
+        return `<tr>
+          <td><span class="org-pill" style="background:${k.bg}; color:${k.fg};">${esc(org?.name || 'Onbekend')}</span></td>
+          <td><strong>${esc(r.uzovi_code)}</strong></td>
+          <td>${esc(r.agb_code)}</td>
+          <td style="text-align:right;">
+            ${window.isPageAdmin ? `<button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderKgUzoviAgb('${r.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>` : ''}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    (async () => {
+      const user = await requireAuth();
+      if (!user) return;
+      const profile = await getUserProfile(user.id);
+      currentUser = user;
+      currentProfile = profile;
+      window.isPageAdmin = profile?.role === 'admin';
+
+      refreshGlobalNokBadge(profile?.organisation_id);
+      refreshGonogoBadge(profile?.organisation_id, profile?.role);
+      refreshMijnActiesBadge(profile?.organisation_id);
+      document.getElementById('navUser').textContent = profile?.name || user.email;
+      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
+      if (window.isPageAdmin) document.getElementById('adminLink').style.display = '';
+      const scenariosSlot = document.getElementById('navScenariosSlot');
+      if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(profile?.role, false);
+      updateKetentestHoofdlink(profile?.role, false);
+      const navDashboardLink = document.getElementById('navDashboardLink');
+      if (navDashboardLink && ['admin','manager'].includes(profile?.role)) navDashboardLink.style.display = '';
+
+      const result = await ensureActiveKetentest();
+      if (!result) return;
+      activeKetentest = result.active;
+
+      const scenarioIds = (await sb.from('scenarios').select('id').eq('ketentest_id', activeKetentest.id)).data?.map(s => s.id) || [];
+      const [o, a, zk, kg] = await Promise.all([
+        sb.from('organisations').select('*'),
+        scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
+        sb.from('organisatie_zorgkantoorcodes').select('*'),
+        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
+      ]);
+      orgs = o.data || [];
+      activities = a.data || [];
+      zorgkantoorcodes = zk.data || [];
+      kgUzoviAgbRijen = kg.data || [];
+
+      if (window.isPageAdmin) {
+        document.getElementById('kgUzoviAgbForm').style.display = '';
+        vulKgOrgSelect();
+      }
+      renderKgUzoviAgbTable();
+    })();
+
+    async function doLogout() {
+      await sb.auth.signOut();
+      window.location.href = 'index.html';
+    }
+  </script>
+
+  <!-- Modal: bevestiging -->
+  <div class="modal-overlay" id="modalConfirm" style="display:none;" onclick="closeModalOverlay(event,'modalConfirm')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header"><h3>Bevestigen</h3></div>
+      <div class="modal-body"><p id="confirmMsg"></p></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalConfirm')">Annuleren</button>
+        <button class="btn" style="background:var(--danger); color:#fff;" id="confirmBtn">Bevestigen</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ZIN Footer -->
+  <footer style="background:#39870c; margin-top:48px; padding:40px 24px;">
+    <div style="max-width:1100px; margin:0 auto; display:grid; grid-template-columns:1fr 1fr 1fr; gap:32px; align-items:start;">
+      <div>
+        <p style="font-size:20px; font-style:italic; color:#fff; font-weight:400; line-height:1.5;">Ketentest platform voor het<br>Bemiddelingsregister</p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Service</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Zorginstituut Nederland<br>
+          <a href="https://www.istandaarden.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">iStandaarden</a><br>
+          <a href="https://www.zinl.nl" style="color:rgba(255,255,255,0.85); text-decoration:none;">zinl.nl</a>
+        </p>
+      </div>
+      <div>
+        <p style="font-size:14px; font-weight:600; color:#fff; margin-bottom:12px;">Over deze tool</p>
+        <p style="font-size:13px; color:rgba(255,255,255,0.85); line-height:2;">
+          Ketentest Bemiddelingsregister<br>
+          Versie 0.9<br>
+          <a href="releasenotes.html" style="color:rgba(255,255,255,0.85); text-decoration:none;">Releasenotes</a>
+        </p>
+      </div>
+    </div>
+    <div style="max-width:1100px; margin:24px auto 0; padding-top:16px; border-top:1px solid rgba(255,255,255,0.2);">
+      <p style="font-size:12px; color:rgba(255,255,255,0.6);">© Zorginstituut Nederland</p>
+    </div>
+  </footer>
+
+</body>
+</html>
