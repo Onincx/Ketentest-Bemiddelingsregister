@@ -81,6 +81,7 @@
     <div class="tab-bar" style="margin-bottom:20px;">
       <button class="tab-btn active" id="kg-tab-btn-uzoviagb" onclick="showKgTab('uzoviagb')">UZOVI en AGB-codes</button>
       <button class="tab-btn" id="kg-tab-btn-postcodes" onclick="showKgTab('postcodes')">White listed postcodes</button>
+      <button class="tab-btn" id="kg-tab-btn-bsn" onclick="showKgTab('bsn')">Fictieve BSN's</button>
     </div>
 
     <!-- SUBTAB: UZOVI en AGB-codes -->
@@ -187,6 +188,27 @@
         </div>
       </div>
     </div>
+
+    <!-- SUBTAB: Fictieve BSN's -->
+    <div id="kg-tab-bsn" style="display:none;">
+      <div id="kgBsnForm" class="card" style="padding:18px 20px; margin-bottom:20px; display:none;">
+        <p class="eyebrow" style="margin-bottom:6px;">Lijst uploaden per organisatie</p>
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">Kies een organisatie en plak de fictieve BSN's, één per regel (of gescheiden door spaties/komma's) — bijvoorbeeld zo'n 100 stuks tegelijk. Elk BSN moet precies 9 cijfers zijn. Reeds bestaande BSN's voor deze organisatie worden overgeslagen.</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+          <div style="min-width:260px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Organisatie</label>
+            <select id="kgBsnOrgSelect" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— kies —</option>
+            </select>
+          </div>
+        </div>
+        <textarea id="kgBsnTextarea" placeholder="123456789&#10;234567890&#10;345678901&#10;..." style="width:100%; min-height:140px; font-family:monospace; font-size:13px; padding:10px; border:1px solid var(--border); border-radius:6px; margin-bottom:10px;"></textarea>
+        <button class="btn btn-primary" onclick="uploadKgBsnLijst()">Uploaden</button>
+        <div id="alertKgBsn" class="alert" style="display:none; margin-top:12px;"></div>
+      </div>
+
+      <div id="kgBsnOverzicht"></div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -196,20 +218,22 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
-      ['alertKgUzoviAgb', 'alertKgEdit', 'alertKgPostcodes', 'alertKgPcEdit'].forEach(a => {
+      ['alertKgUzoviAgb', 'alertKgEdit', 'alertKgPostcodes', 'alertKgPcEdit', 'alertKgBsn'].forEach(a => {
         const el = document.getElementById(a);
         if (el) el.style.display = 'none';
       });
     }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
     let currentUser = null, currentProfile = null, activeKetentest = null;
-    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [];
+    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [], kgBsnRijen = [];
 
     function showKgTab(tab) {
       document.getElementById('kg-tab-uzoviagb').style.display = tab === 'uzoviagb' ? '' : 'none';
       document.getElementById('kg-tab-btn-uzoviagb').classList.toggle('active', tab === 'uzoviagb');
       document.getElementById('kg-tab-postcodes').style.display = tab === 'postcodes' ? '' : 'none';
       document.getElementById('kg-tab-btn-postcodes').classList.toggle('active', tab === 'postcodes');
+      document.getElementById('kg-tab-bsn').style.display = tab === 'bsn' ? '' : 'none';
+      document.getElementById('kg-tab-btn-bsn').classList.toggle('active', tab === 'bsn');
     }
 
     function betrokkenOrgsVoorKetentest() {
@@ -498,6 +522,125 @@
       }).join('');
     }
 
+    // ---- FICTIEVE BSN'S (bulk-upload per organisatie) ----
+    function vulKgBsnOrgSelect() {
+      const select = document.getElementById('kgBsnOrgSelect');
+      const betrokkenOrgs = betrokkenOrgsVoorKetentest();
+      select.innerHTML = '<option value="">— kies —</option>' + betrokkenOrgs.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+    }
+
+    async function uploadKgBsnLijst() {
+      const orgId = document.getElementById('kgBsnOrgSelect').value;
+      const ruweTekst = document.getElementById('kgBsnTextarea').value;
+
+      if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgBsn'); return; }
+
+      // Splits op regels, spaties, komma's en puntkomma's; lege stukken eruit.
+      const kandidaten = ruweTekst.split(/[\s,;]+/).map(s => s.trim()).filter(Boolean);
+      if (!kandidaten.length) { showAlert('Plak minstens 1 BSN.', 'error', 'alertKgBsn'); return; }
+
+      const geldig = [];
+      const ongeldig = [];
+      const gezien = new Set();
+      kandidaten.forEach(bsn => {
+        if (!/^[0-9]{9}$/.test(bsn)) { ongeldig.push(bsn); return; }
+        if (gezien.has(bsn)) return; // dubbel binnen de plak zelf, stilzwijgend overslaan
+        gezien.add(bsn);
+        geldig.push(bsn);
+      });
+
+      if (!geldig.length) {
+        showAlert(`Geen enkele geldige regel gevonden (moet precies 9 cijfers zijn). Ongeldig: ${ongeldig.slice(0, 5).join(', ')}${ongeldig.length > 5 ? ', ...' : ''}`, 'error', 'alertKgBsn');
+        return;
+      }
+
+      // Al bestaande BSN's voor deze organisatie overslaan (voorkomt een
+      // fout op de unieke-combinatie-check bij opnieuw uploaden van een
+      // deels overlappende lijst).
+      const bestaandeBsns = new Set(kgBsnRijen.filter(r => r.organisation_id === orgId).map(r => r.bsn));
+      const nieuw = geldig.filter(bsn => !bestaandeBsns.has(bsn));
+      const overgeslagen = geldig.length - nieuw.length;
+
+      if (!nieuw.length) {
+        showAlert('Alle geldige BSN\'s stonden al in de lijst van deze organisatie.', 'error', 'alertKgBsn');
+        return;
+      }
+
+      const { data, error } = await sb.from('kerngegevens_fictieve_bsn').insert(
+        nieuw.map(bsn => ({ ketentest_id: activeKetentest.id, organisation_id: orgId, bsn, created_by: currentUser?.id || null }))
+      ).select();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgBsn'); return; }
+
+      kgBsnRijen.push(...data);
+      document.getElementById('kgBsnTextarea').value = '';
+      renderKgBsnOverzicht();
+
+      const meldingDelen = [`${data.length} BSN${data.length !== 1 ? "'s" : ''} toegevoegd.`];
+      if (overgeslagen > 0) meldingDelen.push(`${overgeslagen} stond${overgeslagen !== 1 ? 'en' : ''} al in de lijst en ${overgeslagen !== 1 ? 'zijn' : 'is'} overgeslagen.`);
+      if (ongeldig.length > 0) meldingDelen.push(`${ongeldig.length} regel${ongeldig.length !== 1 ? 's waren' : ' was'} ongeldig (geen 9 cijfers) en ${ongeldig.length !== 1 ? 'zijn' : 'is'} genegeerd.`);
+      showAlert(meldingDelen.join(' '), ongeldig.length ? 'error' : 'success', 'alertKgBsn');
+    }
+
+    function verwijderKgBsn(id) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = 'Dit BSN verwijderen?';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kerngegevens_fictieve_bsn').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        kgBsnRijen = kgBsnRijen.filter(r => r.id !== id);
+        renderKgBsnOverzicht();
+      };
+      openModal('modalConfirm');
+    }
+
+    function verwijderAlleKgBsnVoorOrg(orgId, orgNaam) {
+      if (!window.isPageAdmin) return;
+      const aantal = kgBsnRijen.filter(r => r.organisation_id === orgId).length;
+      document.getElementById('confirmMsg').textContent = `Alle ${aantal} fictieve BSN's van "${orgNaam}" verwijderen?`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kerngegevens_fictieve_bsn').delete().eq('ketentest_id', activeKetentest.id).eq('organisation_id', orgId);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        kgBsnRijen = kgBsnRijen.filter(r => r.organisation_id !== orgId);
+        renderKgBsnOverzicht();
+      };
+      openModal('modalConfirm');
+    }
+
+    // Compacte weergave per organisatie (chips) — een volle tabel met
+    // tot wel honderden rijen per organisatie zou onwerkbaar lang worden.
+    function renderKgBsnOverzicht() {
+      const el = document.getElementById('kgBsnOverzicht');
+      const orgIdsMetBsn = [...new Set(kgBsnRijen.map(r => r.organisation_id))];
+      if (!orgIdsMetBsn.length) {
+        el.innerHTML = '<div class="card" style="padding:0;"><div class="empty-state"><p>Nog geen fictieve BSN\'s geüpload.</p></div></div>';
+        return;
+      }
+      const relevantOrgs = orgs.filter(o => orgIdsMetBsn.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
+
+      el.innerHTML = relevantOrgs.map(org => {
+        const k = getOrgKleur(org.id, orgs);
+        const bsnsVoorOrg = kgBsnRijen.filter(r => r.organisation_id === org.id).sort((a, b) => a.bsn.localeCompare(b.bsn));
+        return `<div style="margin-bottom:20px;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <span style="display:inline-block; background:${k.bg}; color:${k.fg}; border-radius:99px; padding:3px 14px; font-size:12px; font-weight:700;">${esc(org.name)}</span>
+              <span style="font-size:13px; color:var(--text-muted);">${bsnsVoorOrg.length} BSN${bsnsVoorOrg.length !== 1 ? "'s" : ''}</span>
+            </div>
+            ${window.isPageAdmin ? `<button class="btn btn-ghost btn-sm" style="color:var(--danger); font-size:12px;" onclick="verwijderAlleKgBsnVoorOrg('${org.id}','${esc(org.name).replace(/'/g, "\\'")}')">Alles verwijderen</button>` : ''}
+          </div>
+          <div class="card" style="padding:14px 16px; display:flex; flex-wrap:wrap; gap:6px;">
+            ${bsnsVoorOrg.map(r => `<span style="display:inline-flex; align-items:center; gap:6px; background:var(--surface); border:1px solid var(--border); border-radius:6px; padding:3px 6px 3px 10px; font-family:monospace; font-size:12.5px;">
+              ${esc(r.bsn)}
+              ${window.isPageAdmin ? `<button onclick="verwijderKgBsn('${r.id}')" title="Verwijderen" style="background:none; border:none; cursor:pointer; color:var(--text-muted); padding:2px; display:flex; align-items:center;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+            </span>`).join('')}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
     (async () => {
       const user = await requireAuth();
       if (!user) return;
@@ -523,27 +666,32 @@
       activeKetentest = result.active;
 
       const scenarioIds = (await sb.from('scenarios').select('id').eq('ketentest_id', activeKetentest.id)).data?.map(s => s.id) || [];
-      const [o, a, zk, kg, pc] = await Promise.all([
+      const [o, a, zk, kg, pc, bsn] = await Promise.all([
         sb.from('organisations').select('*'),
         scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
         sb.from('organisatie_zorgkantoorcodes').select('*'),
         sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
         sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
+        fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', activeKetentest.id).range(from, to)),
       ]);
       orgs = o.data || [];
       activities = a.data || [];
       zorgkantoorcodes = zk.data || [];
       kgUzoviAgbRijen = kg.data || [];
       kgPostcodeRijen = pc.data || [];
+      kgBsnRijen = bsn.data || [];
 
       if (window.isPageAdmin) {
         document.getElementById('kgUzoviAgbForm').style.display = '';
         vulKgOrgSelect();
         document.getElementById('kgPostcodesForm').style.display = '';
         vulKgPcOrgSelect();
+        document.getElementById('kgBsnForm').style.display = '';
+        vulKgBsnOrgSelect();
       }
       renderKgUzoviAgbTable();
       renderKgPostcodesTable();
+      renderKgBsnOverzicht();
     })();
 
     async function doLogout() {
