@@ -141,6 +141,12 @@
 
     <!-- SUBTAB: White listed postcodes -->
     <div id="kg-tab-postcodes" style="display:none;">
+      <div style="display:flex; justify-content:flex-end; margin-bottom:16px;">
+        <button class="btn btn-outline" onclick="exporteerPostcodes()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Exporteer naar Excel
+        </button>
+      </div>
       <div id="kgPostcodesForm" class="card" style="padding:18px 20px; margin-bottom:20px; display:none;">
         <p class="eyebrow" style="margin-bottom:12px;">Rij toevoegen</p>
         <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
@@ -228,6 +234,7 @@
             <thead>
               <tr>
                 <th>Scenario</th>
+                <th>Fictief BSN</th>
                 <th>Datum afgifte</th>
                 <th>Datum ingang</th>
                 <th>UZOVI</th>
@@ -243,7 +250,7 @@
                 <th>VoorkeurAanbieder</th>
               </tr>
             </thead>
-            <tbody id="kgIndicatieTable"><tr><td colspan="14" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <tbody id="kgIndicatieTable"><tr><td colspan="15" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -563,6 +570,24 @@
       }).join('');
     }
 
+    function exporteerPostcodes() {
+      if (!kgPostcodeRijen.length) { showAlert('Er zijn geen white listed postcodes om te exporteren.', 'error'); return; }
+      const rows = [...kgPostcodeRijen]
+        .sort((a, b) => (orgs.find(o => o.id === a.organisation_id)?.name || '').localeCompare(orgs.find(o => o.id === b.organisation_id)?.name || ''))
+        .map(r => ({
+          Organisatie: orgs.find(o => o.id === r.organisation_id)?.name || '',
+          'UZOVI-code': r.uzovi_code,
+          Postcode: r.postcode,
+          Plaats: r.plaats,
+          Adres: r.adres,
+        }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws['!cols'] = [{ wch: 26 }, { wch: 12 }, { wch: 10 }, { wch: 18 }, { wch: 26 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'White listed postcodes');
+      XLSX.writeFile(wb, `white-listed-postcodes-${new Date().toISOString().slice(0, 10)}.xlsx`);
+    }
+
     // ---- FICTIEVE BSN'S (bulk-upload per organisatie) ----
     function vulKgBsnOrgSelect() {
       const select = document.getElementById('kgBsnOrgSelect');
@@ -686,7 +711,7 @@
     function renderKgIndicatieTable() {
       const tb = document.getElementById('kgIndicatieTable');
       if (!indicatiebesluiten.length) {
-        tb.innerHTML = '<tr><td colspan="14"><div class="empty-state"><p>Nog geen indicatiebesluiten ingevuld.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="15"><div class="empty-state"><p>Nog geen indicatiebesluiten ingevuld.</p></div></td></tr>';
         return;
       }
       const fmtDatum = d => d ? new Date(d).toLocaleDateString('nl-NL') : '—';
@@ -699,6 +724,7 @@
         const scenario = scenarios.find(s => s.id === r.scenario_id);
         return `<tr>
           <td><strong>${esc(scenario?.code || 'Onbekend')}</strong></td>
+          <td>${esc(r.fictief_bsn || '—')}</td>
           <td>${fmtDatum(r.datum_afgifte)}</td>
           <td>${fmtDatum(r.datum_ingang)}</td>
           <td>${esc(r.uzovi || '—')}</td>
@@ -722,6 +748,7 @@
         const scenario = scenarios.find(s => s.id === r.scenario_id);
         return {
           Scenario: scenario?.code || '',
+          'Fictief BSN': r.fictief_bsn || '',
           'Datum afgifte': r.datum_afgifte || '',
           'Datum ingang': r.datum_ingang || '',
           UZOVI: r.uzovi || '',
@@ -738,7 +765,7 @@
         };
       });
       const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Indicatiebesluiten');
       const datumStamp = new Date().toISOString().slice(0, 10);
