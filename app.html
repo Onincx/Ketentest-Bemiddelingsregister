@@ -1599,6 +1599,7 @@
           style="border-left-color: ${tileColor.bg};">
           <span class="sc-row-code" style="color:${tileColor.bg};">${s.code}</span>
           <span class="sc-row-title">${s.title}</span>
+          ${isStartVanFlow(s.id) ? `<span style="flex-shrink:0; display:inline-flex; align-items:center; gap:3px; background:#ede9fe; color:#5b21b6; border:1px solid #ddd6fe; border-radius:99px; padding:1px 9px; font-size:10.5px; font-weight:700;" title="Dit scenario is het startscenario van een flow">🚩 Start</span>` : ''}
           <span class="badge badge-${status}" style="flex-shrink:0;">${statusLabel}</span>
           <div class="sc-row-flow">${scenarioFlowMap[s.id] ? `<a href="flow.html?flow=${scenarioFlowMap[s.id].id}" target="_blank" onclick="event.stopPropagation()" title="Open flow: ${flowLabel(scenarioFlowMap[s.id])}">🔗 Flow ${scenarioFlowMap[s.id].nummer}</a>` : ''}</div>
           <div class="sc-row-bar-wrap">
