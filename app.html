@@ -454,6 +454,11 @@
     // vaak geen zorgkantoor. Zoek in volgorde de eerste activiteit
     // waarvan de verantwoordelijke organisatie daadwerkelijk
     // zorgkantoorcodes heeft.
+    function toggleKenmerkEditMode(key, scenarioId, aan) {
+      if (aan) kenmerkEditMode.add(key); else kenmerkEditMode.delete(key);
+      rerenderScenario(scenarioId);
+    }
+
     function bepaalVerantwZorgkantoorOrgId(scenarioId) {
       const activiteitenOpVolgorde = activities.filter(a => a.scenario_id === scenarioId).sort((a, b) => a.sort_order - b.sort_order);
       for (const a of activiteitenOpVolgorde) {
@@ -616,6 +621,66 @@
     // Clientnaam/zorgkantoor/flow-overerving — gewoon een simpel blok
     // dat maximaal 1x per scenario voorkomt. Toont zichzelf niet als er
     // bij Beheer nog geen enkel veld voor deze groep is aangemaakt.
+    // Waarden van een instantie (bijv. een specifieke 'Toewijzing 1')
+    // ophalen als { kenmerk_definitie_id: waarde }-object.
+    function getWaardenVoorInstantie(instantieId) {
+      const waarden = {};
+      scenarioKenmerkWaarden.filter(w => w.instantie_id === instantieId).forEach(w => { waarden[w.kenmerk_definitie_id] = w.waarde; });
+      return waarden;
+    }
+
+    function heeftIngevuldeWaarden(waarden) {
+      return Object.values(waarden).some(w => w && String(w).trim());
+    }
+
+    // Rendert één invoerveld voor een kenmerk-definitie, afhankelijk van
+    // het veldtype. 'extraZorgkantoorCodes' wordt alleen door 'Algemeen'-
+    // achtige aanroepen gevuld voor veldtype 'zorgkantoorcode'; overige
+    // aanroepers geven hier gewoon [] door.
+    function renderKenmerkVeld(d, waarde, betrokken, extraZorgkantoorCodes) {
+      const labelStijl = 'font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.03em; display:flex; align-items:flex-end; min-height:26px; margin-bottom:2px; line-height:1.2;';
+      const veldStijl = 'width:100%; padding:6px 8px; border:1px solid var(--border); border-radius:6px; font-size:13px;';
+      const disabled = betrokken ? '' : 'disabled';
+
+      let inputHtml;
+      if (d.veldtype === 'datum') {
+        inputHtml = `<input type="date" data-kenmerk-id="${d.id}" value="${waarde || ''}" style="${veldStijl}" ${disabled}>`;
+      } else if (d.veldtype === 'keuzelijst') {
+        const opties = d.keuzelijst_waarden || [];
+        inputHtml = `<select data-kenmerk-id="${d.id}" style="${veldStijl}" ${disabled}>
+          <option value="">— kies —</option>
+          ${opties.map(o => `<option value="${esc(o)}" ${o === waarde ? 'selected' : ''}>${esc(o)}</option>`).join('')}
+        </select>`;
+      } else if (d.veldtype === 'zorgkantoorcode') {
+        if (!extraZorgkantoorCodes || !extraZorgkantoorCodes.length) {
+          inputHtml = `<div style="${veldStijl} background:var(--surface); color:var(--text-muted); font-style:italic; font-size:12px;">Geen zorgkantoorcodes bekend voor de verantwoordelijke organisatie</div>`;
+        } else {
+          inputHtml = `<select data-kenmerk-id="${d.id}" style="${veldStijl}" ${disabled}>
+            <option value="">— kies —</option>
+            ${extraZorgkantoorCodes.map(z => `<option value="${esc(z.code)}" ${z.code === waarde ? 'selected' : ''}>${esc(z.code)}</option>`).join('')}
+          </select>`;
+        }
+      } else if (d.veldtype === 'numeriek') {
+        inputHtml = `<input type="text" data-kenmerk-id="${d.id}" data-lengte="${d.validatie_lengte || ''}" data-elfproef="${d.validatie_elfproef ? '1' : '0'}" maxlength="${d.validatie_lengte || ''}" value="${esc(waarde || '')}" style="${veldStijl}" ${disabled}>`;
+      } else {
+        inputHtml = `<input type="text" data-kenmerk-id="${d.id}" value="${esc(waarde || '')}" style="${veldStijl}" ${disabled}>`;
+      }
+
+      return `<div style="width:190px;">
+        <label style="${labelStijl}">${esc(d.naam)}</label>
+        ${inputHtml}
+      </div>`;
+    }
+
+    // Compacte, alleen-lezen samenvatting van de ingevulde velden van een
+    // instantie — gebruikt in de ingeklapte weergave van een blok.
+    function renderKenmerkCompact(definities, waarden) {
+      return definities
+        .filter(d => waarden[d.id])
+        .map(d => `<span style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${esc(d.naam)}: <strong style="color:var(--text);">${esc(waarden[d.id])}</strong></span>`)
+        .join('');
+    }
+
     function renderEenmaligBlok(scenarioId, groep, titel) {
       const definities = kenmerkDefinities.filter(d => d.groep === groep).sort((a, b) => (a.volgorde ?? 0) - (b.volgorde ?? 0));
       if (!definities.length) return '';
