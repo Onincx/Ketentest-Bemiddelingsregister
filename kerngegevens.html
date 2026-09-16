@@ -80,6 +80,7 @@
          stuk toegevoegd wanneer nodig. -->
     <div class="tab-bar" style="margin-bottom:20px;">
       <button class="tab-btn active" id="kg-tab-btn-uzoviagb" onclick="showKgTab('uzoviagb')">UZOVI en AGB-codes</button>
+      <button class="tab-btn" id="kg-tab-btn-postcodes" onclick="showKgTab('postcodes')">White listed postcodes</button>
     </div>
 
     <!-- SUBTAB: UZOVI en AGB-codes -->
@@ -133,6 +134,59 @@
         </div>
       </div>
     </div>
+
+    <!-- SUBTAB: White listed postcodes -->
+    <div id="kg-tab-postcodes" style="display:none;">
+      <div id="kgPostcodesForm" class="card" style="padding:18px 20px; margin-bottom:20px; display:none;">
+        <p class="eyebrow" style="margin-bottom:12px;">Rij toevoegen</p>
+        <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+          <div style="min-width:220px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Organisatie</label>
+            <select id="kgPcOrgSelect" onchange="vulKgPcUzoviOpties()" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— kies —</option>
+            </select>
+          </div>
+          <div style="min-width:200px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">UZOVI-code</label>
+            <select id="kgPcUzoviSelect" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+              <option value="">— eerst organisatie kiezen —</option>
+            </select>
+          </div>
+          <div style="min-width:120px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Postcode</label>
+            <input type="text" id="kgPcPostcodeInput" maxlength="6" placeholder="1111AA" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          </div>
+          <div style="min-width:160px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Plaats</label>
+            <input type="text" id="kgPcPlaatsInput" placeholder="Bijv. Utrecht" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          </div>
+          <div style="min-width:220px;">
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">Adres</label>
+            <input type="text" id="kgPcAdresInput" placeholder="Bijv. Hoofdstraat 1" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
+          </div>
+          <button class="btn btn-primary" onclick="voegKgPostcodeToe()">Toevoegen</button>
+        </div>
+        <div id="alertKgPostcodes" class="alert" style="display:none; margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="padding:0;">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Organisatie</th>
+                <th>UZOVI-code</th>
+                <th>Postcode</th>
+                <th>Plaats</th>
+                <th>Adres</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="kgPostcodesTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -142,21 +196,20 @@
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
-      ['alertKgUzoviAgb', 'alertKgEdit'].forEach(a => {
+      ['alertKgUzoviAgb', 'alertKgEdit', 'alertKgPostcodes', 'alertKgPcEdit'].forEach(a => {
         const el = document.getElementById(a);
         if (el) el.style.display = 'none';
       });
     }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
     let currentUser = null, currentProfile = null, activeKetentest = null;
-    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [];
+    let orgs = [], activities = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [];
 
     function showKgTab(tab) {
-      // Nu nog maar 1 tab; deze functie bestaat al wel zodat een
-      // volgende sectie er straks eenvoudig bij kan (zelfde patroon als
-      // elders in de tool: knop + div per sectie, hier aan toevoegen).
       document.getElementById('kg-tab-uzoviagb').style.display = tab === 'uzoviagb' ? '' : 'none';
       document.getElementById('kg-tab-btn-uzoviagb').classList.toggle('active', tab === 'uzoviagb');
+      document.getElementById('kg-tab-postcodes').style.display = tab === 'postcodes' ? '' : 'none';
+      document.getElementById('kg-tab-btn-postcodes').classList.toggle('active', tab === 'postcodes');
     }
 
     function betrokkenOrgsVoorKetentest() {
@@ -303,6 +356,148 @@
       }).join('');
     }
 
+    // ---- WHITE LISTED POSTCODES (zelfde werking als UZOVI/AGB) ----
+    function vulKgPcOrgSelect() {
+      const select = document.getElementById('kgPcOrgSelect');
+      const betrokkenOrgs = betrokkenOrgsVoorKetentest();
+      select.innerHTML = '<option value="">— kies —</option>' + betrokkenOrgs.map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+    }
+
+    function vulKgPcUzoviOpties() {
+      const orgId = document.getElementById('kgPcOrgSelect').value;
+      const select = document.getElementById('kgPcUzoviSelect');
+      if (!orgId) { select.innerHTML = '<option value="">— eerst organisatie kiezen —</option>'; return; }
+      const codes = zorgkantoorcodes.filter(z => z.organisation_id === orgId);
+      if (!codes.length) { select.innerHTML = '<option value="">— geen UZOVI-codes bekend voor deze organisatie —</option>'; return; }
+      select.innerHTML = '<option value="">— kies —</option>' + codes.map(z => `<option value="${esc(z.code)}">${esc(z.code)}</option>`).join('');
+    }
+
+    function normaliseerPostcode(pc) { return pc.trim().toUpperCase().replace(/\s+/g, ''); }
+
+    async function voegKgPostcodeToe() {
+      const orgId = document.getElementById('kgPcOrgSelect').value;
+      const uzovi = document.getElementById('kgPcUzoviSelect').value;
+      const postcode = normaliseerPostcode(document.getElementById('kgPcPostcodeInput').value);
+      const plaats = document.getElementById('kgPcPlaatsInput').value.trim();
+      const adres = document.getElementById('kgPcAdresInput').value.trim();
+
+      if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgPostcodes'); return; }
+      if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgPostcodes'); return; }
+      if (!/^[0-9]{4}[A-Z]{2}$/.test(postcode)) { showAlert('Postcode moet het formaat 1111AA hebben.', 'error', 'alertKgPostcodes'); return; }
+      if (!plaats) { showAlert('Vul een plaats in.', 'error', 'alertKgPostcodes'); return; }
+      if (!adres) { showAlert('Vul een adres in.', 'error', 'alertKgPostcodes'); return; }
+
+      const { data, error } = await sb.from('kerngegevens_whitelist_postcodes').insert({
+        ketentest_id: activeKetentest.id,
+        organisation_id: orgId,
+        uzovi_code: uzovi,
+        postcode, plaats, adres,
+        created_by: currentUser?.id || null,
+      }).select().single();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgPostcodes'); return; }
+
+      kgPostcodeRijen.push(data);
+      document.getElementById('kgPcPostcodeInput').value = '';
+      document.getElementById('kgPcPlaatsInput').value = '';
+      document.getElementById('kgPcAdresInput').value = '';
+      renderKgPostcodesTable();
+      showAlert('Rij toegevoegd.', 'success', 'alertKgPostcodes');
+    }
+
+    function verwijderKgPostcode(id) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = 'Deze rij verwijderen?';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kerngegevens_whitelist_postcodes').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        kgPostcodeRijen = kgPostcodeRijen.filter(r => r.id !== id);
+        renderKgPostcodesTable();
+      };
+      openModal('modalConfirm');
+    }
+
+    function openKgPcEditModal(id) {
+      if (!window.isPageAdmin) return;
+      const r = kgPostcodeRijen.find(x => x.id === id);
+      if (!r) return;
+      document.getElementById('kgPcEditId').value = r.id;
+      const betrokkenOrgs = betrokkenOrgsVoorKetentest();
+      document.getElementById('kgPcEditOrgSelect').innerHTML = betrokkenOrgs.map(o => `<option value="${o.id}" ${o.id === r.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+      vulKgPcEditUzoviOpties(r.uzovi_code);
+      document.getElementById('kgPcEditPostcodeInput').value = r.postcode;
+      document.getElementById('kgPcEditPlaatsInput').value = r.plaats;
+      document.getElementById('kgPcEditAdresInput').value = r.adres;
+      document.getElementById('alertKgPcEdit').style.display = 'none';
+      openModal('modalKgPcEdit');
+    }
+
+    function vulKgPcEditUzoviOpties(geselecteerdeCode) {
+      const orgId = document.getElementById('kgPcEditOrgSelect').value;
+      const select = document.getElementById('kgPcEditUzoviSelect');
+      const codes = zorgkantoorcodes.filter(z => z.organisation_id === orgId);
+      if (!codes.length) { select.innerHTML = '<option value="">— geen UZOVI-codes bekend voor deze organisatie —</option>'; return; }
+      select.innerHTML = codes.map(z => `<option value="${esc(z.code)}" ${z.code === geselecteerdeCode ? 'selected' : ''}>${esc(z.code)}</option>`).join('');
+    }
+
+    async function saveKgPcEdit() {
+      const id = document.getElementById('kgPcEditId').value;
+      const orgId = document.getElementById('kgPcEditOrgSelect').value;
+      const uzovi = document.getElementById('kgPcEditUzoviSelect').value;
+      const postcode = normaliseerPostcode(document.getElementById('kgPcEditPostcodeInput').value);
+      const plaats = document.getElementById('kgPcEditPlaatsInput').value.trim();
+      const adres = document.getElementById('kgPcEditAdresInput').value.trim();
+
+      if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgPcEdit'); return; }
+      if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgPcEdit'); return; }
+      if (!/^[0-9]{4}[A-Z]{2}$/.test(postcode)) { showAlert('Postcode moet het formaat 1111AA hebben.', 'error', 'alertKgPcEdit'); return; }
+      if (!plaats) { showAlert('Vul een plaats in.', 'error', 'alertKgPcEdit'); return; }
+      if (!adres) { showAlert('Vul een adres in.', 'error', 'alertKgPcEdit'); return; }
+
+      const { data, error } = await sb.from('kerngegevens_whitelist_postcodes')
+        .update({ organisation_id: orgId, uzovi_code: uzovi, postcode, plaats, adres })
+        .eq('id', id).select().single();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgPcEdit'); return; }
+
+      const idx = kgPostcodeRijen.findIndex(r => r.id === id);
+      if (idx !== -1) kgPostcodeRijen[idx] = data;
+      closeModal('modalKgPcEdit');
+      renderKgPostcodesTable();
+      showAlert('Rij bijgewerkt.', 'success');
+    }
+
+    function renderKgPostcodesTable() {
+      const tb = document.getElementById('kgPostcodesTable');
+      if (!kgPostcodeRijen.length) {
+        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>Nog geen white listed postcodes toegevoegd.</p></div></td></tr>';
+        return;
+      }
+      const rijen = [...kgPostcodeRijen].sort((a, b) => {
+        const naamA = orgs.find(o => o.id === a.organisation_id)?.name || '';
+        const naamB = orgs.find(o => o.id === b.organisation_id)?.name || '';
+        return naamA.localeCompare(naamB);
+      });
+      tb.innerHTML = rijen.map(r => {
+        const org = orgs.find(o => o.id === r.organisation_id);
+        const k = org ? getOrgKleur(org.id, orgs) : { bg: '#f3f4f6', fg: '#6b7280' };
+        return `<tr>
+          <td><span class="org-pill" style="background:${k.bg}; color:${k.fg};">${esc(org?.name || 'Onbekend')}</span></td>
+          <td><strong>${esc(r.uzovi_code)}</strong></td>
+          <td>${esc(r.postcode)}</td>
+          <td>${esc(r.plaats)}</td>
+          <td>${esc(r.adres)}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            ${window.isPageAdmin ? `
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="openKgPcEditModal('${r.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+              <button class="btn btn-ghost btn-sm btn-icon" onclick="verwijderKgPostcode('${r.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>
+            ` : ''}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
     (async () => {
       const user = await requireAuth();
       if (!user) return;
@@ -328,22 +523,27 @@
       activeKetentest = result.active;
 
       const scenarioIds = (await sb.from('scenarios').select('id').eq('ketentest_id', activeKetentest.id)).data?.map(s => s.id) || [];
-      const [o, a, zk, kg] = await Promise.all([
+      const [o, a, zk, kg, pc] = await Promise.all([
         sb.from('organisations').select('*'),
         scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
         sb.from('organisatie_zorgkantoorcodes').select('*'),
         sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
+        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
       ]);
       orgs = o.data || [];
       activities = a.data || [];
       zorgkantoorcodes = zk.data || [];
       kgUzoviAgbRijen = kg.data || [];
+      kgPostcodeRijen = pc.data || [];
 
       if (window.isPageAdmin) {
         document.getElementById('kgUzoviAgbForm').style.display = '';
         vulKgOrgSelect();
+        document.getElementById('kgPostcodesForm').style.display = '';
+        vulKgPcOrgSelect();
       }
       renderKgUzoviAgbTable();
+      renderKgPostcodesTable();
     })();
 
     async function doLogout() {
@@ -385,6 +585,44 @@
       <div class="modal-footer">
         <button class="btn btn-outline" onclick="closeModal('modalKgEdit')">Annuleren</button>
         <button class="btn btn-primary" onclick="saveKgEdit()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: postcode-rij bewerken -->
+  <div class="modal-overlay" id="modalKgPcEdit" style="display:none;" onclick="closeModalOverlay(event,'modalKgPcEdit')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Rij bewerken</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKgPcEdit')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kgPcEditId">
+        <div class="form-group">
+          <label>Organisatie</label>
+          <select id="kgPcEditOrgSelect" onchange="vulKgPcEditUzoviOpties()"></select>
+        </div>
+        <div class="form-group">
+          <label>UZOVI-code</label>
+          <select id="kgPcEditUzoviSelect"></select>
+        </div>
+        <div class="form-group">
+          <label>Postcode</label>
+          <input type="text" id="kgPcEditPostcodeInput" maxlength="6" placeholder="1111AA">
+        </div>
+        <div class="form-group">
+          <label>Plaats</label>
+          <input type="text" id="kgPcEditPlaatsInput">
+        </div>
+        <div class="form-group">
+          <label>Adres</label>
+          <input type="text" id="kgPcEditAdresInput">
+        </div>
+        <div id="alertKgPcEdit" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKgPcEdit')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKgPcEdit()">Opslaan</button>
       </div>
     </div>
   </div>
