@@ -1706,19 +1706,7 @@
               </thead>
               <tbody>
                 ${notifs.map(n => {
-                  // Gebruik scanresultaten als beschikbaar, anders live zoeken
-                  let matchingScenarios, verantwoordelijkeOrgIds;
-                  if (window._scanResults && window._scanResults[n.naam] !== undefined) {
-                    const codes = window._scanResults[n.naam].scenarios;
-                    matchingScenarios = scenarios.filter(s => codes.includes(s.code));
-                    verantwoordelijkeOrgIds = [...window._scanResults[n.naam].orgIds];
-                  } else {
-                    const pat = buildPattern(n.naam);
-                    const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
-                    const matchendeScenarioIds = new Set(matchendeActiviteiten.map(a => a.scenario_id));
-                    matchingScenarios = scenarios.filter(s => matchendeScenarioIds.has(s.id));
-                    verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.flatMap(a => [a.organisation_id, a.acceptant_org_id]).filter(Boolean))];
-                  }
+                  const { matchingScenarios, verantwoordelijkeOrgIds } = verzamelNotificatieGebruik([n])[0];
                   const verantwoordelijkeOrgs = orgs.filter(o => verantwoordelijkeOrgIds.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
                   const count = matchingScenarios.length;
                   const inUse = count > 0;
