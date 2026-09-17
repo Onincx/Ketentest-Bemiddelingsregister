@@ -105,7 +105,7 @@
             </select>
           </div>
           <div style="min-width:160px;">
-            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">AGB-code (8 cijfers)</label>
+            <label style="font-size:12px; font-weight:600; color:var(--text-muted); display:block; margin-bottom:4px;">AGB-code (optioneel, 8 cijfers)</label>
             <input type="text" id="kgAgbInput" maxlength="8" placeholder="12345678" style="width:100%; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-size:13px;">
           </div>
           <div style="min-width:150px;">
@@ -329,14 +329,14 @@
 
       if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgUzoviAgb'); return; }
       if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgUzoviAgb'); return; }
-      if (!/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet precies 8 cijfers zijn.', 'error', 'alertKgUzoviAgb'); return; }
+      if (agb && !/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet, indien ingevuld, precies 8 cijfers zijn.', 'error', 'alertKgUzoviAgb'); return; }
       if (!model) { showAlert('Kies een model (Estafette of Netwerk).', 'error', 'alertKgUzoviAgb'); return; }
 
       const { data, error } = await sb.from('kerngegevens_uzovi_agb').insert({
         ketentest_id: activeKetentest.id,
         organisation_id: orgId,
         uzovi_code: uzovi,
-        agb_code: agb,
+        agb_code: agb || null,
         model,
         created_by: currentUser?.id || null,
       }).select().single();
@@ -371,7 +371,7 @@
       const betrokkenOrgs = betrokkenOrgsVoorKetentest();
       document.getElementById('kgEditOrgSelect').innerHTML = betrokkenOrgs.map(o => `<option value="${o.id}" ${o.id === r.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
       vulKgEditUzoviOpties(r.uzovi_code);
-      document.getElementById('kgEditAgbInput').value = r.agb_code;
+      document.getElementById('kgEditAgbInput').value = r.agb_code || '';
       document.getElementById('kgEditModelSelect').value = r.model;
       document.getElementById('alertKgEdit').style.display = 'none';
       openModal('modalKgEdit');
@@ -394,11 +394,11 @@
 
       if (!orgId) { showAlert('Kies een organisatie.', 'error', 'alertKgEdit'); return; }
       if (!uzovi) { showAlert('Kies een UZOVI-code.', 'error', 'alertKgEdit'); return; }
-      if (!/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet precies 8 cijfers zijn.', 'error', 'alertKgEdit'); return; }
+      if (agb && !/^[0-9]{8}$/.test(agb)) { showAlert('AGB-code moet, indien ingevuld, precies 8 cijfers zijn.', 'error', 'alertKgEdit'); return; }
       if (!model) { showAlert('Kies een model.', 'error', 'alertKgEdit'); return; }
 
       const { data, error } = await sb.from('kerngegevens_uzovi_agb')
-        .update({ organisation_id: orgId, uzovi_code: uzovi, agb_code: agb, model })
+        .update({ organisation_id: orgId, uzovi_code: uzovi, agb_code: agb || null, model })
         .eq('id', id).select().single();
 
       if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKgEdit'); return; }
@@ -429,7 +429,7 @@
         return `<tr>
           <td><span class="org-pill" style="background:${k.bg}; color:${k.fg};">${esc(org?.name || 'Onbekend')}</span></td>
           <td><strong>${esc(r.uzovi_code)}</strong></td>
-          <td>${esc(r.agb_code)}</td>
+          <td>${esc(r.agb_code || '—')}</td>
           <td><span style="background:${m.bg}; color:${m.fg}; border-radius:99px; padding:2px 10px; font-size:11px; font-weight:700;">${esc(m.label)}</span></td>
           <td style="text-align:right; white-space:nowrap;">
             ${window.isPageAdmin ? `
@@ -916,7 +916,7 @@
           <select id="kgEditUzoviSelect"></select>
         </div>
         <div class="form-group">
-          <label>AGB-code (8 cijfers)</label>
+          <label>AGB-code (optioneel, 8 cijfers)</label>
           <input type="text" id="kgEditAgbInput" maxlength="8" placeholder="12345678">
         </div>
         <div class="form-group">
