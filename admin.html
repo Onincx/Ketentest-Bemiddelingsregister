@@ -1290,6 +1290,7 @@
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
     let currentProfile = null, currentUser = null;
     let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
+    let flowNodesRaw = []; // ruwe flow_nodes-rijen (incl. is_start), nodig om het startscenario van een flow te bepalen
     let ketentests = [], activeKetentest = null;
 
     // Notificaties worden niet meer hardgecodeerd, maar per ketentest beheerd
@@ -1401,14 +1402,16 @@
 
     async function loadScenarioFlowMap() {
       scenarioFlowMap = {};
+      flowNodesRaw = [];
       if (!activeKetentest) return;
       const [{ data: flowsData }, { data: nodesData }] = await Promise.all([
         sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
-        sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id),
+        sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id),
       ]);
       const flowById = {};
       (flowsData || []).forEach(f => flowById[f.id] = f);
-      (nodesData || []).forEach(n => {
+      flowNodesRaw = nodesData || [];
+      flowNodesRaw.forEach(n => {
         if (flowById[n.flow_id]) scenarioFlowMap[n.scenario_id] = flowById[n.flow_id];
       });
     }
@@ -1608,16 +1611,25 @@
         // Zonder organisatie-context (bij 'Per notificatie') blijft de
         // badge neutraal groen. Bij 'Per organisatie' kleurt de badge
         // naar de rol van díe organisatie binnen deze specifieke flow:
-        // groen = verantwoordelijke partij, blauw = uitvoerende partij.
+        // groen = verantwoordelijk (ontvangt de indicatie: acceptant
+        // van de 2e activiteit van het startscenario van de flow),
+        // blauw = wel ergens in de flow betrokken, maar niet die rol.
         let bg = '#166534', fg = '#fff';
         if (orgId) {
-          const scenarioIdsVanFlow = Object.keys(scenarioFlowMap).filter(sid => scenarioFlowMap[sid]?.id === f.id);
-          const activiteitenVanFlow = activities.filter(a => scenarioIdsVanFlow.includes(a.scenario_id));
-          const isVerantwoordelijke = activiteitenVanFlow.some(a => a.organisation_id === orgId);
-          const isUitvoerend = activiteitenVanFlow.some(a => a.acceptant_org_id === orgId);
-          if (isVerantwoordelijke) { bg = '#166534'; fg = '#fff'; }
-          else if (isUitvoerend) { bg = '#1e40af'; fg = '#fff'; }
-          else { bg = '#6b7280'; fg = '#fff'; }
+          const startScenarioId = flowNodesRaw.find(n => n.flow_id === f.id && n.is_start)?.scenario_id;
+          const activiteitenVanStart = startScenarioId
+            ? activities.filter(a => a.scenario_id === startScenarioId).sort((a, b) => a.sort_order - b.sort_order)
+            : [];
+          const tweedeActiviteit = activiteitenVanStart[1]; // sort_order 2, dus index 1
+          const isVerantwoordelijke = tweedeActiviteit?.acceptant_org_id === orgId;
+
+          if (isVerantwoordelijke) {
+            bg = '#166534'; fg = '#fff';
+          } else {
+            const scenarioIdsVanFlow = Object.keys(scenarioFlowMap).filter(sid => scenarioFlowMap[sid]?.id === f.id);
+            const isBetrokkenBijFlow = activities.some(a => scenarioIdsVanFlow.includes(a.scenario_id) && (a.organisation_id === orgId || a.acceptant_org_id === orgId));
+            bg = isBetrokkenBijFlow ? '#1e40af' : '#6b7280'; fg = '#fff';
+          }
         }
         return `<a href="flow.html?flow=${f.id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:${bg}; color:${fg}; border-radius:6px; padding:2px 9px; font-size:11px; font-weight:700; text-decoration:none;" title="Open flow: ${esc(flowLabel(f))}">🔗 Flow ${f.nummer ?? ''}</a>`;
       }).join(' ');
