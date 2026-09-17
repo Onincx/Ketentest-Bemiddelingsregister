@@ -1562,6 +1562,7 @@
               totalFound++;
             }
             if (a.organisation_id) scanResults[n.naam].orgIds.add(a.organisation_id);
+            if (a.acceptant_org_id) scanResults[n.naam].orgIds.add(a.acceptant_org_id);
           }
         });
       });
@@ -1656,7 +1657,7 @@
         const pat = buildPattern(n.naam);
         const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
         const matchingScenarios = scenarios.filter(s => matchendeActiviteiten.some(a => a.scenario_id === s.id));
-        const verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
+        const verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.flatMap(a => [a.organisation_id, a.acceptant_org_id]).filter(Boolean))];
         return { notificatie: n, matchendeActiviteiten, matchingScenarios, verantwoordelijkeOrgIds };
       });
     }
@@ -1716,7 +1717,7 @@
                     const matchendeActiviteiten = activities.filter(a => { pat.lastIndex=0; return pat.test(a.description||''); });
                     const matchendeScenarioIds = new Set(matchendeActiviteiten.map(a => a.scenario_id));
                     matchingScenarios = scenarios.filter(s => matchendeScenarioIds.has(s.id));
-                    verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.map(a => a.organisation_id).filter(Boolean))];
+                    verantwoordelijkeOrgIds = [...new Set(matchendeActiviteiten.flatMap(a => [a.organisation_id, a.acceptant_org_id]).filter(Boolean))];
                   }
                   const verantwoordelijkeOrgs = orgs.filter(o => verantwoordelijkeOrgIds.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
                   const count = matchingScenarios.length;
@@ -1795,7 +1796,7 @@
           .filter(g => g.verantwoordelijkeOrgIds.includes(org.id))
           .map(g => ({
             notificatie: g.notificatie,
-            matchingScenarios: scenarios.filter(s => g.matchendeActiviteiten.some(a => a.scenario_id === s.id && a.organisation_id === org.id)),
+            matchingScenarios: scenarios.filter(s => g.matchendeActiviteiten.some(a => a.scenario_id === s.id && (a.organisation_id === org.id || a.acceptant_org_id === org.id))),
           }));
 
         return `<div style="margin-bottom:24px;">
