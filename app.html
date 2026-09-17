@@ -524,7 +524,7 @@
       const huidigeUzovi = bestaand?.uzovi || '';
       const adresOpties = [...new Set(kerngegevensPostcodes.filter(r => r.uzovi_code === huidigeUzovi).map(r => r.adres))];
       const huidigeUzoviUitvoerend = bestaand?.uzovi_uitvoerend_zk || '';
-      const agbOpties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === huidigeUzoviUitvoerend).map(r => r.agb_code))];
+      const agbOpties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === huidigeUzoviUitvoerend && r.agb_code).map(r => r.agb_code))];
       const grondslagWaarden = indicatieGrondslagen.map(g => g.waarde);
       const zzpWaarden = indicatieZzpCodes.map(z => z.waarde);
 
@@ -579,7 +579,7 @@
     function vulIndicatieAgbOpties(scenarioId) {
       const uzoviWaarde = document.getElementById(`indUzoviUitvoerend-${scenarioId}`).value;
       const select = document.getElementById(`indVoorkeurAanbieder-${scenarioId}`);
-      const opties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === uzoviWaarde).map(r => r.agb_code))];
+      const opties = [...new Set(kerngegevensUzoviAgb.filter(r => r.uzovi_code === uzoviWaarde && r.agb_code).map(r => r.agb_code))];
       select.innerHTML = '<option value="">— kies —</option>' + opties.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
     }
 
