@@ -242,7 +242,9 @@
             <thead>
               <tr>
                 <th>Clientnaam</th>
+                <th>Clientnummer</th>
                 <th>Fictief BSN</th>
+                <th>TechnischID</th>
                 <th>Datum afgifte</th>
                 <th>Datum ingang</th>
                 <th>Concessiehouder</th>
@@ -261,7 +263,7 @@
                 <th>VoorkeurAanbieder</th>
               </tr>
             </thead>
-            <tbody id="kgIndicatieTable"><tr><td colspan="18" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <tbody id="kgIndicatieTable"><tr><td colspan="20" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -755,7 +757,7 @@
       const tb = document.getElementById('kgIndicatieTable');
       const gefilterd = gefilterdeIndicatiebesluiten();
       if (!gefilterd.length) {
-        tb.innerHTML = `<tr><td colspan="18"><div class="empty-state"><p>${indicatiebesluiten.length ? 'Geen indicatiebesluiten voor deze concessiehouder.' : 'Nog geen indicatiebesluiten ingevuld.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="20"><div class="empty-state"><p>${indicatiebesluiten.length ? 'Geen indicatiebesluiten voor deze concessiehouder.' : 'Nog geen indicatiebesluiten ingevuld.'}</p></div></td></tr>`;
         return;
       }
       const fmtDatum = d => d ? new Date(d).toLocaleDateString('nl-NL') : '—';
@@ -770,7 +772,9 @@
         const pc = vindPostcodePlaats(r);
         return `<tr>
           <td><strong>${esc(scenario?.code || 'Onbekend')}</strong></td>
+          <td></td>
           <td>${esc(r.fictief_bsn || '—')}</td>
+          <td></td>
           <td>${fmtDatum(r.datum_afgifte)}</td>
           <td>${fmtDatum(r.datum_ingang)}</td>
           <td>${esc(concessiehouder?.name || '—')}</td>
@@ -800,7 +804,9 @@
         const pc = vindPostcodePlaats(r);
         return {
           Clientnaam: scenario?.code || '',
+          Clientnummer: '',
           'Fictief BSN': r.fictief_bsn || '',
+          TechnischID: '',
           'Datum afgifte': r.datum_afgifte || '',
           'Datum ingang': r.datum_ingang || '',
           Concessiehouder: concessiehouder?.name || '',
@@ -820,7 +826,7 @@
         };
       });
       const ws = XLSX.utils.json_to_sheet(rows);
-      ws['!cols'] = [{ wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
+      ws['!cols'] = [{ wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 20 }, { wch: 10 }, { wch: 10 }, { wch: 16 }, { wch: 26 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 12 }, { wch: 12 }, { wch: 18 }, { wch: 18 }, { wch: 18 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Indicatiebesluiten');
       const datumStamp = new Date().toISOString().slice(0, 10);
