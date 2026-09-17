@@ -294,6 +294,9 @@
             <span style="font-size:12px; color:var(--text-muted); align-self:center; margin-right:2px;">Weergave:</span>
             <button class="btn btn-sm" id="notifview-notificatie" onclick="setNotifUsageView('notificatie',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Per notificatie</button>
             <button class="btn btn-sm btn-outline" id="notifview-organisatie" onclick="setNotifUsageView('organisatie',this)">Per organisatie</button>
+            <span style="font-size:12px; color:var(--text-muted); align-self:center; margin:0 2px 0 10px;">Toon:</span>
+            <button class="btn btn-sm" id="notiftoon-scenarios" onclick="setNotifToonModus('scenarios',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Scenario's</button>
+            <button class="btn btn-sm btn-outline" id="notiftoon-flows" onclick="setNotifToonModus('flows',this)">Flows</button>
           </div>
         </div>
         <div id="scanResult" style="display:none;" class="alert alert-info" style="margin-bottom:16px;"></div>
@@ -1577,6 +1580,32 @@
     }
 
     let notifUsageView = 'notificatie'; // 'notificatie' | 'organisatie'
+    let notifToonModus = 'scenarios'; // 'scenarios' | 'flows'
+
+    function setNotifToonModus(modus, btn) {
+      notifToonModus = modus;
+      document.querySelectorAll('#notiftoon-scenarios, #notiftoon-flows').forEach(b => {
+        b.className = 'btn btn-sm btn-outline';
+        b.style.cssText = '';
+      });
+      btn.className = 'btn btn-sm';
+      btn.style.cssText = 'background:#2563a8;color:#fff;border-color:#2563a8;';
+      renderNotifications();
+    }
+
+    // Toont ofwel de scenario-badges zelf, ofwel (uniek, gededupliceerd)
+    // de flows waar die scenario's bij horen — afhankelijk van de
+    // gekozen 'Toon'-modus.
+    function renderScenarioOfFlowBadges(matchingScenarios) {
+      if (notifToonModus === 'scenarios') {
+        return matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('');
+      }
+      const flows = [...new Map(
+        matchingScenarios.map(s => scenarioFlowMap[s.id]).filter(Boolean).map(f => [f.id, f])
+      ).values()].sort((a, b) => (a.nummer ?? 0) - (b.nummer ?? 0));
+      if (!flows.length) return `<span style="font-size:11px; color:#9ca3af; font-style:italic;">Geen van deze scenario's zit in een flow</span>`;
+      return flows.map(f => `<a href="flow.html?flow=${f.id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#166534; color:#fff; border-radius:6px; padding:2px 9px; font-size:11px; font-weight:700; text-decoration:none;" title="Open flow: ${esc(flowLabel(f))}">🔗 Flow ${f.nummer ?? ''}</a>`).join(' ');
+    }
 
     function setNotifUsageView(view, btn) {
       notifUsageView = view;
@@ -1642,7 +1671,7 @@
                 <tr>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Notificatie</th>
                   <th style="text-align:center; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Gebruik</th>
-                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Scenario's</th>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">${notifToonModus === "flows" ? "Flows" : "Scenario's"}</th>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Verantwoordelijke partij(en)</th>
                 </tr>
               </thead>
@@ -1677,7 +1706,7 @@
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
                       ${inUse
                         ? `<div style="display:flex; flex-wrap:wrap; gap:4px;">
-                            ${matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('')}
+                            ${renderScenarioOfFlowBadges(matchingScenarios)}
                            </div>`
                         : `<span style="font-size:12px; color:#9ca3af; font-style:italic;">Nog niet gebruikt</span>`}
                     </td>
@@ -1752,7 +1781,7 @@
                 <tr>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Notificatie</th>
                   <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Type</th>
-                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">Scenario's</th>
+                  <th style="text-align:left; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--surface); font-size:11px; color:var(--text-muted); font-weight:600; text-transform:uppercase; letter-spacing:0.04em;">${notifToonModus === "flows" ? "Flows" : "Scenario's"}</th>
                 </tr>
               </thead>
               <tbody>
@@ -1767,7 +1796,7 @@
                     </td>
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
                       <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                        ${matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('')}
+                        ${renderScenarioOfFlowBadges(matchingScenarios)}
                       </div>
                     </td>
                   </tr>`;
