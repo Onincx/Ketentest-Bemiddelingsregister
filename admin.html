@@ -1596,7 +1596,7 @@
     // Toont ofwel de scenario-badges zelf, ofwel (uniek, gededupliceerd)
     // de flows waar die scenario's bij horen — afhankelijk van de
     // gekozen 'Toon'-modus.
-    function renderScenarioOfFlowBadges(matchingScenarios) {
+    function renderScenarioOfFlowBadges(matchingScenarios, orgId) {
       if (notifToonModus === 'scenarios') {
         return matchingScenarios.map(s => `<a href="app.html?scenario=${s.id}" target="_blank" style="display:inline-block; background:var(--surface); border:1px solid var(--border); border-radius:4px; padding:1px 7px; font-size:11px; font-weight:600; color:var(--brand); text-decoration:none;" title="Open scenario ${s.code}">${s.code}</a>`).join('');
       }
@@ -1604,7 +1604,23 @@
         matchingScenarios.map(s => scenarioFlowMap[s.id]).filter(Boolean).map(f => [f.id, f])
       ).values()].sort((a, b) => (a.nummer ?? 0) - (b.nummer ?? 0));
       if (!flows.length) return `<span style="font-size:11px; color:#9ca3af; font-style:italic;">Geen van deze scenario's zit in een flow</span>`;
-      return flows.map(f => `<a href="flow.html?flow=${f.id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#166534; color:#fff; border-radius:6px; padding:2px 9px; font-size:11px; font-weight:700; text-decoration:none;" title="Open flow: ${esc(flowLabel(f))}">🔗 Flow ${f.nummer ?? ''}</a>`).join(' ');
+      return flows.map(f => {
+        // Zonder organisatie-context (bij 'Per notificatie') blijft de
+        // badge neutraal groen. Bij 'Per organisatie' kleurt de badge
+        // naar de rol van díe organisatie binnen deze specifieke flow:
+        // groen = verantwoordelijke partij, blauw = uitvoerende partij.
+        let bg = '#166534', fg = '#fff';
+        if (orgId) {
+          const scenarioIdsVanFlow = Object.keys(scenarioFlowMap).filter(sid => scenarioFlowMap[sid]?.id === f.id);
+          const activiteitenVanFlow = activities.filter(a => scenarioIdsVanFlow.includes(a.scenario_id));
+          const isVerantwoordelijke = activiteitenVanFlow.some(a => a.organisation_id === orgId);
+          const isUitvoerend = activiteitenVanFlow.some(a => a.acceptant_org_id === orgId);
+          if (isVerantwoordelijke) { bg = '#166534'; fg = '#fff'; }
+          else if (isUitvoerend) { bg = '#1e40af'; fg = '#fff'; }
+          else { bg = '#6b7280'; fg = '#fff'; }
+        }
+        return `<a href="flow.html?flow=${f.id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:${bg}; color:${fg}; border-radius:6px; padding:2px 9px; font-size:11px; font-weight:700; text-decoration:none;" title="Open flow: ${esc(flowLabel(f))}">🔗 Flow ${f.nummer ?? ''}</a>`;
+      }).join(' ');
     }
 
     function setNotifUsageView(view, btn) {
@@ -1796,7 +1812,7 @@
                     </td>
                     <td style="padding:11px 14px; border-bottom:1px solid var(--border);">
                       <div style="display:flex; flex-wrap:wrap; gap:4px;">
-                        ${renderScenarioOfFlowBadges(matchingScenarios)}
+                        ${renderScenarioOfFlowBadges(matchingScenarios, org.id)}
                       </div>
                     </td>
                   </tr>`;
