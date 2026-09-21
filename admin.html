@@ -3096,7 +3096,7 @@
       // organisatie van de onderliggende activiteit bewerkt worden —
       // dat is niet per se dezelfde partij als de eigenaar van de
       // bevinding.
-      const magToelichtingBewerken = window.isPageAdmin || (act && act.organisation_id === currentProfile?.organisation_id) || (!act && b.owner_org_id === currentProfile?.organisation_id);
+      const magToelichtingBewerken = window.isPageAdmin || (act && act.organisation_id === currentProfile?.organisation_id) || (!act && (b.owner_org_id === currentProfile?.organisation_id || b.gemeld_door_org_id === currentProfile?.organisation_id));
       const notitieCount = nokNotitiesMap[b.id] || 0;
       if (!behoudEditState) { bevindingTitelEditModus = false; bevindingOmschrijvingEditModus = false; bevindingToelichtingEditId = null; }
 
