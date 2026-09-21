@@ -868,16 +868,22 @@
             <button type="button" class="btn btn-outline btn-sm" onclick="genereerInlognaamVoorstel()">🎲 Genereer</button>
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="userOrgGroup">
           <label>Organisatie</label>
           <select id="userOrg"><option value="">Selecteer organisatie...</option></select>
         </div>
+        <div class="form-group" id="userMeekijkOrgsGroup" style="display:none;">
+          <label>Organisaties (mag meerdere kiezen)</label>
+          <div id="userMeekijkOrgsList" style="max-height:160px; overflow-y:auto; border:1px solid var(--border); border-radius:var(--radius); padding:8px;"></div>
+          <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Deze gebruiker kan via een schakelaar wisselen tussen de hier aangevinkte organisaties — alleen-lezen, hij kan nergens namens deze organisaties muteren.</p>
+        </div>
         <div class="form-group">
           <label>Rol</label>
-          <select id="userRole" onchange="toggleUserKetentestAccessVisibility()">
+          <select id="userRole" onchange="toggleUserKetentestAccessVisibility(); toggleUserOrgVeldtype();">
             <option value="user">Gebruiker</option>
             <option value="manager">Manager</option>
             <option value="admin">Beheerder</option>
+            <option value="softwareleverancier">Softwareleverancier</option>
           </select>
         </div>
         <div class="form-group" id="userKetentestAccessGroup">
@@ -1429,6 +1435,8 @@
       const { data } = await sb.from('organisations').select('*').order('name');
       orgs = data || [];
     }
+    let meekijkOrgsByUser = {}; // user_id -> array van organisatienamen
+
     async function loadUsers() {
       const { data } = await sb.from('users').select('*, organisations(name)').order('email');
       users = data || [];
@@ -1439,6 +1447,13 @@
         loginData.forEach(r => loginMap[r.id] = r.last_sign_in_at);
         users.forEach(u => u.last_sign_in_at = loginMap[u.id] || null);
       }
+
+      meekijkOrgsByUser = {};
+      const { data: meekijkData } = await sb.from('meekijk_organisaties').select('user_id, organisations(name)');
+      (meekijkData || []).forEach(m => {
+        if (!m.organisations?.name) return;
+        (meekijkOrgsByUser[m.user_id] ??= []).push(m.organisations.name);
+      });
     }
     async function loadScenarios() {
       if (!activeKetentest) { scenarios = []; return; }
@@ -3911,7 +3926,8 @@
         ? users.filter(u =>
             (u.name || '').toLowerCase().includes(term) ||
             (u.email || '').toLowerCase().includes(term) ||
-            (u.organisations?.name || '').toLowerCase().includes(term))
+            (u.organisations?.name || '').toLowerCase().includes(term) ||
+            (meekijkOrgsByUser[u.id] || []).some(n => n.toLowerCase().includes(term)))
         : users;
 
       if (!users.length) {
@@ -3925,8 +3941,10 @@
       tb.innerHTML = filtered.map(u => `<tr>
         <td>${u.name || '—'}</td>
         <td style="font-family:monospace; font-size:12px; color:var(--text-muted);">${u.username || '—'}</td>
-        <td>${u.organisations?.name ? `<span class="org-badge">${u.organisations.name}</span>` : '—'}</td>
-        <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : u.role === 'manager' ? 'Manager' : 'Gebruiker'}</span></td>
+        <td>${u.role === 'softwareleverancier'
+              ? ((meekijkOrgsByUser[u.id] || []).length ? meekijkOrgsByUser[u.id].sort().map(n => `<span class="org-badge">${n}</span>`).join(' ') : '<span style="color:var(--text-muted); font-size:12px;">Nog geen organisaties gekoppeld</span>')
+              : (u.organisations?.name ? `<span class="org-badge">${u.organisations.name}</span>` : '—')}</td>
+        <td><span class="badge badge-${u.role}">${u.role === 'admin' ? 'Beheerder' : u.role === 'manager' ? 'Manager' : u.role === 'softwareleverancier' ? 'Softwareleverancier' : 'Gebruiker'}</span></td>
         <td><span class="badge ${u.activated ? 'badge-ok' : 'badge-open'}">${u.activated ? 'Actief' : 'Uitgenodigd'}</span></td>
         <td style="font-size:12px; color:var(--text-muted);">${u.last_sign_in_at ? new Date(u.last_sign_in_at).toLocaleString('nl-NL') : 'Nooit ingelogd'}</td>
         <td style="text-align:right; white-space:nowrap;">
@@ -3969,6 +3987,8 @@
       originalKetentestAccessIds = [];
       renderUserKetentestAccessCheckboxes([]);
       toggleUserKetentestAccessVisibility();
+      userMeekijkOrgsHuidigeSelectie = [];
+      toggleUserOrgVeldtype();
       openModal('modalUser');
     }
 
@@ -4069,6 +4089,28 @@
       document.getElementById('userKetentestAccessGroup').style.display = '';
     }
 
+    // Bij rol 'softwareleverancier' kan de gebruiker aan meerdere
+    // organisaties gekoppeld worden (multi-select), bij elke andere rol
+    // aan precies 1 (het bestaande enkele-organisatie-veld).
+    function toggleUserOrgVeldtype() {
+      const isLeverancier = document.getElementById('userRole').value === 'softwareleverancier';
+      document.getElementById('userOrgGroup').style.display = isLeverancier ? 'none' : '';
+      document.getElementById('userMeekijkOrgsGroup').style.display = isLeverancier ? '' : 'none';
+      if (isLeverancier) renderUserMeekijkOrgsCheckboxes(userMeekijkOrgsHuidigeSelectie);
+    }
+
+    let userMeekijkOrgsHuidigeSelectie = [];
+
+    function renderUserMeekijkOrgsCheckboxes(selectedIds) {
+      const el = document.getElementById('userMeekijkOrgsList');
+      if (!orgs.length) { el.innerHTML = '<p style="font-size:12px; color:var(--text-muted);">Nog geen organisaties aangemaakt.</p>'; return; }
+      el.innerHTML = [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `
+        <label style="display:flex; align-items:center; gap:8px; padding:5px 2px; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${o.id}" ${selectedIds.includes(o.id) ? 'checked' : ''}>
+          ${esc(o.name)}
+        </label>`).join('');
+    }
+
     let originalKetentestAccessIds = null; // null = niet geladen (nieuwe gebruiker of fout), anders array met huidige toegang
 
     let editUserRequestToken = 0;
@@ -4090,7 +4132,10 @@
       document.getElementById('modalUserTitle').textContent = 'Gebruiker bewerken';
       document.getElementById('saveUserBtn').textContent = 'Opslaan';
 
-      const { data: access, error: accessError } = await sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id);
+      const [{ data: access, error: accessError }, { data: meekijkOrgs, error: meekijkError }] = await Promise.all([
+        sb.from('user_ketentest_access').select('ketentest_id').eq('user_id', id),
+        sb.from('meekijk_organisaties').select('organisation_id').eq('user_id', id),
+      ]);
 
       // Is er ondertussen (terwijl dit verzoek liep) alweer op een andere
       // gebruiker geklikt? Dan is dit resultaat verouderd — niet meer
@@ -4111,7 +4156,19 @@
         renderUserKetentestAccessCheckboxes(originalKetentestAccessIds);
       }
 
+      // Zelfde voorzichtigheidsprincipe als hierboven: bij een fout niet
+      // stilzwijgend uitgaan van 'geen organisaties', dat zou anders bij
+      // opslaan de bestaande koppelingen kunnen wegschrijven als leeg.
+      if (meekijkError) {
+        userMeekijkOrgsHuidigeSelectie = null;
+        document.getElementById('userMeekijkOrgsList').innerHTML =
+          `<p style="font-size:12px; color:var(--danger);">Kon huidige organisaties niet laden (${meekijkError.message}). Opslaan laat de koppeling ongewijzigd.</p>`;
+      } else {
+        userMeekijkOrgsHuidigeSelectie = (meekijkOrgs || []).map(m => m.organisation_id);
+      }
+
       toggleUserKetentestAccessVisibility();
+      toggleUserOrgVeldtype();
       openModal('modalUser');
     }
 
@@ -4120,8 +4177,8 @@
       const email = document.getElementById('userEmail').value.trim();
       const name = document.getElementById('userName').value.trim();
       const username = document.getElementById('userUsername').value.trim() || null;
-      const orgId = document.getElementById('userOrg').value;
       const role = document.getElementById('userRole').value;
+      const orgId = role === 'softwareleverancier' ? '' : document.getElementById('userOrg').value;
       const selectedKetentestIds = [...document.querySelectorAll('#userKetentestAccessList input:checked')].map(cb => cb.value);
 
       if (!email) {
@@ -4233,6 +4290,23 @@
         if (toAdd.length) {
           await sb.from('user_ketentest_access').insert(
             toAdd.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
+          );
+        }
+      }
+
+      // Organisatiekoppeling voor Softwareleverancier bijwerken — zelfde
+      // voorzichtige diff-aanpak als hierboven bij ketentesttoegang.
+      if (targetUserId && role === 'softwareleverancier' && userMeekijkOrgsHuidigeSelectie !== null) {
+        const geselecteerdeOrgIds = [...document.querySelectorAll('#userMeekijkOrgsList input:checked')].map(cb => cb.value);
+        const toAddOrgs = geselecteerdeOrgIds.filter(oid => !userMeekijkOrgsHuidigeSelectie.includes(oid));
+        const toRemoveOrgs = userMeekijkOrgsHuidigeSelectie.filter(oid => !geselecteerdeOrgIds.includes(oid));
+
+        if (toRemoveOrgs.length) {
+          await sb.from('meekijk_organisaties').delete().eq('user_id', targetUserId).in('organisation_id', toRemoveOrgs);
+        }
+        if (toAddOrgs.length) {
+          await sb.from('meekijk_organisaties').insert(
+            toAddOrgs.map(oid => ({ user_id: targetUserId, organisation_id: oid }))
           );
         }
       }
