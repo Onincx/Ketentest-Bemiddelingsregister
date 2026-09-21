@@ -175,7 +175,7 @@
         // moment gekozen organisatie (schakelaar in de navigatiebalk) —
         // een toegespitste selectie i.p.v. de volledige 'algemeen'-set,
         // die ook muteer-gerichte tegels als Toewijzingen/Deelname bevat.
-        const relevantNamen = ["Dashboard", 'Voortgang', 'Notificaties', 'Berichten', 'NOK-opvolging', 'Entry-criteria'];
+        const relevantNamen = ["Testscenario's", "Dashboard", 'Voortgang', 'Deelname', 'Notificaties', 'Berichten', 'NOK-opvolging', 'Entry-criteria', 'Kerngegevens'];
         const tegels = [...managerAdmin, ...algemeen].filter(t => relevantNamen.includes(t.titel));
         document.getElementById('homeTegels').innerHTML = renderTegelGroep(null, tegels);
         return;

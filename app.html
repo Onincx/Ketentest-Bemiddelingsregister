@@ -288,9 +288,7 @@
       currentProfile = await getUserProfile(currentUser.id);
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      if (currentProfile?.organisations?.name) {
-        effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
-      }
+      effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }
@@ -1330,7 +1328,7 @@
     // altijd alles.
     function getBasisScenarios() {
       if (currentProfile?.role === 'admin') return scenarios;
-      const myOrgId = currentProfile?.organisation_id;
+      const myOrgId = effectiefOrgId;
       return scenarios.filter(s => activities.some(a => a.scenario_id === s.id && (a.organisation_id === myOrgId || a.acceptant_org?.id === myOrgId)));
     }
 
@@ -1555,7 +1553,7 @@
 
     function renderAll() {
       updateStats();
-      const myOrgId = currentProfile?.organisation_id;
+      const myOrgId = effectiefOrgId;
       const basisScenarios = getBasisScenarios();
 
       const banner = document.getElementById('entryCriteriaBanner');
@@ -1637,7 +1635,7 @@
     }
 
     function renderActivities(acts) {
-      const myOrgId = currentProfile?.organisation_id;
+      const myOrgId = effectiefOrgId;
       // Sorteer op volgnummer zodat we per activiteit de voorganger kunnen bepalen
       const sorted = [...acts].sort((a, b) => a.sort_order - b.sort_order);
       const notStartedYet = activeKetentest?.start_op && new Date(activeKetentest.start_op) > new Date() && currentProfile?.role !== 'admin';
@@ -1952,9 +1950,9 @@
     // (supabase-config.js) zodat dit overal in de navigatiebalk
     // hetzelfde, altijd-actuele aantal toont — ook op andere pagina's.
     function refreshNokBadge() {
-      refreshGlobalNokBadge(currentProfile?.organisation_id);
-      refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
-      refreshMijnActiesBadge(currentProfile?.organisation_id);
+      refreshGlobalNokBadge(effectiefOrgId);
+      refreshGonogoBadge(effectiefOrgId, currentProfile?.role);
+      refreshMijnActiesBadge(effectiefOrgId);
     }
 
     async function submitNokModal(activityId, scenarioId) {

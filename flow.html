@@ -438,11 +438,11 @@
       currentUser = await requireAuth();
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
-      refreshGlobalNokBadge(currentProfile?.organisation_id);
-      refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
-      refreshMijnActiesBadge(currentProfile?.organisation_id);
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
+      refreshGlobalNokBadge(effectiefOrgId);
+      refreshGonogoBadge(effectiefOrgId, currentProfile?.role);
+      refreshMijnActiesBadge(effectiefOrgId);
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }
@@ -874,7 +874,7 @@
         select.onchange = () => { orgFilterOrgId = select.value || null; renderNodes(); renderFlowList(); };
       } else {
         select.style.display = 'none';
-        orgFilterOrgId = currentProfile?.organisation_id || null;
+        orgFilterOrgId = effectiefOrgId;
         // Dit was voorheen een bug: alleen orgFilterOrgId werd gezet,
         // maar orgFilterMode bleef op 'all' staan — waardoor het
         // automatische filter voor gewone gebruikers feitelijk nooit
