@@ -395,7 +395,7 @@
       refreshGlobalNokBadge(currentProfile?.organisation_id);
       refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
-      myOrgId = currentProfile?.organisation_id || null;
+      myOrgId = await renderNavOrgSwitcher(currentProfile);
       isCurrentAdmin = currentProfile?.role === 'admin';
       if (isCurrentAdmin) {
         const label = document.getElementById('btnExportExcelLabel');
@@ -403,7 +403,6 @@
       }
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
       if (isCurrentAdmin) {
         document.getElementById('adminLink').style.display = '';
       }
@@ -411,7 +410,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       updateKetentestHoofdlink(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
 
       await renderActiveKetentestLabel();
       const result = await ensureActiveKetentest();
@@ -649,6 +648,7 @@
        ============================================================ */
 
     function cellClickable(orgId) {
+      if (currentProfile?.role === 'softwareleverancier') return false;
       return orgId === myOrgId || isCurrentAdmin;
     }
 
@@ -787,6 +787,7 @@
     }
 
     async function saveDeelname() {
+      if (currentProfile?.role === 'softwareleverancier') return; // deze rol is overal alleen-lezen
       const flowId = document.getElementById('dnFlowId').value;
       const orgId = document.getElementById('dnOrgId').value;
       const reason = document.getElementById('dnReason').value.trim();

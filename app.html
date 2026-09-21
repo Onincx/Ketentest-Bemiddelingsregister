@@ -255,7 +255,7 @@
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
-    let currentUser = null, currentProfile = null;
+    let currentUser = null, currentProfile = null, effectiefOrgId = null;
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
     let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
@@ -289,7 +289,7 @@
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
       if (currentProfile?.organisations?.name) {
-        document.getElementById('navOrg').textContent = currentProfile.organisations.name;
+        effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
       }
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
@@ -298,7 +298,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       updateKetentestHoofdlink(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
 
       await renderActiveKetentestLabel();
       const result = await ensureActiveKetentest();
@@ -1667,7 +1667,7 @@
           // (en die acceptant niet toevallig ook wijzelf zijn — dan is
           // isAcceptant al waar en gelden de volle rechten toch al).
           const isVerantwMetAcceptant = !!a.acceptant_org_id && isVerantwoordelijke && !isAcceptant;
-          const nietManagerOfGeblokkeerd = flowVolgordeOk && currentProfile?.role !== 'manager';
+          const nietManagerOfGeblokkeerd = flowVolgordeOk && !['manager','softwareleverancier'].includes(currentProfile?.role);
           // OK zetten mag alleen de acceptant, of de verantwoordelijke als
           // er geen acceptant is — een verantwoordelijke met acceptant
           // mag zichzelf niet "goedkeuren".

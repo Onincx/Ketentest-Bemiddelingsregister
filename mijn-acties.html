@@ -172,13 +172,12 @@
       currentUser = await requireAuth();
       if (!currentUser) return;
       currentProfile = await getUserProfile(currentUser.id);
-      myOrgId = currentProfile?.organisation_id || null;
+      myOrgId = await renderNavOrgSwitcher(currentProfile);
       refreshGlobalNokBadge(myOrgId);
       refreshGonogoBadge(myOrgId, currentProfile?.role);
       refreshMijnActiesBadge(myOrgId);
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
         document.getElementById('simControls').style.display = '';
@@ -187,7 +186,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       updateKetentestHoofdlink(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
 
       await renderActiveKetentestLabel();
 

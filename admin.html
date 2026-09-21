@@ -1294,7 +1294,7 @@
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     let orgs = [], users = [], scenarios = [], activities = [], activityOptions = [];
-    let currentProfile = null, currentUser = null;
+    let currentProfile = null, currentUser = null, effectiefOrgId = null;
     let scenarioFlowMap = {}; // scenario_id -> flow-object (of undefined als niet in een flow)
     let flowNodesRaw = []; // ruwe flow_nodes-rijen (incl. is_start), nodig om het startscenario van een flow te bepalen
     let ketentests = [], activeKetentest = null;
@@ -1347,7 +1347,7 @@
       const scanBtn = document.getElementById('scanBtn');
       if (scanBtn && !window.isPageAdmin) scanBtn.style.display = 'none';
       document.getElementById('navUser').textContent = profile?.name || user.email;
-      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(profile);
       await renderActiveKetentestLabel();
 
       if (window.isPageAdmin) {
@@ -1357,7 +1357,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(profile?.role, true);
       updateKetentestHoofdlink(profile?.role, true);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(profile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(profile?.role)) navDashboardLink.style.display = '';
 
       const result = await ensureActiveKetentest();
       if (!result) {
@@ -2433,7 +2433,7 @@
       }
       const relevantOrgs = orgs.filter(o => orgIdsMetVragen.includes(o.id)).sort((a, b) => a.name.localeCompare(b.name));
       // Voor een niet-beheerder alleen de eigen organisatie tonen.
-      const teTonenOrgs = window.isPageAdmin ? relevantOrgs : relevantOrgs.filter(o => o.id === currentProfile?.organisation_id);
+      const teTonenOrgs = window.isPageAdmin ? relevantOrgs : relevantOrgs.filter(o => o.id === effectiefOrgId);
 
       if (!teTonenOrgs.length) {
         el.innerHTML = '<p style="font-size:13px; color:var(--text-muted); font-style:italic;">Voor jouw organisatie zijn geen entry-criteria-vragen toegewezen.</p>';

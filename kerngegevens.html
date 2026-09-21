@@ -283,7 +283,7 @@
       });
     }
     function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
-    let currentUser = null, currentProfile = null, activeKetentest = null;
+    let currentUser = null, currentProfile = null, activeKetentest = null, effectiefOrgId = null;
     let orgs = [], activities = [], scenarios = [], zorgkantoorcodes = [], kgUzoviAgbRijen = [], kgPostcodeRijen = [], kgBsnRijen = [], indicatiebesluiten = [];
 
     function showKgTab(tab) {
@@ -845,13 +845,13 @@
       refreshGonogoBadge(profile?.organisation_id, profile?.role);
       refreshMijnActiesBadge(profile?.organisation_id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
-      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(profile);
       if (window.isPageAdmin) document.getElementById('adminLink').style.display = '';
       const scenariosSlot = document.getElementById('navScenariosSlot');
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(profile?.role, false);
       updateKetentestHoofdlink(profile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(profile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(profile?.role)) navDashboardLink.style.display = '';
 
       const result = await ensureActiveKetentest();
       if (!result) return;

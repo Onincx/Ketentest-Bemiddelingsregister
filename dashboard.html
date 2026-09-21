@@ -266,7 +266,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=43"></script>
   <script>
-    let currentUser = null, currentProfile = null;
+    let currentUser = null, currentProfile = null, effectiefOrgId = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [], gonogoData = [];
     let flows = [], flowNodes = [], flowParticipation = [];
     let activeKetentest = null;
@@ -279,14 +279,14 @@
       refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
 
-      // Admin en Manager mogen het dashboard zien; Manager alleen-lezen
-      // (mag verder net als een gewone gebruiker niets muteren).
-      if (!['admin','manager'].includes(currentProfile?.role)) {
+      // Admin, Manager en Softwareleverancier mogen het dashboard zien;
+      // geen van deze rollen mag verder muteren.
+      if (!['admin','manager','softwareleverancier'].includes(currentProfile?.role)) {
         window.location.href = 'app.html'; return;
       }
 
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }
@@ -991,7 +991,7 @@
         const nok = acts.filter(a => getResult(a.id) === 'nok').length;
         const pct = total > 0 ? Math.round(((ok + nok) / total) * 100) : 0;
         return { flow, scenarioCount: scenarioIds.length, total, ok, nok, pct };
-      }).filter(r => r.scenarioCount > 0).sort((a,b) => a.pct - b.pct); // laagste voortgang eerst
+      }).filter(r => r.scenarioCount > 0).sort((a, b) => (a.flow.nummer ?? 999999) - (b.flow.nummer ?? 999999) || (a.flow.name || '').localeCompare(b.flow.name || '')); // vaste volgorde op flow-nummer, ongeacht voortgang
 
       if (!rows.length) { el.innerHTML = '<p class="empty-dash">Nog geen flows met scenario\'s gevonden. Ga naar de Flow-pagina om flows aan te maken.</p>'; return; }
 

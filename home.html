@@ -97,7 +97,7 @@
   <script src="js/supabase-config.js?v=43"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\"/g,'&quot;'); }
-    let currentUser = null, currentProfile = null;
+    let currentUser = null, currentProfile = null, effectiefOrgId = null;
 
     // ============================================================
     // TEGELDEFINITIES
@@ -170,6 +170,16 @@
 
     function renderHomeTegels(role, model) {
       const { algemeen, managerAdmin, beheer } = bouwTegels(model);
+      if (role === 'softwareleverancier') {
+        // Deze rol is overal alleen-lezen en kijkt altijd naar de op dat
+        // moment gekozen organisatie (schakelaar in de navigatiebalk) —
+        // een toegespitste selectie i.p.v. de volledige 'algemeen'-set,
+        // die ook muteer-gerichte tegels als Toewijzingen/Deelname bevat.
+        const relevantNamen = ["Dashboard", 'Voortgang', 'Notificaties', 'Berichten', 'NOK-opvolging', 'Entry-criteria'];
+        const tegels = [...managerAdmin, ...algemeen].filter(t => relevantNamen.includes(t.titel));
+        document.getElementById('homeTegels').innerHTML = renderTegelGroep(null, tegels);
+        return;
+      }
       let html = renderTegelGroep(null, algemeen);
       if (['admin', 'manager'].includes(role)) html += renderTegelGroep(null, managerAdmin);
       if (role === 'admin') html += renderTegelGroep('Beheer', beheer);
@@ -187,7 +197,7 @@
       refreshGonogoBadge(profile?.organisation_id, profile?.role);
       refreshMijnActiesBadge(profile?.organisation_id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
-      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(profile);
       if (profile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }
@@ -195,7 +205,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(profile?.role, false);
       updateKetentestHoofdlink(profile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(profile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(profile?.role)) navDashboardLink.style.display = '';
 
       const result = await ensureActiveKetentest();
       const ketentestNaam = result?.active?.naam || '';

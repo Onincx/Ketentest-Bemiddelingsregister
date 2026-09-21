@@ -155,6 +155,8 @@
     // Als er een sessie is, tonen we naam/ketentest en het echte
     // uitlogknopje — maar zonder in te loggen af te dwingen, want deze
     // pagina is bewust ook zonder sessie te bekijken.
+    let effectiefOrgId = null;
+
     (async () => {
       const user = await getCurrentUser();
       if (!user) return;
@@ -163,7 +165,7 @@
       refreshGonogoBadge(profile?.organisation_id, profile?.role);
       refreshMijnActiesBadge(profile?.organisation_id);
       document.getElementById('navUser').textContent = profile?.name || user.email;
-      document.getElementById('navOrg').textContent = profile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(profile);
       document.getElementById('logoutBtn').style.display = '';
       if (profile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
@@ -172,7 +174,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(profile?.role, false);
       updateKetentestHoofdlink(profile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(profile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(profile?.role)) navDashboardLink.style.display = '';
       await renderActiveKetentestLabel();
     })();
 

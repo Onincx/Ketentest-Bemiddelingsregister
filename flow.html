@@ -334,7 +334,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="js/supabase-config.js?v=43"></script>
   <script>
-    let currentUser, currentProfile;
+    let currentUser, currentProfile, effectiefOrgId = null;
     let scenarios = [], activities = [], results = [], orgs = {};
     let NOTIFICATIES = [];
 
@@ -442,7 +442,7 @@
       refreshGonogoBadge(currentProfile?.organisation_id, currentProfile?.role);
       refreshMijnActiesBadge(currentProfile?.organisation_id);
       document.getElementById('navUser').textContent = currentProfile?.name || currentUser.email;
-      document.getElementById('navOrg').textContent = currentProfile?.organisations?.name || '';
+      effectiefOrgId = await renderNavOrgSwitcher(currentProfile);
       if (currentProfile?.role === 'admin') {
         document.getElementById('adminLink').style.display = '';
       }
@@ -450,7 +450,7 @@
       if (scenariosSlot) scenariosSlot.innerHTML = scenariosLinkHtml(currentProfile?.role, false);
       updateKetentestHoofdlink(currentProfile?.role, false);
       const navDashboardLink = document.getElementById('navDashboardLink');
-      if (navDashboardLink && ['admin','manager'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
+      if (navDashboardLink && ['admin','manager','softwareleverancier'].includes(currentProfile?.role)) navDashboardLink.style.display = '';
       window.isFlowAdmin = currentProfile?.role === 'admin';
       if (!window.isFlowAdmin) {
         const clearBtn = document.getElementById('clearAllBtn');
