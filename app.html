@@ -469,6 +469,9 @@
         if (kandidaatOrgId && zorgkantoorcodes.some(z => z.organisation_id === kandidaatOrgId)) {
           return kandidaatOrgId;
         }
+        if (a.acceptant_org_id && zorgkantoorcodes.some(z => z.organisation_id === a.acceptant_org_id)) {
+          return a.acceptant_org_id;
+        }
       }
       return null;
     }
