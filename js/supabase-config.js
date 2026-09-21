@@ -186,6 +186,58 @@ function setActiveKetentestId(id) {
   localStorage.setItem(KETENTEST_STORAGE_KEY, id);
 }
 
+const VIEWING_ORG_STORAGE_KEY = 'viewingOrgId';
+
+function getViewingOrgId() {
+  return localStorage.getItem(VIEWING_ORG_STORAGE_KEY) || null;
+}
+
+function setViewingOrgId(orgId) {
+  if (orgId) localStorage.setItem(VIEWING_ORG_STORAGE_KEY, orgId);
+  else localStorage.removeItem(VIEWING_ORG_STORAGE_KEY);
+}
+
+async function getMeekijkOrganisaties(userId) {
+  const { data } = await sb.from('meekijk_organisaties').select('organisations(id, name)').eq('user_id', userId);
+  return (data || []).map(m => m.organisations).filter(Boolean).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Vult het element met id="navOrg": voor een normale gebruiker gewoon
+// de naam van de eigen organisatie (ongewijzigd gedrag), voor een
+// Softwareleverancier een schakelaar waarmee hij tussen zijn gekoppelde
+// organisaties kan wisselen. Retourneert de organisatie-id die de
+// pagina verder als 'huidige organisatie' moet gebruiken bij het
+// bepalen wat er getoond wordt (dus NIET voor muteerrechten — die
+// blijven overal gebaseerd op profile.organisation_id zelf, wat voor
+// deze rol altijd leeg is).
+async function renderNavOrgSwitcher(profile) {
+  const el = document.getElementById('navOrg');
+  if (!el) return profile?.organisation_id || null;
+
+  if (profile?.role !== 'softwareleverancier') {
+    el.textContent = profile?.organisations?.name || '';
+    return profile?.organisation_id || null;
+  }
+
+  const koppelingen = await getMeekijkOrganisaties(profile.id);
+  if (!koppelingen.length) {
+    el.textContent = 'Geen organisaties gekoppeld';
+    return null;
+  }
+
+  let gekozen = getViewingOrgId();
+  if (!gekozen || !koppelingen.some(o => o.id === gekozen)) {
+    gekozen = koppelingen[0].id;
+    setViewingOrgId(gekozen);
+  }
+
+  el.innerHTML = `<select onchange="setViewingOrgId(this.value); location.reload();" title="Bekijk als organisatie" style="background:rgba(255,255,255,0.15); color:#fff; border:none; border-radius:99px; padding:2px 8px; font-size:12px; font-weight:600; cursor:pointer;">`
+    + koppelingen.map(o => `<option value="${o.id}" style="color:#111;" ${o.id === gekozen ? 'selected' : ''}>${o.name}</option>`).join('')
+    + `</select>`;
+
+  return gekozen;
+}
+
 async function loadAllKetentests() {
   const { data } = await sb.from('ketentests').select('*').order('naam');
   return data || [];
