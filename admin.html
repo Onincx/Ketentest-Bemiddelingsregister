@@ -1281,6 +1281,10 @@
           <label>Eigenaar</label>
           <select id="losseBevindingEigenaar"><option value="">Selecteer organisatie...</option></select>
         </div>
+        <div class="form-group">
+          <label>Melder</label>
+          <select id="losseBevindingMelder"><option value="">Selecteer organisatie...</option></select>
+        </div>
         <div id="alertLosseBevinding" class="alert" style="display:none;"></div>
       </div>
       <div class="modal-footer">
@@ -2900,6 +2904,10 @@
       eigenaarSelect.innerHTML = '<option value="">Selecteer organisatie...</option>' +
         [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
 
+      const melderSelect = document.getElementById('losseBevindingMelder');
+      melderSelect.innerHTML = '<option value="">Selecteer organisatie...</option>' +
+        [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}" ${o.id === currentProfile?.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+
       openModal('modalLosseBevinding');
     }
 
@@ -2910,22 +2918,24 @@
       const reden = document.getElementById('losseBevindingReden').value.trim();
       const prioriteit = document.getElementById('losseBevindingPrioriteit').value;
       const eigenaar = document.getElementById('losseBevindingEigenaar').value;
+      const melder = document.getElementById('losseBevindingMelder').value;
 
       if (!titel) { showAlert('Vul een titel in.', 'error', 'alertLosseBevinding'); return; }
       if (!reden) { showAlert('Vul een toelichting/reden in.', 'error', 'alertLosseBevinding'); return; }
       if (!eigenaar) { showAlert('Kies een eigenaar-organisatie.', 'error', 'alertLosseBevinding'); return; }
+      if (!melder) { showAlert('Kies een melder-organisatie.', 'error', 'alertLosseBevinding'); return; }
 
       const { data: bevinding, error } = await sb.from('bevindingen').insert({
         ketentest_id: activeKetentest.id, activity_id: null, scenario_id: scenarioId,
         titel, toelichting: reden, omschrijving_probleem: omschrijvingProbleem || null,
         prioriteit, owner_org_id: eigenaar, status: 'nieuw',
-        gemeld_door_user_id: currentUser?.id || null, gemeld_door_org_id: currentProfile?.organisation_id || null,
+        gemeld_door_user_id: currentUser?.id || null, gemeld_door_org_id: melder,
       }).select().single();
 
       if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertLosseBevinding'); return; }
 
       await sb.from('bevinding_toelichtingen').insert({
-        bevinding_id: bevinding.id, tekst: reden, organisation_id: currentProfile?.organisation_id || null,
+        bevinding_id: bevinding.id, tekst: reden, organisation_id: melder,
         created_by: currentUser?.id || null,
       });
 
