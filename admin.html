@@ -495,6 +495,10 @@
           <h1>NOK-opvolging</h1>
           <p>Alle activiteiten die als NOK zijn gemarkeerd binnen de actieve ketentest, met status, eigenaar en doorlooptijd.</p>
         </div>
+        <button class="btn btn-outline" onclick="openLosseBevindingModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Losse bevinding registreren
+        </button>
         <button class="btn btn-outline" onclick="loadNokOverview()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><polyline points="23 20 23 14 17 14"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
           Vernieuwen
@@ -1239,6 +1243,53 @@
   </div>
 
   <!-- Confirm delete -->
+  <!-- Modal: losse bevinding registreren -->
+  <div class="modal-overlay" id="modalLosseBevinding" style="display:none;" onclick="closeModalOverlay(event,'modalLosseBevinding')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Losse bevinding registreren</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalLosseBevinding')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:14px;">Voor een bevinding die niet is ontstaan vanuit een NOK op een activiteit — bijvoorbeeld een algemene constatering. Verschijnt tussen de overige NOK's, met een duidelijke "Los"-markering.</p>
+        <div class="form-group">
+          <label>Titel</label>
+          <input type="text" id="losseBevindingTitel" placeholder="Korte, duidelijke titel">
+        </div>
+        <div class="form-group">
+          <label>Scenario <span style="color:var(--text-muted); font-weight:400;">(optioneel, voor context)</span></label>
+          <select id="losseBevindingScenario"><option value="">— geen —</option></select>
+        </div>
+        <div class="form-group">
+          <label>Omschrijving probleem <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
+          <textarea id="losseBevindingOmschrijving" style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Toelichting / reden</label>
+          <textarea id="losseBevindingReden" style="min-height:70px;"></textarea>
+        </div>
+        <div class="form-group">
+          <label>Prioriteit</label>
+          <select id="losseBevindingPrioriteit">
+            <option value="laag">Laag</option>
+            <option value="midden" selected>Midden</option>
+            <option value="hoog">Hoog</option>
+            <option value="blokkerend">Blokkerend</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Eigenaar</label>
+          <select id="losseBevindingEigenaar"><option value="">Selecteer organisatie...</option></select>
+        </div>
+        <div id="alertLosseBevinding" class="alert" style="display:none;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalLosseBevinding')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveLosseBevinding()">Registreren</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalConfirm" style="display:none;" onclick="closeModalOverlay(event,'modalConfirm')">
     <div class="modal" style="max-width:400px;" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -2831,6 +2882,57 @@
       return !!myOrgId && !!bevinding.owner_org_id && myOrgId === bevinding.owner_org_id;
     }
 
+    // ---- LOSSE BEVINDING (niet gekoppeld aan een activiteit) ----
+    function openLosseBevindingModal() {
+      if (!activeKetentest) return;
+      document.getElementById('losseBevindingTitel').value = '';
+      document.getElementById('losseBevindingOmschrijving').value = '';
+      document.getElementById('losseBevindingReden').value = '';
+      document.getElementById('losseBevindingPrioriteit').value = 'midden';
+      document.getElementById('alertLosseBevinding').style.display = 'none';
+
+      const scenarioSelect = document.getElementById('losseBevindingScenario');
+      scenarioSelect.innerHTML = '<option value="">— geen —</option>' +
+        [...scenarios].sort((a, b) => a.code.localeCompare(b.code, undefined, { numeric: true }))
+          .map(s => `<option value="${s.id}">${s.code} — ${esc(s.title || '')}</option>`).join('');
+
+      const eigenaarSelect = document.getElementById('losseBevindingEigenaar');
+      eigenaarSelect.innerHTML = '<option value="">Selecteer organisatie...</option>' +
+        [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+
+      openModal('modalLosseBevinding');
+    }
+
+    async function saveLosseBevinding() {
+      const titel = document.getElementById('losseBevindingTitel').value.trim();
+      const scenarioId = document.getElementById('losseBevindingScenario').value || null;
+      const omschrijvingProbleem = document.getElementById('losseBevindingOmschrijving').value.trim();
+      const reden = document.getElementById('losseBevindingReden').value.trim();
+      const prioriteit = document.getElementById('losseBevindingPrioriteit').value;
+      const eigenaar = document.getElementById('losseBevindingEigenaar').value;
+
+      if (!titel) { showAlert('Vul een titel in.', 'error', 'alertLosseBevinding'); return; }
+      if (!reden) { showAlert('Vul een toelichting/reden in.', 'error', 'alertLosseBevinding'); return; }
+      if (!eigenaar) { showAlert('Kies een eigenaar-organisatie.', 'error', 'alertLosseBevinding'); return; }
+
+      const { data: bevinding, error } = await sb.from('bevindingen').insert({
+        ketentest_id: activeKetentest.id, activity_id: null, scenario_id: scenarioId,
+        titel, toelichting: reden, omschrijving_probleem: omschrijvingProbleem || null,
+        prioriteit, owner_org_id: eigenaar, status: 'nieuw',
+        gemeld_door_user_id: currentUser?.id || null, gemeld_door_org_id: currentProfile?.organisation_id || null,
+      }).select().single();
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertLosseBevinding'); return; }
+
+      await sb.from('bevinding_toelichtingen').insert({
+        bevinding_id: bevinding.id, tekst: reden, organisation_id: currentProfile?.organisation_id || null,
+        created_by: currentUser?.id || null,
+      });
+
+      closeModal('modalLosseBevinding');
+      await loadNokOverview();
+    }
+
     async function loadNokOverview() {
       const tb = document.getElementById('nokTable');
       tb.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
@@ -2915,8 +3017,9 @@
 
       tb.innerHTML = orderedRows.map(b => {
         const act = activities.find(a => a.id === b.activity_id);
-        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
-        const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : null;
+        const isLos = !act;
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : (b.scenario_id ? scenarios.find(s => s.id === b.scenario_id) : null);
+        const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : orgs.find(o => o.id === b.owner_org_id);
         const isResolved = b.status === 'hertest_ok';
         const notitieCount = nokNotitiesMap[b.id] || 0;
         const gekoppeldAan = b.gerelateerde_bevinding_id ? bevindingen.find(x => x.id === b.gerelateerde_bevinding_id) : null;
@@ -2929,10 +3032,10 @@
             ${isVervolg ? `<div style="font-size:11px; color:#7c3aed; margin-top:2px;">🔗 vervolg van B${gekoppeldAan.bevinding_nummer}</div>` : ''}
           </td>
           <td style="font-size:13px; max-width:260px;">
-            <div style="font-weight:600;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</div>
+            <div style="font-weight:600;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'} ${isLos ? '<span class="badge" style="background:#e0e7ff; color:#3730a3; font-size:10px; margin-left:4px;" title="Niet ontstaan vanuit een activiteit">Los</span>' : ''}</div>
             <span class="badge" style="background:${prioKleur.bg}; color:${prioKleur.fg}; font-size:10px; margin-top:3px; display:inline-block;">${NOK_PRIORITEIT_LABELS[b.prioriteit] || 'Midden'}</span>
           </td>
-          <td>${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" onclick="event.stopPropagation()" style="color:var(--brand); text-decoration:none; font-weight:600; font-size:13px;" title="Open scenario">${scen.code}</a>` : '?'}</td>
+          <td>${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" onclick="event.stopPropagation()" style="color:var(--brand); text-decoration:none; font-weight:600; font-size:13px;" title="Open scenario">${scen.code}</a>` : (isLos ? '<span style="color:var(--text-muted); font-size:12px;">—</span>' : '?')}</td>
           <td><span class="badge" style="background:${getOrgKleur(verantwOrg?.id, orgs).bg}; color:${getOrgKleur(verantwOrg?.id, orgs).fg}; font-size:11px;">${verantwOrg?.name || '—'}</span></td>
           <td>
             <span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : '#f3f4f6'}; color:${isResolved ? '#065f46' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓' : ''} ${NOK_STATUS_LABELS[b.status]}</span>
@@ -2963,8 +3066,8 @@
       const b = bevindingen.find(x => x.id === bevindingId);
       if (!b) return;
       const act = activities.find(a => a.id === b.activity_id);
-      const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
-      const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : null;
+      const scen = act ? scenarios.find(s => s.id === act.scenario_id) : (b.scenario_id ? scenarios.find(s => s.id === b.scenario_id) : null);
+      const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : orgs.find(o => o.id === b.owner_org_id);
       const acceptantOrg = act ? orgs.find(o => o.id === act.acceptant_org_id) : null;
       const melderOrg = orgs.find(o => o.id === b.gemeld_door_org_id);
       const setDate = b.created_at ? new Date(b.created_at) : null;
@@ -2982,7 +3085,7 @@
       // organisatie van de onderliggende activiteit bewerkt worden —
       // dat is niet per se dezelfde partij als de eigenaar van de
       // bevinding.
-      const magToelichtingBewerken = window.isPageAdmin || (act && act.organisation_id === currentProfile?.organisation_id);
+      const magToelichtingBewerken = window.isPageAdmin || (act && act.organisation_id === currentProfile?.organisation_id) || (!act && b.owner_org_id === currentProfile?.organisation_id);
       const notitieCount = nokNotitiesMap[b.id] || 0;
       if (!behoudEditState) { bevindingTitelEditModus = false; bevindingToelichtingEditId = null; }
 
