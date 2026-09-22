@@ -212,7 +212,16 @@
       document.getElementById('homeTitel').textContent = 'Ketentestmonitor' + (ketentestNaam ? ' ' + ketentestNaam : '');
 
       renderHomeTegels(profile?.role, result?.active?.model);
+      toonOnderhoudsmeldingIndienNodig();
     })();
+
+    async function toonOnderhoudsmeldingIndienNodig() {
+      const { data } = await sb.from('onderhoudsmeldingen').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      if (!data || !data.actief) return;
+      if (new Date(data.ingangsdatumtijd) > new Date()) return; // ingangsmoment nog niet bereikt
+      document.getElementById('onderhoudsmeldingTekstWeergave').textContent = data.tekst;
+      document.getElementById('onderhoudsmeldingOverlay').style.display = 'flex';
+    }
 
     async function doLogout() {
       await sb.auth.signOut();
@@ -247,6 +256,20 @@
       <p style="font-size:12px; color:rgba(255,255,255,0.6);">© Zorginstituut Nederland</p>
     </div>
   </footer>
+
+  <!-- Onderhoudsmelding: pop-up -->
+  <div id="onderhoudsmeldingOverlay" style="display:none; position:fixed; inset:0; background:rgba(15,23,42,0.55); z-index:9999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:#fff; border-radius:12px; max-width:480px; width:100%; padding:26px 28px; box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+      <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <h3 style="margin:0; font-size:17px;">Mededeling</h3>
+      </div>
+      <p id="onderhoudsmeldingTekstWeergave" style="font-size:14px; line-height:1.6; white-space:pre-wrap; margin-bottom:22px;"></p>
+      <div style="text-align:right;">
+        <button class="btn btn-primary" onclick="document.getElementById('onderhoudsmeldingOverlay').style.display='none';">OK</button>
+      </div>
+    </div>
+  </div>
 
 </body>
 </html>

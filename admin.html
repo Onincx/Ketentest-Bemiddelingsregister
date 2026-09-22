@@ -81,6 +81,7 @@
         <a href="admin.html?tab=ketentests" data-tab="ketentests" class="active" onclick="return navTab('ketentests', event)">Ketentesten</a>
         <a href="admin.html?tab=scenarios" data-tab="scenarios" onclick="return navTab('scenarios', event)">Scenario's beheren</a>
         <a href="admin.html?tab=logboek" data-tab="logboek" onclick="return navTab('logboek', event)">Logboek</a>
+        <a href="admin.html?tab=onderhoudsmelding" data-tab="onderhoudsmelding" onclick="return navTab('onderhoudsmelding', event)">Onderhoudsmelding</a>
         <a href="admin.html?tab=nok" data-tab="nok" onclick="return navTab('nok', event)">NOK-opvolging</a>
       </div>
     </div>
@@ -486,6 +487,36 @@
         </div>
       </div>
       <p style="font-size:11px; color:var(--text-muted); margin-top:10px;">Toont de laatste 300 handelingen binnen de actieve ketentest.</p>
+    </div>
+
+    <!-- TAB: Onderhoudsmelding -->
+    <div id="tab-onderhoudsmelding" style="display:none;">
+      <div class="page-header">
+        <div class="page-header-left">
+          <h1>Onderhoudsmelding</h1>
+          <p>Een platformbrede melding die als pop-up op de Home-pagina verschijnt — bij elke keer inloggen opnieuw, totdat je 'm hieronder weer uitzet. Geldt voor de hele monitor, niet alleen de actieve ketentest.</p>
+        </div>
+      </div>
+      <div class="card" style="padding:20px 24px; max-width:640px;">
+        <div class="form-group">
+          <label>Tekst</label>
+          <textarea id="onderhoudsmeldingTekst" style="min-height:100px;" placeholder="Bijv. Op zaterdag 3 oktober tussen 09:00 en 12:00 is de monitor niet beschikbaar wegens onderhoud."></textarea>
+        </div>
+        <div class="form-group">
+          <label>Ingangsdatum en -tijd</label>
+          <input type="datetime-local" id="onderhoudsmeldingIngang">
+          <p style="font-size:11px; color:var(--text-muted); margin-top:4px;">De melding verschijnt pas vanaf dit moment — ook als 'Actief' al aan staat.</p>
+        </div>
+        <div class="form-group">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="onderhoudsmeldingActief" style="width:16px; height:16px; cursor:pointer;">
+            Actief (melding wordt getoond zodra de ingangstijd is bereikt)
+          </label>
+        </div>
+        <div id="alertOnderhoudsmelding" class="alert" style="display:none; margin-bottom:12px;"></div>
+        <button class="btn btn-primary" onclick="saveOnderhoudsmelding()">Opslaan</button>
+        <p id="onderhoudsmeldingStatus" style="font-size:11.5px; color:var(--text-muted); margin-top:12px;"></p>
+      </div>
     </div>
 
     <!-- TAB: NOK-opvolging -->
@@ -1530,7 +1561,7 @@
 
     // ---- TABS ----
     function showTab(tab) {
-      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria'].forEach(t => {
+      ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria','onderhoudsmelding'].forEach(t => {
         document.getElementById('tab-' + t).style.display = t === tab ? '' : 'none';
       });
       document.querySelectorAll('.tab-btn').forEach((b,i) => {
@@ -1563,6 +1594,7 @@
       if (!window.isPageAdmin && tab !== 'notifications' && tab !== 'nok' && tab !== 'entrycriteria') return false;
       showTab(tab);
       if (tab === 'kenmerken') { loadKenmerkDefinities(); loadZorgkantoorcodes(); loadFunctioneleProcessen().then(renderProcesLijst); loadIndicatieLijsten().then(renderIndicatieLijsten); }
+      if (tab === 'onderhoudsmelding') loadOnderhoudsmelding();
       history.replaceState(null, '', 'admin.html?tab=' + tab);
       return false;
     }
@@ -3597,6 +3629,55 @@
         const cell = document.getElementById('ktScenCount-' + k.id);
         if (cell) cell.textContent = `${count || 0} scenario${count === 1 ? '' : "'s"}`;
       });
+    }
+
+    // ── Onderhoudsmelding ─────────────────────────────────────
+    let huidigeOnderhoudsmeldingId = null;
+
+    async function loadOnderhoudsmelding() {
+      const { data } = await sb.from('onderhoudsmeldingen').select('*').order('created_at', { ascending: false }).limit(1).maybeSingle();
+      huidigeOnderhoudsmeldingId = data?.id || null;
+      document.getElementById('onderhoudsmeldingTekst').value = data?.tekst || '';
+      document.getElementById('onderhoudsmeldingActief').checked = !!data?.actief;
+
+      const ingangVeld = document.getElementById('onderhoudsmeldingIngang');
+      if (data?.ingangsdatumtijd) {
+        const d = new Date(data.ingangsdatumtijd);
+        const pad = n => String(n).padStart(2, '0');
+        ingangVeld.value = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+      } else {
+        ingangVeld.value = '';
+      }
+
+      const statusEl = document.getElementById('onderhoudsmeldingStatus');
+      statusEl.textContent = data?.updated_at ? `Laatst bijgewerkt: ${new Date(data.updated_at).toLocaleString('nl-NL')}` : '';
+    }
+
+    async function saveOnderhoudsmelding() {
+      const tekst = document.getElementById('onderhoudsmeldingTekst').value.trim();
+      const ingangRaw = document.getElementById('onderhoudsmeldingIngang').value;
+      const actief = document.getElementById('onderhoudsmeldingActief').checked;
+
+      if (!tekst) { showAlert('Vul een tekst in.', 'error', 'alertOnderhoudsmelding'); return; }
+      if (!ingangRaw) { showAlert('Kies een ingangsdatum en -tijd.', 'error', 'alertOnderhoudsmelding'); return; }
+
+      const payload = {
+        tekst, ingangsdatumtijd: new Date(ingangRaw).toISOString(), actief,
+        updated_at: new Date().toISOString(), updated_by: currentUser?.id || null,
+      };
+
+      let error;
+      if (huidigeOnderhoudsmeldingId) {
+        ({ error } = await sb.from('onderhoudsmeldingen').update(payload).eq('id', huidigeOnderhoudsmeldingId));
+      } else {
+        const { data, error: insertError } = await sb.from('onderhoudsmeldingen').insert(payload).select().single();
+        error = insertError;
+        if (data) huidigeOnderhoudsmeldingId = data.id;
+      }
+
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertOnderhoudsmelding'); return; }
+      showAlert('Opgeslagen.', 'success', 'alertOnderhoudsmelding');
+      loadOnderhoudsmelding();
     }
 
     // ── Logboek ───────────────────────────────────────────────
