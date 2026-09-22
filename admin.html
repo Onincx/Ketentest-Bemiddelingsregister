@@ -2966,10 +2966,15 @@
 
       if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertLosseBevinding'); return; }
 
-      await sb.from('bevinding_toelichtingen').insert({
+      const { error: toelichtingError } = await sb.from('bevinding_toelichtingen').insert({
         bevinding_id: bevinding.id, tekst: reden, organisation_id: melder,
         created_by: currentUser?.id || null,
       });
+      if (toelichtingError) {
+        showAlert('De bevinding is aangemaakt, maar de toelichting kon niet worden opgeslagen: ' + toelichtingError.message, 'error', 'alertLosseBevinding');
+        await loadNokOverview();
+        return;
+      }
 
       closeModal('modalLosseBevinding');
       await loadNokOverview();
@@ -3257,6 +3262,7 @@
                 Opmerkingen (${notitieCount})
               </button>
               ${magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling') ? `<button class="btn btn-sm" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="openNokVervallenModal('${b.id}')">Melding laten vervallen</button>` : ''}
+              ${window.isPageAdmin && isVervallen ? `<button class="btn btn-outline btn-sm" onclick="terugzettenVervallenBevinding('${b.id}')" title="Alleen de beheerder kan een vervallen melding terugzetten">Vervallen terugzetten</button>` : ''}
             </div>
             <div>
               <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
@@ -3477,6 +3483,35 @@
       renderNokTable();
       document.getElementById('bevindingModalOverlay')?.remove();
       openBevindingModal(bevindingId);
+    }
+
+    // Alleen de beheerder mag een vervallen-verklaarde melding
+    // terugzetten — bijvoorbeeld wanneer een organisatie 'm per ongeluk
+    // op Vervallen heeft gezet in plaats van Opgelost. Zet de status
+    // terug naar 'In behandeling', zodat de normale statusknoppen weer
+    // beschikbaar zijn, en legt dit vast als opmerking voor de
+    // geschiedenis.
+    async function terugzettenVervallenBevinding(bevindingId) {
+      if (!window.isPageAdmin) return;
+      document.getElementById('confirmMsg').textContent = 'Deze vervallen melding terugzetten naar \'In behandeling\'?';
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('bevindingen').update({ status: 'in_behandeling' }).eq('id', bevindingId);
+        closeModal('modalConfirm');
+        if (error) { alert('Fout bij terugzetten: ' + error.message); return; }
+
+        const b = bevindingen.find(x => x.id === bevindingId);
+        if (b) b.status = 'in_behandeling';
+
+        await sb.from('bevinding_toelichtingen').insert({
+          bevinding_id: bevindingId, tekst: 'Vervallen-status teruggezet door beheerder.',
+          organisation_id: currentProfile?.organisation_id || null, created_by: currentUser?.id || null,
+        });
+
+        renderNokTable();
+        document.getElementById('bevindingModalOverlay')?.remove();
+        openBevindingModal(bevindingId);
+      };
+      openModal('modalConfirm');
     }
 
     // ---- NOK-OPMERKINGEN (meerdere per bevinding, nieuwste bovenin) ----
