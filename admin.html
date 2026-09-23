@@ -7,7 +7,7 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beheer — Ketentest Bemiddelingsregister</title>
-  <link rel="stylesheet" href="css/style.css?v=29">
+  <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
@@ -3263,6 +3263,10 @@
               </button>
               ${magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling') ? `<button class="btn btn-sm" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="openNokVervallenModal('${b.id}')">Melding laten vervallen</button>` : ''}
               ${window.isPageAdmin && isVervallen ? `<button class="btn btn-outline btn-sm" onclick="terugzettenVervallenBevinding('${b.id}')" title="Alleen de beheerder kan een vervallen melding terugzetten">Vervallen terugzetten</button>` : ''}
+              ${magMuteren && !act && b.status === 'opgelost_wacht_hertest' ? `
+                <button class="btn btn-sm" style="background:#059669; color:#fff; border-color:#059669;" onclick="zetHandmatigeNokStatus('${b.id}','hertest_ok')" title="Er is geen activiteit om een hertest tegen af te zetten — zet hier handmatig het eindresultaat">Hertest OK</button>
+                <button class="btn btn-outline btn-sm" onclick="zetHandmatigeNokStatus('${b.id}','in_behandeling')">Nog niet opgelost</button>
+              ` : ''}
             </div>
             <div>
               <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
@@ -3512,6 +3516,32 @@
         openBevindingModal(bevindingId);
       };
       openModal('modalConfirm');
+    }
+
+    // Voor een losse bevinding (geen onderliggende activiteit) is er
+    // geen test om op OK te zetten en zo automatisch naar 'Hertest OK'
+    // door te schuiven. Hiermee kan de eigenaar-organisatie (of de
+    // beheerder) het eindresultaat zelf handmatig vastleggen.
+    const NOK_HANDMATIGE_STATUS_LABELS = { hertest_ok: 'Hertest OK', in_behandeling: 'In behandeling' };
+
+    async function zetHandmatigeNokStatus(bevindingId, nieuweStatus) {
+      const b = bevindingen.find(x => x.id === bevindingId);
+      if (!b) return;
+      if (!canMutateNok(b)) return;
+
+      const { error } = await sb.from('bevindingen').update({ status: nieuweStatus }).eq('id', bevindingId);
+      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
+      b.status = nieuweStatus;
+
+      await sb.from('bevinding_toelichtingen').insert({
+        bevinding_id: bevindingId,
+        tekst: `Status handmatig gezet op '${NOK_HANDMATIGE_STATUS_LABELS[nieuweStatus]}' (losse bevinding, geen activiteit om te hertesten).`,
+        organisation_id: currentProfile?.organisation_id || null, created_by: currentUser?.id || null,
+      });
+
+      renderNokTable();
+      document.getElementById('bevindingModalOverlay')?.remove();
+      openBevindingModal(bevindingId);
     }
 
     // ---- NOK-OPMERKINGEN (meerdere per bevinding, nieuwste bovenin) ----
