@@ -78,31 +78,55 @@ const IDLE_TIMEOUT_MINUTEN = 15;
 const IDLE_WAARSCHUWING_SECONDEN = 60;
 
 let idleWatcherGestart = false;
-let idleTimer = null;
+let idleLastActivityTime = 0;
+let idleCheckInterval = null;
 let idleWaarschuwingActief = false;
-let idleCountdownInterval = null;
+let idleWaarschuwingStartTime = 0;
 
 function startIdleTimeoutWatcher() {
   if (idleWatcherGestart) return; // voorkomt dubbele listeners bij meerdere requireAuth-aanroepen
   idleWatcherGestart = true;
-  resetIdleTimer();
+  idleLastActivityTime = Date.now();
   // Bewust beperkt tot échte, bewuste interacties met de tool zelf —
   // niet 'mousemove' of 'scroll', die ook afgaan bij de geringste
   // muistrilling of sensorruis, zonder dat er daadwerkelijk iets in de
   // monitor gebeurt.
   ['click', 'keydown'].forEach(evt => {
-    document.addEventListener(evt, () => { if (!idleWaarschuwingActief) resetIdleTimer(); }, { passive: true });
+    document.addEventListener(evt, () => { if (!idleWaarschuwingActief) idleLastActivityTime = Date.now(); }, { passive: true });
+  });
+
+  // Een setInterval wordt door de browser vertraagd zodra het tabblad
+  // op de achtergrond staat (soms tot maar 1x per minuut of minder) —
+  // maar omdat hier steeds tegen de wérkelijke kloktijd wordt
+  // vergeleken (Date.now() - idleLastActivityTime), klopt de uitkomst
+  // nog steeds zodra de check alsnog wordt uitgevoerd. Daarnaast wordt
+  // er ook direct gecontroleerd zodra het tabblad weer zichtbaar wordt,
+  // zodat er niet gewacht hoeft te worden op de eerstvolgende tick.
+  idleCheckInterval = setInterval(controleerIdleTijd, 1000);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') controleerIdleTijd();
   });
 }
 
-function resetIdleTimer() {
-  if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(toonIdleWaarschuwing, (IDLE_TIMEOUT_MINUTEN * 60 - IDLE_WAARSCHUWING_SECONDEN) * 1000);
+function controleerIdleTijd() {
+  const waarschuwingsGrensMs = (IDLE_TIMEOUT_MINUTEN * 60 - IDLE_WAARSCHUWING_SECONDEN) * 1000;
+  if (!idleWaarschuwingActief) {
+    if (Date.now() - idleLastActivityTime >= waarschuwingsGrensMs) toonIdleWaarschuwing();
+    return;
+  }
+  // De waarschuwing staat al open: ook de aftelling zelf hier tegen de
+  // kloktijd aflezen (i.p.v. simpelweg te decrementen), zodat een
+  // vertraagde tick alsnog het juiste aantal seconden toont — of, als
+  // de tijd inmiddels al om is, meteen uitlogt.
+  const secondenOver = IDLE_WAARSCHUWING_SECONDEN - Math.floor((Date.now() - idleWaarschuwingStartTime) / 1000);
+  const el = document.getElementById('idleSecondenOver');
+  if (el) el.textContent = Math.max(secondenOver, 0);
+  if (secondenOver <= 0) logUitWegensInactiviteit();
 }
 
 function toonIdleWaarschuwing() {
   idleWaarschuwingActief = true;
-  let secondenOver = IDLE_WAARSCHUWING_SECONDEN;
+  idleWaarschuwingStartTime = Date.now();
 
   const modal = document.createElement('div');
   modal.className = 'modal-overlay';
@@ -114,33 +138,24 @@ function toonIdleWaarschuwing() {
         <h3>Sessie verloopt binnenkort</h3>
       </div>
       <div class="modal-body">
-        <p style="font-size:14px; line-height:1.6;">Wegens inactiviteit word je over <strong id="idleSecondenOver">${secondenOver}</strong> seconden automatisch uitgelogd.</p>
+        <p style="font-size:14px; line-height:1.6;">Wegens inactiviteit word je over <strong id="idleSecondenOver">${IDLE_WAARSCHUWING_SECONDEN}</strong> seconden automatisch uitgelogd.</p>
       </div>
       <div class="modal-footer">
         <button class="btn btn-primary" onclick="blijfAangemeld()">Ingelogd blijven</button>
       </div>
     </div>`;
   document.body.appendChild(modal);
-
-  idleCountdownInterval = setInterval(() => {
-    secondenOver--;
-    const el = document.getElementById('idleSecondenOver');
-    if (el) el.textContent = secondenOver;
-    if (secondenOver <= 0) {
-      clearInterval(idleCountdownInterval);
-      logUitWegensInactiviteit();
-    }
-  }, 1000);
 }
 
 function blijfAangemeld() {
   idleWaarschuwingActief = false;
-  clearInterval(idleCountdownInterval);
   document.getElementById('idleWaarschuwingOverlay')?.remove();
-  resetIdleTimer();
+  idleLastActivityTime = Date.now();
 }
 
 async function logUitWegensInactiviteit() {
+  idleWaarschuwingActief = false;
+  clearInterval(idleCheckInterval);
   document.getElementById('idleWaarschuwingOverlay')?.remove();
   await sb.auth.signOut();
   window.location.href = 'index.html?reden=inactiviteit';
