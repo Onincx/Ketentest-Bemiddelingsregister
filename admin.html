@@ -3142,18 +3142,48 @@
 
       const heropen = (behoud) => `document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}'${behoud ? ', true' : ''})`;
 
+      // Herbruikbare kaart voor één gegevensveld — zorgt voor een
+      // consistente, nette weergave i.p.v. losse stukken tekst.
+      const veldKaart = (label, inhoud) => `<div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:10px 12px;">
+        <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px;">${label}</div>
+        <div style="font-size:13px;">${inhoud}</div>
+      </div>`;
+
+      // Alle geldige statusovergangen voor déze bevinding, als menu-
+      // items bij de status zelf — vervangt de losse knoppen die eerder
+      // helemaal onderaan het scherm stonden.
+      const statusActies = [];
+      if (magMuteren && b.status === 'nieuw') statusActies.push({ label: 'In behandeling nemen', onclick: `nemInBehandeling('${b.id}')` });
+      if (magMuteren && b.status === 'in_behandeling') statusActies.push({ label: 'Markeren als opgelost', onclick: `openNokOpgelostModal('${b.id}')` });
+      if (magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling')) statusActies.push({ label: 'Melding laten vervallen', danger: true, onclick: `openNokVervallenModal('${b.id}')` });
+      if (magMuteren && !act && b.status === 'opgelost_wacht_hertest') {
+        statusActies.push({ label: 'Hertest OK', onclick: `zetHandmatigeNokStatus('${b.id}','hertest_ok')` });
+        statusActies.push({ label: 'Nog niet opgelost', onclick: `zetHandmatigeNokStatus('${b.id}','in_behandeling')` });
+      }
+      if (window.isPageAdmin && isVervallen) statusActies.push({ label: 'Vervallen terugzetten', onclick: `terugzettenVervallenBevinding('${b.id}')` });
+
+      const statusMenuHtml = statusActies.length ? `
+        <div style="position:relative; display:inline-block; margin-left:6px;">
+          <button class="btn btn-ghost btn-icon" title="Status wijzigen" onclick="const m=document.getElementById('bevindingStatusMenu'); m.style.display = m.style.display==='none' ? 'block' : 'none';">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <div id="bevindingStatusMenu" style="display:none; position:absolute; top:calc(100% + 4px); left:0; background:#fff; border:1px solid var(--border); border-radius:8px; box-shadow:var(--shadow-md); min-width:200px; z-index:20; overflow:hidden;">
+            ${statusActies.map(a => `<button class="btn btn-ghost" style="display:block; width:100%; text-align:left; border-radius:0; padding:9px 14px; font-size:13px; ${a.danger ? 'color:var(--danger);' : ''}" onclick="${a.onclick}">${a.label}</button>`).join('<div style="border-top:1px solid var(--border);"></div>')}
+          </div>
+        </div>` : '';
+
       const toelichtingHtml = toelichtingen.map(t => {
         const orgNaam = orgs.find(o => o.id === t.organisation_id)?.name || '—';
         const datumTekst = new Date(t.created_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         const isEditingThis = bevindingToelichtingEditId === t.id;
-        return `<div style="border-bottom:1px solid var(--border); padding:10px 0;">
-          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
-            <div style="font-size:11px; color:var(--text-muted);">${orgNaam} · ${datumTekst}${t.updated_at ? ' · bewerkt' : ''}</div>
-            ${magToelichtingBewerken && !isEditingThis ? `<button class="btn btn-ghost btn-icon" style="width:22px; height:22px; flex-shrink:0;" title="Bewerken" onclick="bevindingToelichtingEditId='${t.id}'; ${heropen(true)}"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+        return `<div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:8px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:5px;">
+            <div style="font-size:11px; font-weight:600; color:var(--text-muted);">${orgNaam} <span style="font-weight:400;">· ${datumTekst}${t.updated_at ? ' · bewerkt' : ''}</span></div>
+            ${magToelichtingBewerken && !isEditingThis ? `<button class="btn btn-ghost btn-icon" title="Bewerken" onclick="bevindingToelichtingEditId='${t.id}'; ${heropen(true)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
           </div>
           ${isEditingThis
-            ? `<textarea id="toelichtingEdit-${t.id}" oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-top:6px;">${t.tekst.replace(/</g, '&lt;')}</textarea>`
-            : `<div style="font-size:13px; white-space:pre-wrap; margin-top:4px;">${t.tekst.replace(/</g, '&lt;')}</div>`}
+            ? `<textarea id="toelichtingEdit-${t.id}" oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${t.tekst.replace(/</g, '&lt;')}</textarea>`
+            : `<div style="font-size:13px; white-space:pre-wrap;">${t.tekst.replace(/</g, '&lt;')}</div>`}
         </div>`;
       }).join('');
 
@@ -3172,102 +3202,65 @@
               ${magMuteren && bevindingTitelEditModus
                 ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" oninput="markeerBevindingGewijzigd()" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">`
                 : `<h3 style="margin:0; flex:1;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</h3>
-                   ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; ${heropen(true)}"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
+                   ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; ${heropen(true)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
             </div>
             <div style="font-size:12.5px; color:var(--text-muted); line-height:1.6;">
               ${scen ? `<a href="app.html?scenario=${scen.id}" target="_blank" style="color:var(--brand); text-decoration:none; font-weight:600;">${scen.code}</a> — ${scen.title ? scen.title.replace(/</g, '&lt;') : ''}` : ''}
               ${act ? `<br>Activiteit: ${act.description || ''}` : ''}
             </div>
           </div>
-          <div class="modal-body">
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px;">
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Status</div>
-                <span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : isVervallen ? '#f3f4f6' : isLocked ? '#ede9fe' : '#f3f4f6'}; color:${isResolved ? '#065f46' : isVervallen ? '#6b7280' : isLocked ? '#5b21b6' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓ ' : ''}${NOK_STATUS_LABELS[b.status]}</span>
-                ${magMuteren && b.status === 'nieuw' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="nemInBehandeling('${b.id}')">In behandeling nemen</button>` : ''}
-                ${magMuteren && b.status === 'in_behandeling' ? `<button class="btn btn-primary btn-sm" style="margin-top:8px; display:block;" onclick="openNokOpgelostModal('${b.id}')">Markeren als opgelost</button>` : ''}
-              </div>
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Prioriteit</div>
-                ${magMuteren
+          <div class="modal-body" style="background:var(--surface);">
+            <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:10px;">
+              ${veldKaart('Status', `<span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : isVervallen ? '#f3f4f6' : isLocked ? '#ede9fe' : '#f3f4f6'}; color:${isResolved ? '#065f46' : isVervallen ? '#6b7280' : isLocked ? '#5b21b6' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓ ' : ''}${NOK_STATUS_LABELS[b.status]}</span>${statusMenuHtml}`)}
+              ${veldKaart('Prioriteit', magMuteren
                   ? `<select onchange="updateNokField('${b.id}','prioriteit',this.value)" style="font-size:12px; padding:5px 8px; border:1px solid var(--border); border-radius:6px; width:100%;">
                       ${Object.entries(NOK_PRIORITEIT_LABELS).map(([v, l]) => `<option value="${v}" ${b.prioriteit === v ? 'selected' : ''}>${l}</option>`).join('')}
                     </select>`
-                  : `<span class="badge" style="background:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).bg}; color:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).fg}; font-size:11px;">${NOK_PRIORITEIT_LABELS[b.prioriteit] || 'Midden'}</span>`}
-              </div>
-            </div>
-            <div style="display:grid; grid-template-columns:${act ? '1fr 1fr 1fr' : '1fr'}; gap:16px; margin-bottom:16px;">
-              ${act ? `
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Verantwoordelijke</div>
-                ${window.isPageAdmin
+                  : `<span class="badge" style="background:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).bg}; color:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).fg}; font-size:11px;">${NOK_PRIORITEIT_LABELS[b.prioriteit] || 'Midden'}</span>`)}
+              ${act ? veldKaart('Verantwoordelijke', window.isPageAdmin
                   ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','organisation_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
                       ${orgs.map(o => `<option value="${o.id}" ${act?.organisation_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
-                  : `<span class="badge" style="background:${getOrgKleur(verantwOrg?.id, orgs).bg}; color:${getOrgKleur(verantwOrg?.id, orgs).fg}; font-size:11px;">${verantwOrg?.name || '—'}</span>`}
-              </div>
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Acceptant</div>
-                ${window.isPageAdmin
+                  : `<span class="badge" style="background:${getOrgKleur(verantwOrg?.id, orgs).bg}; color:${getOrgKleur(verantwOrg?.id, orgs).fg}; font-size:11px;">${verantwOrg?.name || '—'}</span>`) : ''}
+              ${act ? veldKaart('Acceptant', window.isPageAdmin
                   ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','acceptant_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
                       <option value="">— geen acceptant —</option>
                       ${orgs.map(o => `<option value="${o.id}" ${act?.acceptant_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
-                  : `<span class="badge" style="background:${getOrgKleur(acceptantOrg?.id, orgs).bg}; color:${getOrgKleur(acceptantOrg?.id, orgs).fg}; font-size:11px;">${acceptantOrg?.name || '—'}</span>`}
-              </div>` : ''}
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Eigenaar (oplossing)</div>
-                ${window.isPageAdmin
+                  : `<span class="badge" style="background:${getOrgKleur(acceptantOrg?.id, orgs).bg}; color:${getOrgKleur(acceptantOrg?.id, orgs).fg}; font-size:11px;">${acceptantOrg?.name || '—'}</span>`) : ''}
+              ${veldKaart('Eigenaar (oplossing)', window.isPageAdmin
                   ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
                       ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
-                  : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>
-                     <p style="font-size:10.5px; color:var(--text-muted); margin-top:4px;">Eenmaal gekozen bij het registreren van de NOK, alleen de beheerder kan dit nog wijzigen.</p>`}
-              </div>
+                  : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`)}
+              ${veldKaart('Melder', `<span style="font-size:12px;">${melderOrg?.name || '—'}</span>`)}
+              ${veldKaart('Datum melding', `<span style="font-size:12px;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</span>`)}
+              ${veldKaart('Doorlooptijd', `<span style="font-size:12px;">${doorlooptijd}</span>`)}
             </div>
-            ${window.isPageAdmin && act ? `<p style="font-size:10.5px; color:var(--text-muted); margin:-10px 0 16px;">Verantwoordelijke en acceptant pas je hier aan op de onderliggende activiteit zelf — dit geldt dus voor de hele activiteit, niet alleen voor deze bevinding.</p>` : ''}
-            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-bottom:16px;">
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Melder</div>
-                <span style="font-size:12px;">${melderOrg?.name || '—'}</span>
-              </div>
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Datum melding</div>
-                <span style="font-size:12px;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</span>
-              </div>
-              <div>
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:5px;">Doorlooptijd</div>
-                <span style="font-size:12px;">${doorlooptijd}</span>
-              </div>
-            </div>
-            <div style="margin-bottom:16px;">
-              <div style="display:flex; align-items:center; gap:8px; margin-bottom:5px;">
-                <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Omschrijving probleem</div>
-                ${magToelichtingBewerken && !bevindingOmschrijvingEditModus ? `<button class="btn btn-ghost btn-icon" style="width:20px; height:20px;" title="Omschrijving bewerken" onclick="bevindingOmschrijvingEditModus=true; ${heropen(true)}"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
+            ${window.isPageAdmin && act ? `<p style="font-size:10.5px; color:var(--text-muted); margin:0 0 14px;">Verantwoordelijke en acceptant pas je hier aan op de onderliggende activiteit zelf — dit geldt dus voor de hele activiteit, niet alleen voor deze bevinding.</p>` : ''}
+            ${!window.isPageAdmin ? `<p style="font-size:10.5px; color:var(--text-muted); margin:-4px 0 14px;">De eigenaar is eenmalig gekozen bij het registreren van de melding — alleen de beheerder kan dit nog wijzigen.</p>` : ''}
+
+            <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-bottom:10px;">
+              <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px;">
+                <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Omschrijving probleem</div>
+                ${magToelichtingBewerken && !bevindingOmschrijvingEditModus ? `<button class="btn btn-ghost btn-icon" title="Omschrijving bewerken" onclick="bevindingOmschrijvingEditModus=true; ${heropen(true)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}
               </div>
               ${magToelichtingBewerken && bevindingOmschrijvingEditModus
                 ? `<textarea id="bevindingModalOmschrijving" oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : ''}</textarea>`
                 : `<div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : '<span style=\"color:var(--text-muted); font-style:italic;\">Geen omschrijving vastgelegd.</span>'}</div>`}
             </div>
-            <div>
-              <div style="font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; margin-bottom:8px;">Toelichting</div>
+
+            <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px;">
+              <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">Toelichting</div>
               ${magToelichtingBewerken ? `<textarea id="toelichtingNieuw" placeholder="Voeg een update toe over de status van deze melding..." oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:60px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:10px;"></textarea>` : ''}
               ${toelichtingHtml || '<p style="font-size:12px; color:var(--text-muted);">Nog geen toelichting vastgelegd.</p>'}
             </div>
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
-            <div style="display:flex; gap:8px;">
-              <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                Opmerkingen (${notitieCount})
-              </button>
-              ${magMuteren && (b.status === 'nieuw' || b.status === 'in_behandeling') ? `<button class="btn btn-sm" style="background:var(--danger); color:#fff; border-color:var(--danger);" onclick="openNokVervallenModal('${b.id}')">Melding laten vervallen</button>` : ''}
-              ${window.isPageAdmin && isVervallen ? `<button class="btn btn-outline btn-sm" onclick="terugzettenVervallenBevinding('${b.id}')" title="Alleen de beheerder kan een vervallen melding terugzetten">Vervallen terugzetten</button>` : ''}
-              ${magMuteren && !act && b.status === 'opgelost_wacht_hertest' ? `
-                <button class="btn btn-sm" style="background:#059669; color:#fff; border-color:#059669;" onclick="zetHandmatigeNokStatus('${b.id}','hertest_ok')" title="Er is geen activiteit om een hertest tegen af te zetten — zet hier handmatig het eindresultaat">Hertest OK</button>
-                <button class="btn btn-outline btn-sm" onclick="zetHandmatigeNokStatus('${b.id}','in_behandeling')">Nog niet opgelost</button>
-              ` : ''}
-            </div>
+            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Opmerkingen (${notitieCount})
+            </button>
             <div>
               <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
               <button class="btn btn-primary btn-sm" id="bevindingOpslaanBtn" style="display:none;" onclick="opslaanAlleBevindingWijzigingen('${b.id}')">Opslaan</button>
