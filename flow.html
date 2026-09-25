@@ -850,7 +850,12 @@
 
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
     function closeModal(id) { document.getElementById(id).style.display = 'none'; }
-    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+    function closeModalOverlay(e, id) {
+      // Bewust uitgeschakeld: een pop-up mag niet meer sluiten door per
+      // ongeluk buiten het venster te klikken — dat kostte gebruikers
+      // eerder al ingevulde gegevens. Sluiten kan alleen nog bewust, via
+      // het kruisje of een Annuleren/Sluiten-knop.
+    }
 
     // ── Nodes ─────────────────────────────────────────────────
     function renderAll() {

@@ -837,7 +837,12 @@
       const el = document.getElementById('alertDeelname');
       if (el) el.style.display = 'none';
     }
-    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+    function closeModalOverlay(e, id) {
+      // Bewust uitgeschakeld: een pop-up mag niet meer sluiten door per
+      // ongeluk buiten het venster te klikken — dat kostte gebruikers
+      // eerder al ingevulde gegevens. Sluiten kan alleen nog bewust, via
+      // het kruisje of een Annuleren/Sluiten-knop.
+    }
 
     /* ============================================================
        GEBRUIKER: overzicht (nog te doen / al gedaan) + focus-weergave

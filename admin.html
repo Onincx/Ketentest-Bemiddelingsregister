@@ -3267,7 +3267,6 @@
             </div>
           </div>
         </div>`;
-      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
       document.body.appendChild(modal);
     }
 
@@ -4134,7 +4133,12 @@
       // activiteit.
       if (id === 'modalActivity') pendingWannneerActiviteit = null;
     }
-    function closeModalOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+    function closeModalOverlay(e, id) {
+      // Bewust uitgeschakeld: een pop-up mag niet meer sluiten door per
+      // ongeluk buiten het venster te klikken — dat kostte gebruikers
+      // eerder al ingevulde gegevens. Sluiten kan alleen nog bewust, via
+      // het kruisje of een Annuleren/Sluiten-knop.
+    }
 
     function editOrg(id) {
       const o = orgs.find(x => x.id === id);
