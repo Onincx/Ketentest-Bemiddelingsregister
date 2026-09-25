@@ -2098,7 +2098,8 @@
 
     async function saveNoteFromModal(activityId, scenarioId) {
       const notes = document.getElementById('noteModalText').value;
-      await saveNotes(activityId, scenarioId, notes);
+      const gelukt = await saveNotes(activityId, scenarioId, notes);
+      if (!gelukt) return; // fout is al getoond; pop-up en getypte tekst blijven staan zodat opnieuw geprobeerd kan worden
       document.getElementById('noteModalOverlay').remove();
       // Re-render the scenario to update the icon
       const s = scenarios.find(x => x.id === scenarioId);
@@ -2227,12 +2228,14 @@
       const existing = results[activityId];
       if (existing) {
         const { error } = await sb.from('activity_results').update({ notes, updated_by: currentUser.id, updated_at: new Date().toISOString() }).eq('id', existing.id);
-        if (!error) results[activityId] = { ...existing, notes };
-        else alert('Fout bij opslaan van de opmerking: ' + error.message);
+        if (!error) { results[activityId] = { ...existing, notes }; return true; }
+        alert('Fout bij opslaan van de opmerking: ' + error.message);
+        return false;
       } else {
         const { data, error } = await sb.from('activity_results').insert({ activity_id: activityId, updated_by: currentUser.id, result, notes }).select().single();
-        if (!error) results[activityId] = data;
-        else alert('Fout bij opslaan van de opmerking: ' + error.message);
+        if (!error) { results[activityId] = data; return true; }
+        alert('Fout bij opslaan van de opmerking: ' + error.message);
+        return false;
       }
     }
 
