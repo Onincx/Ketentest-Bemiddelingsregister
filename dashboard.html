@@ -519,10 +519,10 @@
           if (imgHeightPt > pageHeight - margin * 2) {
             let resterendeHoogte = imgHeightPt;
             let renderedHeight = 0;
-            const imgData = canvas.toDataURL('image/png');
+            const imgData = canvas.toDataURL('image/jpeg', 0.85);
             while (resterendeHoogte > 0) {
               const ruimteOpPagina = pageHeight - margin - y;
-              doc.addImage(imgData, 'PNG', margin, y - renderedHeight, usableWidth, imgHeightPt);
+              doc.addImage(imgData, 'JPEG', margin, y - renderedHeight, usableWidth, imgHeightPt);
               renderedHeight += ruimteOpPagina;
               resterendeHoogte -= ruimteOpPagina;
               if (resterendeHoogte > 0) { doc.addPage(); y = margin; }
@@ -533,8 +533,8 @@
             continue;
           }
 
-          const imgData = canvas.toDataURL('image/png');
-          doc.addImage(imgData, 'PNG', margin, y, usableWidth, imgHeightPt);
+          const imgData = canvas.toDataURL('image/jpeg', 0.85);
+          doc.addImage(imgData, 'JPEG', margin, y, usableWidth, imgHeightPt);
           y += imgHeightPt + gapPt;
           isEersteBlokOpPagina = false;
         }
