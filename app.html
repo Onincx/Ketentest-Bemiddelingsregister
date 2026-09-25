@@ -761,7 +761,8 @@
         scenarioKenmerkInstanties.push(instantie);
       }
 
-      await slaWaardenOp(instantie.id, inputs, alertId);
+      const gelukt = await slaWaardenOp(instantie.id, inputs, alertId);
+      if (!gelukt) return; // fout is al getoond; bewerkmodus blijft open zodat niets verloren gaat
       kenmerkEditMode.delete(`${groep}-${scenarioId}`);
       rerenderScenario(scenarioId);
     }
@@ -1116,7 +1117,8 @@
         return;
       }
 
-      await slaWaardenOp(instantieId, inputs, alertId);
+      const gelukt = await slaWaardenOp(instantieId, inputs, alertId);
+      if (!gelukt) return; // fout is al getoond; bewerkmodus blijft open zodat niets verloren gaat
 
       if (koppelSelect) {
         const { error } = await sb.from('scenario_kenmerk_instanties').update({ gekoppelde_instantie_id: koppelSelect.value }).eq('id', instantieId);
@@ -1159,7 +1161,7 @@
       }));
 
       const { error } = await sb.from('scenario_kenmerk_waarden').upsert(rows, { onConflict: 'instantie_id,kenmerk_definitie_id' });
-      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', alertId); return; }
+      if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', alertId); return false; }
 
       rows.forEach(r => {
         const idx = scenarioKenmerkWaarden.findIndex(w => w.instantie_id === r.instantie_id && w.kenmerk_definitie_id === r.kenmerk_definitie_id);
@@ -1167,6 +1169,7 @@
       });
 
       showAlert('Opgeslagen.', 'success', alertId);
+      return true;
     }
 
     // Ververst alleen het kenmerken-gedeelte van een uitgeklapt scenario,
