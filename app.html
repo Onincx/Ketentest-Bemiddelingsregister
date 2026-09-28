@@ -8,6 +8,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Ketentest — Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -249,9 +251,9 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -333,58 +335,75 @@
 
     async function loadData() {
       if (!activeKetentest) return;
+      const kid = activeKetentest.id;
 
-      // Load orgs first so we can resolve acceptant_org manually
-      const { data: orgData } = await sb.from('organisations').select('*');
-      allOrgs = orgData || [];
+      // Laadvolgorde: alles wat NIET van de scenario-id's afhangt wordt
+      // meteen gestart en loopt parallel; de queries die wél scenario-id's
+      // nodig hebben starten zodra de scenario's binnen zijn (terwijl de
+      // rest nog bezig is). Voorheen liep dit als een keten van ~7
+      // opeenvolgende netwerkstappen, waarvan de meeste onafhankelijk waren.
+      const pOrgs = sb.from('organisations').select('*');
+      const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
+      const pNotif = loadNotificationDefs();
+      const pOnafhankelijk = Promise.all([
+        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('*').eq('ketentest_id', kid).order('id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', kid).order('id').range(from, to)),
+        sb.from('flows').select('*').eq('ketentest_id', kid),
+        fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', kid).order('created_at', { ascending: false }).order('id').range(from, to)),
+        sb.from('kenmerk_definities').select('*').eq('ketentest_id', kid).order('volgorde'),
+        sb.from('organisatie_zorgkantoorcodes').select('*'),
+        sb.from('functionele_processen').select('*').eq('ketentest_id', kid).order('naam'),
+        sb.from('entry_criteria_vragen').select('id').eq('ketentest_id', kid),
+        sb.from('entry_criteria_goedkeuring').select('*').eq('ketentest_id', kid),
+        // Data voor het Indicatiebesluit-formulier (alleen relevant bij startscenario's van een flow)
+        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', kid),
+        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', kid),
+        sb.from('indicatie_grondslagen').select('*').eq('ketentest_id', kid).order('waarde'),
+        sb.from('indicatie_zzp_codes').select('*').eq('ketentest_id', kid).order('waarde'),
+        fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', kid).order('id').range(from, to)),
+      ]);
 
-      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      pOnafhankelijk.catch(() => {}); // voorkomt een 'unhandled rejection'-melding als dit pas later wordt afgewacht
+      const { data: scenarioData } = await pScenarios;
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      await loadNotificationDefs();
-
       if (!scenarioIds.length) {
+        // Niets meer af te wachten; de al gestarte queries lopen zonder gevolgen af.
+        const { data: orgData } = await pOrgs;
+        allOrgs = orgData || [];
+        await pNotif;
         activities = []; results = {}; flowNodes = []; flowEdges = []; scenarioFlowMap = {}; latestBevindingByActivity = {};
         kenmerkDefinities = []; scenarioKenmerkInstanties = []; scenarioKenmerkWaarden = []; zorgkantoorcodes = [];
         return;
       }
 
-      const [a, r, fn, fe, fl, bv, kd, ki, zk, fp, sfp, ecv] = await Promise.all([
-        fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to)),
-        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
-        fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
-        fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }).range(from, to)),
-        sb.from('kenmerk_definities').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde'),
-        fetchAllRows((from, to) => sb.from('scenario_kenmerk_instanties').select('*').in('scenario_id', scenarioIds).order('volgnummer').range(from, to)),
-        sb.from('organisatie_zorgkantoorcodes').select('*'),
-        sb.from('functionele_processen').select('*').eq('ketentest_id', activeKetentest.id).order('naam'),
-        fetchAllRows((from, to) => sb.from('scenario_functionele_processen').select('*').in('scenario_id', scenarioIds).range(from, to)),
-        sb.from('entry_criteria_vragen').select('id').eq('ketentest_id', activeKetentest.id),
-      ]);
+      // Tweede golf: hangt af van scenarioIds en start meteen.
+      const pActivities = fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id, name, code)').in('scenario_id', scenarioIds).order('sort_order').order('id').range(from, to));
+      const pKi = fetchAllRows((from, to) => sb.from('scenario_kenmerk_instanties').select('*').in('scenario_id', scenarioIds).order('volgnummer').order('id').range(from, to));
+      const pSfp = fetchAllRows((from, to) => sb.from('scenario_functionele_processen').select('*').in('scenario_id', scenarioIds).order('id').range(from, to));
+      const pIbz = fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).order('id').range(from, to));
+
+      const [orgRes, onafhankelijk, a, ki, sfp, ibz] = await Promise.all([pOrgs, pOnafhankelijk, pActivities, pKi, pSfp, pIbz]);
+      await pNotif;
+      const [r, fn, fe, fl, bv, kd, zk, fp, ecv, ecg, kua, kpc, ig, izz, fbsn] = onafhankelijk;
+      allOrgs = orgRes.data || [];
+
+      // Derde golf: hangt af van uitkomsten van de vorige (vraag-id's, instantie-id's).
       const entryCriteriaVraagIds = (ecv.data || []).map(v => v.id);
-      const [eco, ecg] = await Promise.all([
+      scenarioKenmerkInstanties = ki.data || [];
+      const instantieIds = scenarioKenmerkInstanties.map(i => i.id);
+      const [eco, kw] = await Promise.all([
         entryCriteriaVraagIds.length
           ? sb.from('entry_criteria_vraag_organisaties').select('*').in('vraag_id', entryCriteriaVraagIds)
           : Promise.resolve({ data: [] }),
-        sb.from('entry_criteria_goedkeuring').select('*').eq('ketentest_id', activeKetentest.id),
+        // Lange id-lijst in stukken (zie fetchInChunks), met een uniek-makende sortering.
+        fetchInChunks(instantieIds, ids => sb.from('scenario_kenmerk_waarden').select('*').in('instantie_id', ids).order('instantie_id').order('kenmerk_definitie_id')),
       ]);
+
       entryCriteriaVraagOrgs = eco.data || [];
       entryCriteriaGoedkeuring = ecg.data || [];
-
-      // Data voor het Indicatiebesluit-formulier (alleen relevant bij
-      // startscenario's van een flow) — apart geladen omdat het niets
-      // met de rest van deze Promise.all te maken heeft.
-      const [kua, kpc, ig, izz, ibz, fbsn] = await Promise.all([
-        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
-        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
-        sb.from('indicatie_grondslagen').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
-        sb.from('indicatie_zzp_codes').select('*').eq('ketentest_id', activeKetentest.id).order('waarde'),
-        scenarioIds.length ? fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
-        fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', activeKetentest.id).range(from, to)),
-      ]);
       kerngegevensUzoviAgb = kua.data || [];
       kerngegevensPostcodes = kpc.data || [];
       indicatieGrondslagen = ig.data || [];
@@ -395,11 +414,6 @@
       functioneleProcessen = fp.data || [];
       scenarioFunctioneleProcessen = sfp.data || [];
       kenmerkDefinities = kd.data || [];
-      scenarioKenmerkInstanties = ki.data || [];
-      const instantieIds = scenarioKenmerkInstanties.map(i => i.id);
-      const kw = instantieIds.length
-        ? await fetchAllRows((from, to) => sb.from('scenario_kenmerk_waarden').select('*').in('instantie_id', instantieIds).range(from, to))
-        : { data: [] };
       scenarioKenmerkWaarden = kw.data || [];
       zorgkantoorcodes = zk.data || [];
       flowNodes = fn.data || [];
@@ -1950,7 +1964,12 @@
     // toegewezen om op te lossen? Gebruikt de gedeelde functie
     // (supabase-config.js) zodat dit overal in de navigatiebalk
     // hetzelfde, altijd-actuele aantal toont — ook op andere pagina's.
-    function refreshNokBadge() {
+    // 'wisCache' = na een wijziging (bijv. een resultaat op OK/NOK zetten):
+    // dan worden de onthouden badge-uitkomsten eerst gewist, zodat de badges
+    // meteen de nieuwe stand tonen. Bij het gewoon laden van de pagina mag de
+    // (maximaal 45 seconden oude) onthouden uitkomst worden hergebruikt.
+    function refreshNokBadge(wisCache = false) {
+      if (wisCache) invalideerBadgeCache();
       refreshGlobalNokBadge(effectiefOrgId);
       refreshGonogoBadge(effectiefOrgId, currentProfile?.role);
       refreshMijnActiesBadge(effectiefOrgId);
@@ -2160,7 +2179,7 @@
       }
 
       updateStats();
-      refreshNokBadge();
+      refreshNokBadge(true);
 
       // Hertest-afhandeling: staat er voor deze activiteit een bevinding
       // die op 'Opgelost, wacht op hertest' staat, en wordt nu alsnog OK
@@ -2177,6 +2196,7 @@
           if (!hertestError) {
             bevinding.status = 'hertest_ok';
             bevinding.resolved_at = resolvedAt;
+            refreshNokBadge(true); // de openstaande NOK's en de Go/No-go-stand zijn zojuist veranderd
           }
         }
       }

@@ -7,6 +7,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Beheer — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -1375,7 +1377,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -1415,6 +1417,8 @@
       btn.style.background = '#2563a8'; btn.style.color = '#fff'; btn.style.borderColor = '#2563a8';
       if (sub === 'manage') renderNotificationDefTable(); else renderNotifications();
     }
+
+    window.addEventListener('pagehide', invalideerBadgeCache);
 
     (async () => {
       const user = await requireAuth();
@@ -1464,8 +1468,9 @@
         // voor beheerders relevant is (gebruikers, ketentestenlijst, etc.).
         document.getElementById('btnAddNotification')?.remove();
         document.getElementById('btnEntryCriteriaVraagToevoegen')?.remove();
-        await Promise.all([loadOrgs(), loadScenarios(), loadNotificationDefs(), loadScenarioFlowMap(), loadEntryCriteria()]);
-        await loadActivities();
+        const pOverigeNietAdmin = Promise.all([loadNotificationDefs(), loadScenarioFlowMap(), loadEntryCriteria()]);
+        await Promise.all([loadOrgs(), loadScenarios()]);
+        await Promise.all([loadActivities(), pOverigeNietAdmin]);
       }
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
@@ -1485,10 +1490,14 @@
     })();
 
     async function loadAll() {
-      // Orgs must load first so loadActivities can resolve acceptant_org
-      await loadOrgs();
-      await loadScenarios(); // moet voor loadActivities, want die filtert op scenario ids
-      await Promise.all([loadUsers(), loadActivities(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadFunctioneleProcessen(), loadEntryCriteria(), loadIndicatieLijsten()]);
+      // loadActivities heeft de organisaties (om de acceptant te herleiden) en de
+      // scenario's (voor de id-filter) nodig. Alle andere loaders zijn daarvan
+      // onafhankelijk en starten daarom meteen mee, in plaats van te wachten.
+      const pOrgsEnScenarios = Promise.all([loadOrgs(), loadScenarios()]);
+      const pOverige = Promise.all([loadUsers(), loadOptions(), loadKetentestsList(), loadNotificationDefs(), loadScenarioFlowMap(), loadKenmerkDefinities(), loadZorgkantoorcodes(), loadEntryCriteria(), loadIndicatieLijsten()]);
+      await pOrgsEnScenarios;
+      // loadFunctioneleProcessen filtert óók op de scenario-id's en hoort dus bij deze tweede stap.
+      await Promise.all([loadActivities(), loadFunctioneleProcessen(), pOverige]);
       renderOrgs(); renderUsers(); renderScenarios(); renderKetentestTable();
     }
 
@@ -1509,6 +1518,10 @@
     }
 
     async function loadKetentestsList() {
+      // Wordt aangeroepen na elke wijziging aan ketentesten (aanmaken, wijzigen,
+      // afsluiten, heropenen, verwijderen): wis de kortstondig onthouden lijst,
+      // zodat ensureActiveKetentest() meteen de nieuwe stand ziet.
+      invalideerKetentestCache();
       ketentests = await loadAllKetentests();
     }
 
@@ -1524,10 +1537,14 @@
     let meekijkOrgsByUser = {}; // user_id -> array van organisatienamen
 
     async function loadUsers() {
-      const { data } = await sb.from('users').select('*, organisations(name)').order('email');
+      // De drie queries zijn onafhankelijk van elkaar en lopen daarom tegelijk.
+      const [{ data }, { data: loginData, error: loginError }, { data: meekijkData }] = await Promise.all([
+        sb.from('users').select('*, organisations(name)').order('email'),
+        sb.rpc('get_users_with_last_login'),
+        sb.from('meekijk_organisaties').select('user_id, organisations(name)'),
+      ]);
       users = data || [];
 
-      const { data: loginData, error: loginError } = await sb.rpc('get_users_with_last_login');
       if (!loginError && loginData) {
         const loginMap = {};
         loginData.forEach(r => loginMap[r.id] = r.last_sign_in_at);
@@ -1535,7 +1552,6 @@
       }
 
       meekijkOrgsByUser = {};
-      const { data: meekijkData } = await sb.from('meekijk_organisaties').select('user_id, organisations(name)');
       (meekijkData || []).forEach(m => {
         if (!m.organisations?.name) return;
         (meekijkOrgsByUser[m.user_id] ??= []).push(m.organisations.name);
@@ -1549,7 +1565,7 @@
     async function loadActivities() {
       if (!scenarios.length) { activities = []; return; }
       const scenarioIds = scenarios.map(s => s.id);
-      const { data, error } = await fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').in('scenario_id', scenarioIds).order('sort_order').range(from, to));
+      const { data, error } = await fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(name)').in('scenario_id', scenarioIds).order('sort_order').order('id').range(from, to));
       if (error) { console.error('loadActivities error:', error); activities = []; return; }
       const raw = data || [];
       // Resolve acceptant_org manually using already-loaded orgs list
@@ -4565,6 +4581,7 @@
             toAdd.map(kid => ({ user_id: targetUserId, ketentest_id: kid }))
           );
         }
+        invalideerKetentestCache();
       }
 
       // Organisatiekoppeling voor Softwareleverancier bijwerken — zelfde

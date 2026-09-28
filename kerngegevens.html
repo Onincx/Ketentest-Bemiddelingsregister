@@ -5,8 +5,10 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Kerngegevens — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
@@ -271,7 +273,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\"/g,'&quot;'); }
     function openModal(id) { document.getElementById(id).style.display = 'flex'; }
@@ -838,6 +840,38 @@
       XLSX.writeFile(wb, `indicatiebesluiten-${datumStamp}.xlsx`);
     }
 
+    async function loadKerngegevens() {
+      // Alleen de activiteiten en indicatiebesluiten hebben de scenario-id's
+      // nodig; al het andere start meteen en loopt parallel met het ophalen van
+      // de scenario's.
+      const kid = activeKetentest.id;
+      const pOnafhankelijk = Promise.all([
+        sb.from('organisations').select('*'),
+        sb.from('organisatie_zorgkantoorcodes').select('*'),
+        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', kid),
+        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', kid),
+        fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', kid).order('id').range(from, to)),
+      ]);
+      pOnafhankelijk.catch(() => {}); // voorkomt een 'unhandled rejection'-melding als dit pas later wordt afgewacht
+
+      const scenarioData = (await sb.from('scenarios').select('id,code').eq('ketentest_id', kid)).data || [];
+      scenarios = scenarioData;
+      const scenarioIds = scenarioData.map(s => s.id);
+
+      const [a, ind, [o, zk, kg, pc, bsn]] = await Promise.all([
+        scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).order('id').range(from, to)) : Promise.resolve({ data: [] }),
+        scenarioIds.length ? fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).order('id').range(from, to)) : Promise.resolve({ data: [] }),
+        pOnafhankelijk,
+      ]);
+      orgs = o.data || [];
+      activities = a.data || [];
+      zorgkantoorcodes = zk.data || [];
+      kgUzoviAgbRijen = kg.data || [];
+      kgPostcodeRijen = pc.data || [];
+      kgBsnRijen = bsn.data || [];
+      indicatiebesluiten = ind.data || [];
+    }
+
     (async () => {
       const user = await requireAuth();
       if (!user) return;
@@ -862,25 +896,7 @@
       if (!result) return;
       activeKetentest = result.active;
 
-      const scenarioData = (await sb.from('scenarios').select('id,code').eq('ketentest_id', activeKetentest.id)).data || [];
-      scenarios = scenarioData;
-      const scenarioIds = scenarioData.map(s => s.id);
-      const [o, a, zk, kg, pc, bsn, ind] = await Promise.all([
-        sb.from('organisations').select('*'),
-        scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
-        sb.from('organisatie_zorgkantoorcodes').select('*'),
-        sb.from('kerngegevens_uzovi_agb').select('*').eq('ketentest_id', activeKetentest.id),
-        sb.from('kerngegevens_whitelist_postcodes').select('*').eq('ketentest_id', activeKetentest.id),
-        fetchAllRows((from, to) => sb.from('kerngegevens_fictieve_bsn').select('*').eq('ketentest_id', activeKetentest.id).range(from, to)),
-        scenarioIds.length ? fetchAllRows((from, to) => sb.from('indicatiebesluiten').select('*').in('scenario_id', scenarioIds).range(from, to)) : Promise.resolve({ data: [] }),
-      ]);
-      orgs = o.data || [];
-      activities = a.data || [];
-      zorgkantoorcodes = zk.data || [];
-      kgUzoviAgbRijen = kg.data || [];
-      kgPostcodeRijen = pc.data || [];
-      kgBsnRijen = bsn.data || [];
-      indicatiebesluiten = ind.data || [];
+      await loadKerngegevens();
 
       if (window.isPageAdmin) {
         document.getElementById('kgUzoviAgbForm').style.display = '';

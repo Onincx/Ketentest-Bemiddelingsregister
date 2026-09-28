@@ -7,6 +7,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -260,11 +262,11 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     let currentUser = null, currentProfile = null, effectiefOrgId = null;
     let scenarios = [], activities = [], results = [], users = [], orgs = [], latestBevindingByActivity = {}, allBevindingen = [], gonogoData = [];
@@ -312,23 +314,32 @@
     async function loadDashboard() {
       if (!activeKetentest) return;
 
-      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
-      scenarios = scenarioData || [];
-      const scenarioIds = scenarios.map(s => s.id);
+      const kid = activeKetentest.id;
 
-      const [a, r, u, o, fl, fn, fp, bv, gng] = await Promise.all([
-        scenarioIds.length
-          ? fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
-          : Promise.resolve({ data: [] }),
+      // Alleen de activiteiten hebben de scenario-id's nodig; al het andere start
+      // meteen en loopt parallel met het ophalen van de scenario's (voorheen
+      // wachtte alles eerst op de scenario's).
+      const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
+      const pOnafhankelijk = Promise.all([
         fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
         sb.from('users').select('*, organisations(name)'),
         sb.from('organisations').select('*').order('name'),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('nummer'),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
+        sb.from('flows').select('*').eq('ketentest_id', kid).order('nummer'),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id, flow_id').eq('ketentest_id', kid).order('scenario_id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_participation').select('*').order('id').range(from, to)),
-        fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at', { ascending: false }).range(from, to)),
-        sb.from('ketentest_gonogo').select('*').eq('ketentest_id', activeKetentest.id),
+        fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', kid).order('created_at', { ascending: false }).order('id').range(from, to)),
+        sb.from('ketentest_gonogo').select('*').eq('ketentest_id', kid),
       ]);
+      pOnafhankelijk.catch(() => {}); // voorkomt een 'unhandled rejection'-melding als dit pas later wordt afgewacht
+
+      const { data: scenarioData } = await pScenarios;
+      scenarios = scenarioData || [];
+      const scenarioIds = scenarios.map(s => s.id);
+
+      const pActivities = scenarioIds.length
+        ? fetchAllRows((from, to) => sb.from('activities').select('*, organisations!activities_organisation_id_fkey(id,name,code), acceptant_org:acceptant_org_id(id,name,code)').in('scenario_id', scenarioIds).order('sort_order').order('id').range(from, to))
+        : Promise.resolve({ data: [] });
+      const [a, [r, u, o, fl, fn, fp, bv, gng]] = await Promise.all([pActivities, pOnafhankelijk]);
 
       activities = a.data || [];
       const actIds = new Set(activities.map(x => x.id));
@@ -870,6 +881,10 @@
       if (error) { alertEl.textContent = 'Fout bij opslaan: ' + error.message; alertEl.style.display = ''; return; }
 
       gonogoGekozenBesluit = null;
+      // Een afgegeven Go/No-go-keuze verandert de 'Go/No-go nodig'-badge: wis de
+      // onthouden uitkomst en ververs de badge meteen.
+      invalideerBadgeCache();
+      refreshGonogoBadge(currentProfile.organisation_id, currentProfile.role);
       await loadDashboard();
     }
 

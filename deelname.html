@@ -7,12 +7,14 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Deelname — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <style>
     /* ---------- Gedeeld ---------- */
     .dn-legend { display:flex; flex-wrap:wrap; gap:16px; font-size:12px; color:var(--text-muted); margin-bottom:16px; }
@@ -309,7 +311,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     let currentUser = null, currentProfile = null, myOrgId = null, isCurrentAdmin = false;
     let scenarios = [], activities = [], flows = [], flowNodes = [], participation = [], orgs = [];
@@ -427,27 +429,34 @@
       document.getElementById('noKetentestState').style.display = 'none';
       document.getElementById(isCurrentAdmin ? 'adminView' : 'userView').style.display = '';
 
-      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
-      scenarios = scenarioData || [];
-      const scenarioIds = scenarios.map(s => s.id);
-
-      const [a, fl, fn, p, o] = await Promise.all([
-        scenarioIds.length
-          ? fetchAllRows((from, to) => sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id,description').in('scenario_id', scenarioIds).order('id').range(from, to))
-          : Promise.resolve({ data: [] }),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('name'),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
+      // Alleen de activiteiten hebben de scenario-id's nodig; al het andere
+      // (inclusief de notificatie-definities) start meteen en loopt parallel.
+      const kid = activeKetentest.id;
+      const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
+      const pNotif = loadNotificationDefs();
+      const pOnafhankelijk = Promise.all([
+        sb.from('flows').select('*').eq('ketentest_id', kid).order('name'),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', kid).order('scenario_id').range(from, to)),
         fetchAllRows((from, to) => sb.from('flow_participation').select('*').order('id').range(from, to)),
         sb.from('organisations').select('*').order('name'),
       ]);
+      pOnafhankelijk.catch(() => {}); pNotif.catch(() => {}); // voorkomt 'unhandled rejection'-meldingen
+
+      const { data: scenarioData } = await pScenarios;
+      scenarios = scenarioData || [];
+      const scenarioIds = scenarios.map(s => s.id);
+
+      const pActiviteiten = scenarioIds.length
+        ? fetchAllRows((from, to) => sb.from('activities').select('id,scenario_id,organisation_id,acceptant_org_id,description').in('scenario_id', scenarioIds).order('id').range(from, to))
+        : Promise.resolve({ data: [] });
+      const [a, [fl, fn, p, o]] = await Promise.all([pActiviteiten, pOnafhankelijk]);
+      await pNotif;
 
       activities = a.data || [];
       flows = fl.data || [];
       flowNodes = (fn.data || []).filter(n => n.flow_id);
       participation = p.data || [];
       orgs = o.data || [];
-
-      await loadNotificationDefs();
 
       if (isCurrentAdmin) {
         renderStats();

@@ -5,6 +5,8 @@
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flow — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -332,7 +334,7 @@
   <div class="connect-hint" id="connectHint">🔗 Klik nu op het doelscenario</div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     let currentUser, currentProfile, effectiefOrgId = null;
     let scenarios = [], activities = [], results = [], orgs = {};
@@ -434,6 +436,10 @@
     // ── Init ──────────────────────────────────────────────────
     let activeKetentest = null;
 
+    // Wijzigingen aan flows/verbindingen (alleen door beheerders) beïnvloeden de
+    // 'acties voor jou'-badge; wis de onthouden uitkomst bij het verlaten van de pagina.
+    window.addEventListener('pagehide', () => { if (window.isFlowAdmin) invalideerBadgeCache(); });
+
     (async () => {
       currentUser = await requireAuth();
       if (!currentUser) return;
@@ -489,17 +495,26 @@
     async function loadKetentestData() {
       if (!activeKetentest) return;
 
-      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      // Alleen de activiteiten hebben de scenario-id's nodig; al het andere
+      // (inclusief de notificatie-definities) start meteen en loopt parallel.
+      const kid = activeKetentest.id;
+      const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
+      const pNotif = loadNotificationDefs();
+      const pOnafhankelijk = Promise.all([
+        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
+        sb.from('flows').select('*').eq('ketentest_id', kid).order('nummer'),
+        sb.from('organisations').select('id,name,code'),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', kid).order('scenario_id').range(from, to)),
+      ]);
+      pOnafhankelijk.catch(() => {}); pNotif.catch(() => {}); // voorkomt 'unhandled rejection'-meldingen
+
+      const { data: scenarioData } = await pScenarios;
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [a, r, fl, o, used] = await Promise.all([
-        scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('id').range(from, to)) : Promise.resolve({ data: [] }),
-        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id).order('nummer'),
-        sb.from('organisations').select('id,name,code'),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
-      ]);
+      const pActiviteiten = scenarioIds.length ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('id').range(from, to)) : Promise.resolve({ data: [] });
+      const [a, [r, fl, o, used]] = await Promise.all([pActiviteiten, pOnafhankelijk]);
+      await pNotif;
       activities = a.data || [];
       const actIds = new Set(activities.map(x => x.id));
       results = (r.data || []).filter(x => actIds.has(x.activity_id));
@@ -510,8 +525,6 @@
       orgs = {};
       (o.data || []).forEach(x => orgs[x.id] = x.name || x.code);
       allUsedScenarioIds = new Set((used.data || []).map(x => x.scenario_id));
-
-      await loadNotificationDefs();
 
       // Eenmalige, automatische migratie: bestaande (nog niet aan een flow
       // gekoppelde) kaartjes en verbindingen opdelen in aparte flows, één

@@ -7,6 +7,8 @@
   <meta http-equiv="Expires" content="0">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mijn acties — Ketentest Bemiddelingsregister</title>
+  <link rel="preconnect" href="https://hhrfrawgrsxrmgxzfewd.supabase.co" crossorigin>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
   <link rel="stylesheet" href="css/style.css?v=32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -147,7 +149,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=44"></script>
+  <script src="js/supabase-config.js?v=45"></script>
   <script>
     let currentUser = null, currentProfile = null, activeKetentest = null, myOrgId = null;
     let scenarios = [], activities = [], results = {}, orgs = [], scenarioFlowMap = {};
@@ -201,20 +203,27 @@
       if (!activeKetentest) return;
       document.getElementById('maList').innerHTML = '<p class="empty-dash">Laden...</p>';
 
-      const { data: scenarioData } = await sb.from('scenarios').select('*').eq('ketentest_id', activeKetentest.id).order('code');
+      // Alleen de activiteiten hebben de scenario-id's nodig; al het andere start
+      // meteen en loopt parallel met het ophalen van de scenario's.
+      const kid = activeKetentest.id;
+      const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
+      const pOnafhankelijk = Promise.all([
+        sb.from('organisations').select('*'),
+        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
+        sb.from('flows').select('*').eq('ketentest_id', kid),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', kid).order('scenario_id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', kid).order('id').range(from, to)),
+      ]);
+      pOnafhankelijk.catch(() => {}); // voorkomt een 'unhandled rejection'-melding als dit pas later wordt afgewacht
+
+      const { data: scenarioData } = await pScenarios;
       scenarios = scenarioData || [];
       const scenarioIds = scenarios.map(s => s.id);
 
-      const [{ data: orgData }, { data: activityData }, { data: resultData }, { data: flowData }, { data: flowNodeData }, { data: flowEdgeData }] = await Promise.all([
-        sb.from('organisations').select('*'),
-        scenarioIds.length
-          ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('sort_order').range(from, to))
-          : Promise.resolve({ data: [] }),
-        fetchAllRows((from, to) => sb.from('activity_results').select('*').order('id').range(from, to)),
-        sb.from('flows').select('*').eq('ketentest_id', activeKetentest.id),
-        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', activeKetentest.id).order('scenario_id').range(from, to)),
-        fetchAllRows((from, to) => sb.from('flow_edges').select('*').eq('ketentest_id', activeKetentest.id).order('id').range(from, to)),
-      ]);
+      const pActiviteiten = scenarioIds.length
+        ? fetchAllRows((from, to) => sb.from('activities').select('*').in('scenario_id', scenarioIds).order('sort_order').order('id').range(from, to))
+        : Promise.resolve({ data: [] });
+      const [{ data: activityData }, [{ data: orgData }, { data: resultData }, { data: flowData }, { data: flowNodeData }, { data: flowEdgeData }]] = await Promise.all([pActiviteiten, pOnafhankelijk]);
       orgs = orgData || [];
       activities = activityData || [];
       results = {};
