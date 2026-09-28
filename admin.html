@@ -1294,7 +1294,7 @@
           <select id="losseBevindingScenario"><option value="">— geen —</option></select>
         </div>
         <div class="form-group">
-          <label>Omschrijving probleem <span style="color:var(--text-muted); font-weight:400;">(optioneel)</span></label>
+          <label>Omschrijving probleem <span style="color:var(--danger);">*</span></label>
           <textarea id="losseBevindingOmschrijving" style="min-height:70px;"></textarea>
         </div>
         <div class="form-group">
@@ -2969,6 +2969,7 @@
       const melder = document.getElementById('losseBevindingMelder').value;
 
       if (!titel) { showAlert('Vul een titel in.', 'error', 'alertLosseBevinding'); return; }
+      if (!omschrijvingProbleem) { showAlert('Vul een omschrijving van het probleem in.', 'error', 'alertLosseBevinding'); return; }
       if (!reden) { showAlert('Vul een toelichting/reden in.', 'error', 'alertLosseBevinding'); return; }
       if (!eigenaar) { showAlert('Kies een eigenaar-organisatie.', 'error', 'alertLosseBevinding'); return; }
       if (!melder) { showAlert('Kies een melder-organisatie.', 'error', 'alertLosseBevinding'); return; }
@@ -3263,7 +3264,7 @@
               </div>
               ${magToelichtingBewerken && bevindingOmschrijvingEditModus
                 ? `<textarea id="bevindingModalOmschrijving" oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:70px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : ''}</textarea>`
-                : `<div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : '<span style=\"color:var(--text-muted); font-style:italic;\">Geen omschrijving vastgelegd.</span>'}</div>`}
+                : `<div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : '<span style=\"color:var(--text-muted); font-style:italic;\">Nog geen omschrijving vastgelegd — deze is verplicht. Klik op het potlood om hem aan te vullen.</span>'}</div>`}
             </div>
 
             <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px;">
@@ -3301,8 +3302,17 @@
 
       if (bevindingOmschrijvingEditModus) {
         const textarea = document.getElementById('bevindingModalOmschrijving');
-        const nieuweOmschrijving = textarea?.value.trim() || null;
-        if (nieuweOmschrijving !== (b.omschrijving_probleem || null)) {
+        const nieuweOmschrijving = textarea?.value.trim() || '';
+        const huidigeOmschrijving = b.omschrijving_probleem || '';
+        // De omschrijving is verplicht: een bestaande omschrijving mag dus niet
+        // leeggemaakt worden. (Een bevinding uit de tijd dat dit nog optioneel was
+        // en die nog geen omschrijving heeft, blijft ongewijzigd als er niets wordt
+        // ingevuld — die wordt dus niet geblokkeerd, maar ook niet vanzelf aangevuld.)
+        if (!nieuweOmschrijving && huidigeOmschrijving) {
+          alert('De omschrijving van het probleem is verplicht en kan niet leeg worden gelaten.');
+          return;
+        }
+        if (nieuweOmschrijving && nieuweOmschrijving !== huidigeOmschrijving) {
           const { error } = await sb.from('bevindingen').update({ omschrijving_probleem: nieuweOmschrijving }).eq('id', bevindingId);
           if (error) { alert('Fout bij opslaan van de omschrijving: ' + error.message); return; }
           b.omschrijving_probleem = nieuweOmschrijving;
