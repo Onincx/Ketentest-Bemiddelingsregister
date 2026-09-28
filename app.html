@@ -253,7 +253,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=45"></script>
+  <script src="js/supabase-config.js?v=46"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -1200,6 +1200,9 @@
         + renderEenmaligBlok(scenarioId, 'uitstelperiode', 'Uitstelperiode')
         + renderEenmaligBlok(scenarioId, 'afstel', 'Afstel')
         + renderEenmaligBlok(scenarioId, 'verzoek', 'Verzoek');
+      // Staat de historie van dit scenario open, dan meteen bijwerken (de wijziging is net vastgelegd).
+      const historie = document.getElementById(`historieScenario-${scenarioId}`);
+      if (historie && historie.closest('details')?.open) laadHistorieIn('scenario', scenarioId, `historieScenario-${scenarioId}`);
     }
 
     function getClientnaam(scenarioId) {
@@ -1846,6 +1849,11 @@
             ${renderEenmaligBlok(s.id, 'verzoek', 'Verzoek')}
           </div>
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
+          <details style="margin-top:12px; border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; background:var(--white);"
+            ontoggle="if (this.open && !this.dataset.geladen) { this.dataset.geladen = '1'; laadHistorieIn('scenario', '${s.id}', 'historieScenario-${s.id}'); }">
+            <summary style="cursor:pointer; font-size:12px; font-weight:700; color:var(--text-muted);">Historie van dit scenario en zijn activiteiten</summary>
+            <div id="historieScenario-${s.id}" style="margin-top:8px;"></div>
+          </details>
         </div>`;
 
       // Voeg het paneel direct in na de aangeklikte rij

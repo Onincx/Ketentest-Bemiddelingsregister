@@ -479,6 +479,8 @@
         <button class="btn btn-sm" data-f="all" onclick="setLogFilter('all',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Alle</button>
         <button class="btn btn-sm btn-outline" data-f="activity_result" onclick="setLogFilter('activity_result',this)">Resultaten (OK/NOK)</button>
         <button class="btn btn-sm btn-outline" data-f="flow_participation" onclick="setLogFilter('flow_participation',this)">Deelname-keuzes</button>
+        <button class="btn btn-sm btn-outline" data-f="bevinding" onclick="setLogFilter('bevinding',this)">Bevindingen</button>
+        <button class="btn btn-sm btn-outline" data-f="scenario" onclick="setLogFilter('scenario',this)">Scenario's en activiteiten</button>
       </div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
@@ -1377,7 +1379,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=45"></script>
+  <script src="js/supabase-config.js?v=46"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -3272,6 +3274,12 @@
               ${magToelichtingBewerken ? `<textarea id="toelichtingNieuw" placeholder="Voeg een update toe over de status van deze melding..." oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:60px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:10px;"></textarea>` : ''}
               ${toelichtingHtml || '<p style="font-size:12px; color:var(--text-muted);">Nog geen toelichting vastgelegd.</p>'}
             </div>
+
+            <details style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:10px;"
+              ontoggle="if (this.open && !this.dataset.geladen) { this.dataset.geladen = '1'; laadHistorieIn('bevinding', '${b.id}', 'historieBevinding'); }">
+              <summary style="cursor:pointer; font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em;">Historie</summary>
+              <div id="historieBevinding" style="margin-top:8px;"></div>
+            </details>
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
             <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
@@ -3772,6 +3780,14 @@
       flow_participation_clear: '↺ Deelname-keuze gewist',
     };
 
+    // De nieuwe soorten (bevinding_*, activiteit_*, scenario_*, kenmerk_*) vallen onder twee filters.
+    const LOG_GROEP_ICOON = { bevinding: '⚠️', scenario: '📄' };
+    function logGroep(action) {
+      if (/^bevinding_/.test(action)) return 'bevinding';
+      if (/^(activiteit_|scenario_|kenmerk_)/.test(action)) return 'scenario';
+      return action;
+    }
+
     async function loadActivityLog() {
       const tb = document.getElementById('logTable');
       tb.innerHTML = '<tr><td colspan="4" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
@@ -3794,7 +3810,7 @@
 
     function renderActivityLog() {
       const tb = document.getElementById('logTable');
-      const filtered = logFilter === 'all' ? logEntries : logEntries.filter(l => l.action === logFilter);
+      const filtered = logFilter === 'all' ? logEntries : logEntries.filter(l => logGroep(l.action) === logFilter);
 
       if (!filtered.length) {
         tb.innerHTML = '<tr><td colspan="4"><div class="empty-state"><p>Nog geen handelingen gevonden.</p></div></td></tr>';
@@ -3803,17 +3819,24 @@
 
       tb.innerHTML = filtered.map(l => {
         const who = l.users?.name || l.users?.email || 'Onbekende gebruiker';
-        const label = LOG_ACTION_LABELS[l.action] || l.action;
         const d = l.details || {};
+        const groep = logGroep(l.action);
+        let label = LOG_ACTION_LABELS[l.action] || l.action;
         let detailText = '';
+        // Alles wat een gebruiker heeft ingetypt (opmerkingen, redenen, titels) gaat door historieEsc.
         if (l.action === 'activity_result') {
-          detailText = `${d.scenario_code || ''} — ${d.activity_description || ''}: <strong>${(d.result || '').toUpperCase()}</strong>${d.notes ? ` ("${d.notes}")` : ''}`;
+          detailText = `${historieEsc(d.scenario_code || '')} — ${historieEsc(d.activity_description || '')}: <strong>${historieEsc((d.result || '').toUpperCase())}</strong>${d.notes ? ` ("${historieEsc(d.notes)}")` : ''}`;
         } else if (l.action === 'flow_participation') {
-          detailText = `${d.flow_name || ''}: <strong>${d.wants_to_test ? 'wordt getest' : 'wordt niet getest'}</strong>${d.reason ? ` — reden: "${d.reason}"` : ''}`;
+          detailText = `${historieEsc(d.flow_name || '')}: <strong>${d.wants_to_test ? 'wordt getest' : 'wordt niet getest'}</strong>${d.reason ? ` — reden: "${historieEsc(d.reason)}"` : ''}`;
         } else if (l.action === 'flow_participation_clear') {
-          detailText = `${d.flow_name || ''}: keuze verwijderd`;
+          detailText = `${historieEsc(d.flow_name || '')}: keuze verwijderd`;
+        } else if (groep === 'bevinding' || groep === 'scenario') {
+          const r = historieRegel(l, { metActiviteit: true });
+          label = LOG_GROEP_ICOON[groep] + ' ' + r.label;
+          const sc = groep === 'scenario' ? scenarios.find(x => x.id === l.scenario_id) : null;
+          detailText = `${sc ? historieEsc(sc.code) + ' — ' : ''}${r.html}`;
         } else {
-          detailText = JSON.stringify(d);
+          detailText = historieEsc(JSON.stringify(d));
         }
         return `<tr>
           <td style="white-space:nowrap; color:var(--text-muted); font-size:12px;">${new Date(l.created_at).toLocaleString('nl-NL')}</td>
