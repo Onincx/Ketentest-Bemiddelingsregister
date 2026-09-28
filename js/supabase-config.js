@@ -12,14 +12,56 @@ const { createClient } = supabase;
 const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Hulpfuncties
+
+// De ingelogde gebruiker wordt per paginalading maar één keer bij de
+// auth-server opgevraagd: sb.auth.getUser() is een echte netwerkaanroep,
+// en werd tot voor kort tientallen keren per pagina herhaald (in
+// requireAuth, in elke ketentest-controle, in elke badge). Er wordt de
+// promise onthouden, zodat ook gelijktijdige aanroepen samenvallen tot
+// één verzoek. Een 'niet ingelogd'-uitkomst (of een fout) wordt bewust
+// niet onthouden, zodat inloggen op dezelfde pagina gewoon werkt.
+let _huidigeGebruikerPromise = null;
+let _profielCache = {};
+let _ketentestsCache = null;
 async function getCurrentUser() {
-  const { data: { user } } = await sb.auth.getUser();
+  if (!_huidigeGebruikerPromise) {
+    _huidigeGebruikerPromise = sb.auth.getUser().then(r => r?.data?.user || null);
+  }
+  let user;
+  try { user = await _huidigeGebruikerPromise; }
+  catch (e) { _huidigeGebruikerPromise = null; throw e; }
+  if (!user) _huidigeGebruikerPromise = null;
   return user;
 }
+// Bij in- of uitloggen (of een wijziging aan het account) de onthouden gebruiker vergeten.
+sb.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_OUT' || event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+    _huidigeGebruikerPromise = null;
+    _profielCache = {};
+    _ketentestsCache = null;
+  }
+  // Bij uitloggen ook de onthouden badge-uitkomsten wissen, zodat een volgende
+  // gebruiker in hetzelfde tabblad ze niet overneemt. (Bewust niet bij SIGNED_IN:
+  // supabase-js meldt dat ook bij het terugkeren naar het tabblad, en dan zou de
+  // cache continu leeggemaakt worden.)
+  if (event === 'SIGNED_OUT') invalideerBadgeCache();
+});
 
+// Idem voor het profiel: requireAuth() haalt het al op, en vrijwel elke
+// pagina deed dat daarna nóg een keer. Een leeg of mislukt resultaat
+// wordt niet onthouden.
 async function getUserProfile(userId) {
-  const { data } = await sb.from('users').select('*, organisations(name)').eq('id', userId).single();
-  return data;
+  if (!_profielCache[userId]) {
+    _profielCache[userId] = (async () => {
+      const { data } = await sb.from('users').select('*, organisations(name)').eq('id', userId).single();
+      return data;
+    })();
+  }
+  let profiel;
+  try { profiel = await _profielCache[userId]; }
+  catch (e) { delete _profielCache[userId]; throw e; }
+  if (!profiel) delete _profielCache[userId];
+  return profiel;
 }
 
 async function isAdmin() {
@@ -267,11 +309,30 @@ async function getAccessibleKetentests() {
   const user = await getCurrentUser();
   if (!user) return [];
 
-  const { data } = await sb.from('user_ketentest_access').select('ketentest_id, ketentests(*)').eq('user_id', user.id);
-  const list = (data || []).map(r => r.ketentests).filter(Boolean);
-  list.sort((a, b) => (a.naam || '').localeCompare(b.naam || '', 'nl'));
-  return list;
+  // Deze lijst werd per paginalading 5× opgehaald (elke ketentest-controle
+  // en elke badge deed het opnieuw). Nu wordt het resultaat 15 seconden
+  // onthouden — genoeg om die burst samen te laten vallen, kort genoeg dat
+  // een wijziging (nieuwe ketentest, toegang gewijzigd) snel zichtbaar is;
+  // de beheerpagina wist de cache bovendien expliciet na zo'n wijziging
+  // (invalideerKetentestCache). Een mislukte query wordt niet onthouden.
+  const nu = Date.now();
+  if (!_ketentestsCache || _ketentestsCache.userId !== user.id || nu - _ketentestsCache.t >= 15000) {
+    const promise = (async () => {
+      const { data, error } = await sb.from('user_ketentest_access').select('ketentest_id, ketentests(*)').eq('user_id', user.id);
+      const list = (data || []).map(r => r.ketentests).filter(Boolean);
+      list.sort((a, b) => (a.naam || '').localeCompare(b.naam || '', 'nl'));
+      return { list, ok: !error };
+    })();
+    const invoer = { t: nu, userId: user.id, promise };
+    _ketentestsCache = invoer;
+    promise.then(r => { if (!r.ok && _ketentestsCache === invoer) _ketentestsCache = null; })
+           .catch(() => { if (_ketentestsCache === invoer) _ketentestsCache = null; });
+  }
+  const { list } = await _ketentestsCache.promise;
+  return [...list]; // kopie, zodat aanroepers die de array wijzigen de cache niet beschadigen
 }
+
+function invalideerKetentestCache() { _ketentestsCache = null; }
 
 // Zorgt dat er altijd een geldige, toegestane actieve ketentest is.
 // Als de opgeslagen id niet meer bestaat of niet (meer) toegestaan is,
@@ -357,16 +418,45 @@ function updateKetentestHoofdlink(role, isAdminPage) {
 // een .order() toe) zodat elke pagina een ander, aansluitend deel van
 // de data teruggeeft.
 async function fetchAllRows(queryBuilderFn, batchSize = 1000) {
-  let allRows = [];
-  let from = 0;
+  // Eerste batch apart: is die niet vol, dan is er niets meer op te halen
+  // (het gewone geval voor de meeste tabellen).
+  const eerste = await queryBuilderFn(0, batchSize - 1);
+  if (eerste.error) return { data: [], error: eerste.error };
+  let allRows = eerste.data || [];
+  if (allRows.length < batchSize) return { data: allRows, error: null };
+
+  // Er is meer: de vervolgbatches worden niet meer één voor één, maar in
+  // groepjes van 3 tegelijk opgehaald. Batches voorbij het einde leveren
+  // gewoon een lege lijst op. De uitkomst wordt in volgorde verwerkt,
+  // dus het resultaat (en het gedrag bij een fout: alles t/m de laatste
+  // geslaagde batch + de fout) is identiek aan de oude, sequentiële versie.
+  const PARALLEL = 3;
+  let volgendeStart = batchSize;
   while (true) {
-    const { data, error } = await queryBuilderFn(from, from + batchSize - 1);
-    if (error) return { data: allRows, error };
-    allRows = allRows.concat(data || []);
-    if (!data || data.length < batchSize) break;
-    from += batchSize;
+    const starts = Array.from({ length: PARALLEL }, (_, i) => volgendeStart + i * batchSize);
+    const resultaten = await Promise.all(starts.map(s => queryBuilderFn(s, s + batchSize - 1)));
+    for (const res of resultaten) {
+      if (res.error) return { data: allRows, error: res.error };
+      const rows = res.data || [];
+      allRows = allRows.concat(rows);
+      if (rows.length < batchSize) return { data: allRows, error: null };
+    }
+    volgendeStart += PARALLEL * batchSize;
   }
-  return { data: allRows, error: null };
+}
+
+// Voor queries met een lange lijst id's (.in('kolom', ids)): één enkele
+// query met duizenden UUID's levert een URL van tientallen kilobytes op,
+// die door de server geweigerd kan worden (en dan stilzwijgend een lege
+// uitkomst geeft). Deze functie verdeelt de lijst in stukken van 200 en
+// haalt die tegelijk op. 'bouwQuery' krijgt een stuk id's en geeft de
+// query terug (zónder .range — dat regelt fetchAllRows).
+async function fetchInChunks(ids, bouwQuery, chunkSize = 200) {
+  if (!ids.length) return { data: [], error: null };
+  const stukken = [];
+  for (let i = 0; i < ids.length; i += chunkSize) stukken.push(ids.slice(i, i + chunkSize));
+  const delen = await Promise.all(stukken.map(stuk => fetchAllRows((from, to) => bouwQuery(stuk).range(from, to))));
+  return { data: delen.flatMap(d => d.data || []), error: delen.find(d => d.error)?.error || null };
 }
 
 // Genereert een sterk, maar nog wel voorleesbaar tijdelijk wachtwoord:
@@ -420,12 +510,105 @@ async function refreshGlobalNokBadge(orgId) {
   badge.style.display = '';
 }
 
+// ============================================================
+// PRESTATIES VAN DE NAVIGATIEBADGES
+// De badges 'acties voor jou' en 'Go/No-go nodig' berekenen hun getal uit
+// (vrijwel) alle activiteiten en resultaten van de hele ketentest. Dat
+// draaide op ELKE pagina, bij ELKE navigatie, en concurreerde bovendien
+// met de eigen queries van de pagina. Daarom:
+//   1. de uitkomst wordt 45 seconden onthouden (sessionStorage, dus ook
+//      over pagina's heen) — bij een navigatie is de badge direct klaar;
+//   2. de berekening zelf wordt pas gestart als de pagina klaar is met
+//      tekenen (naEersteRender), zodat de badge de pagina niet vertraagt;
+//   3. beide badges delen één ophaalronde van activiteiten en resultaten;
+//   4. onafhankelijke queries lopen parallel, en lange id-lijsten worden
+//      in stukken opgehaald (zie fetchInChunks);
+//   5. na een wijziging (bijv. een resultaat op OK zetten) wist
+//      invalideerBadgeCache() de onthouden uitkomsten, zodat de badge
+//      direct de nieuwe stand toont.
+// ============================================================
+const BADGE_CACHE_TTL_MS = 45000;
+const BADGE_DATA_TTL_MS = 30000;
+
+function badgeCacheKey(soort, ketentestId, orgId) { return `badgeCache:${soort}:${ketentestId}:${orgId}`; }
+function leesBadgeCache(sleutel) {
+  try {
+    const raw = sessionStorage.getItem(sleutel);
+    if (!raw) return undefined;
+    const { t, v } = JSON.parse(raw);
+    return (Date.now() - t < BADGE_CACHE_TTL_MS) ? v : undefined;
+  } catch (e) { return undefined; }
+}
+function schrijfBadgeCache(sleutel, waarde) {
+  try { sessionStorage.setItem(sleutel, JSON.stringify({ t: Date.now(), v: waarde })); } catch (e) { /* opslag vol/uitgeschakeld: dan gewoon niet onthouden */ }
+}
+let _badgeDataCache = null; // { ketentestId, t, promise }
+// Teller die bij elke invalidatie omhoog gaat. Een berekening die vóór een
+// wijziging is gestart en er ná afrondt, mag zijn (inmiddels verouderde)
+// uitkomst niet meer in de cache zetten of tonen — anders zou die de
+// verse uitkomst kunnen overschrijven.
+let _badgeGeneratie = 0;
+function invalideerBadgeCache() {
+  try { Object.keys(sessionStorage).filter(k => k.startsWith('badgeCache:')).forEach(k => sessionStorage.removeItem(k)); } catch (e) {}
+  _badgeDataCache = null;
+  _badgeGeneratie++;
+}
+
+// Voert werk uit zodra de browser even niets anders te doen heeft
+// (uiterlijk na 2 seconden), zodat achtergrondwerk het tekenen van de
+// pagina zelf niet in de weg zit.
+function naEersteRender(fn) {
+  return new Promise((resolve, reject) => {
+    const run = () => { Promise.resolve().then(fn).then(resolve, reject); };
+    if (typeof requestIdleCallback === 'function') requestIdleCallback(run, { timeout: 2000 });
+    else setTimeout(run, 150);
+  });
+}
+
+// Activiteiten + resultaten van de ketentest, in lichte vorm, gedeeld
+// tussen de badges. Een mislukte ophaalronde wordt niet onthouden.
+async function laadBadgeData(ketentestId) {
+  const { data: scenarioData, error: e1 } = await sb.from('scenarios').select('id').eq('ketentest_id', ketentestId);
+  const scenarioIds = (scenarioData || []).map(s => s.id);
+  if (!scenarioIds.length) return { ok: !e1, activities: [], results: [] };
+
+  // De ORDER BY heeft een unieke tiebreaker (id): sort_order alleen is niet
+  // uniek, waardoor paginering (range) anders rijen kon dubbelen of missen.
+  const { data: activityData, error: e2 } = await fetchAllRows((from, to) =>
+    sb.from('activities').select('id,scenario_id,sort_order,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).order('sort_order').order('id').range(from, to)
+  );
+  const activities = activityData || [];
+  const { data: resultData, error: e3 } = await fetchInChunks(activities.map(a => a.id), ids =>
+    sb.from('activity_results').select('activity_id,result').in('activity_id', ids).order('id')
+  );
+  return { ok: !e1 && !e2 && !e3, activities, results: resultData || [] };
+}
+function haalBadgeData(ketentestId) {
+  const nu = Date.now();
+  if (_badgeDataCache && _badgeDataCache.ketentestId === ketentestId && nu - _badgeDataCache.t < BADGE_DATA_TTL_MS) return _badgeDataCache.promise;
+  const promise = laadBadgeData(ketentestId);
+  const invoer = { ketentestId, t: nu, promise };
+  _badgeDataCache = invoer;
+  promise.then(r => { if (!r.ok && _badgeDataCache === invoer) _badgeDataCache = null; })
+         .catch(() => { if (_badgeDataCache === invoer) _badgeDataCache = null; });
+  return promise;
+}
+
 // Toont in de navigatiebalk (element met id="mijnActiesBadge") hoeveel
 // scenario's op dit moment "nu te doen" zijn voor de organisatie van de
 // huidige gebruiker — d.w.z. scenario's waarbij de eerstvolgende nog
 // niet-OK activiteit aan deze organisatie toebehoort (als
-// verantwoordelijke of acceptant). Zelfde live/overal-zichtbare opzet
-// als refreshGlobalNokBadge hierboven.
+// verantwoordelijke of acceptant). Na een wijziging roept de pagina
+// eerst invalideerBadgeCache() aan en ververst dan de badges.
+function toonActiesBadge(badge, count) {
+  if (count > 0) {
+    badge.textContent = `🔔 ${count} actie${count === 1 ? '' : 's'} voor jou`;
+    badge.style.display = '';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
 async function refreshMijnActiesBadge(orgId) {
   const badge = document.getElementById('mijnActiesBadge');
   if (!badge) return;
@@ -442,66 +625,65 @@ async function refreshMijnActiesBadge(orgId) {
     return;
   }
 
-  const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', result.active.id);
-  const scenarioIds = (scenarioData || []).map(s => s.id);
-  if (!scenarioIds.length) { badge.style.display = 'none'; return; }
+  const ketentestId = result.active.id;
+  const sleutel = badgeCacheKey('acties', ketentestId, orgId);
+  const onthouden = leesBadgeCache(sleutel);
+  if (onthouden !== undefined) { toonActiesBadge(badge, onthouden); return; }
+  const generatie = _badgeGeneratie;
 
-  const { data: activityData } = await fetchAllRows((from, to) =>
-    sb.from('activities').select('id,scenario_id,sort_order,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).order('sort_order').range(from, to)
-  );
-  const activityIds = (activityData || []).map(a => a.id);
-  const { data: resultData } = activityIds.length
-    ? await fetchAllRows((from, to) => sb.from('activity_results').select('activity_id,result').in('activity_id', activityIds).range(from, to))
-    : { data: [] };
-  const { data: flowNodeData } = await fetchAllRows((from, to) =>
-    sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', result.active.id).range(from, to)
-  );
-  const { data: flowEdgeData } = await fetchAllRows((from, to) =>
-    sb.from('flow_edges').select('from_id,to_id').eq('ketentest_id', result.active.id).range(from, to)
-  );
-  const fNodes = flowNodeData || [];
-  const fEdges = flowEdgeData || [];
+  try {
+    await naEersteRender(async () => {
+      const [data, nodeRes, edgeRes] = await Promise.all([
+        haalBadgeData(ketentestId),
+        fetchAllRows((from, to) => sb.from('flow_nodes').select('scenario_id,flow_id,is_start').eq('ketentest_id', ketentestId).order('id').range(from, to)),
+        fetchAllRows((from, to) => sb.from('flow_edges').select('from_id,to_id').eq('ketentest_id', ketentestId).order('id').range(from, to)),
+      ]);
+      const fNodes = nodeRes.data || [];
+      const fEdges = edgeRes.data || [];
 
-  const resultsMap = {};
-  (resultData || []).forEach(r => { resultsMap[r.activity_id] = r.result; });
+      const resultsMap = {};
+      data.results.forEach(r => { resultsMap[r.activity_id] = r.result; });
 
-  const byScenario = {};
-  (activityData || []).forEach(a => { (byScenario[a.scenario_id] = byScenario[a.scenario_id] || []).push(a); });
+      const byScenario = {};
+      data.activities.forEach(a => { (byScenario[a.scenario_id] = byScenario[a.scenario_id] || []).push(a); });
 
-  // Zelfde regel als in app.html/mijn-acties.html: de eerste activiteit
-  // van een vervolgscenario in een flow telt pas mee zodra alle directe
-  // voorganger(s) in die flow volledig op OK staan.
-  function scenarioVolledigOk(scenarioId) {
-    const acts = byScenario[scenarioId];
-    if (!acts || !acts.length) return false;
-    return acts.every(a => (resultsMap[a.id] || 'open') === 'ok');
-  }
-  function eersteActiviteitMagStarten(scenarioId) {
-    const node = fNodes.find(n => n.scenario_id === scenarioId);
-    if (!node || !node.flow_id || node.is_start) return true;
-    let voorgangers = fEdges.filter(e => e.to_id === scenarioId).map(e => e.from_id);
-    if (!voorgangers.length) voorgangers = fEdges.filter(e => e.from_id === scenarioId).map(e => e.to_id);
-    if (!voorgangers.length) return true;
-    return voorgangers.every(scenarioVolledigOk);
-  }
+      // Zelfde regel als in app.html/mijn-acties.html: de eerste activiteit
+      // van een vervolgscenario in een flow telt pas mee zodra alle directe
+      // voorganger(s) in die flow volledig op OK staan.
+      function scenarioVolledigOk(scenarioId) {
+        const acts = byScenario[scenarioId];
+        if (!acts || !acts.length) return false;
+        return acts.every(a => (resultsMap[a.id] || 'open') === 'ok');
+      }
+      function eersteActiviteitMagStarten(scenarioId) {
+        const node = fNodes.find(n => n.scenario_id === scenarioId);
+        if (!node || !node.flow_id || node.is_start) return true;
+        let voorgangers = fEdges.filter(e => e.to_id === scenarioId).map(e => e.from_id);
+        if (!voorgangers.length) voorgangers = fEdges.filter(e => e.from_id === scenarioId).map(e => e.to_id);
+        if (!voorgangers.length) return true;
+        return voorgangers.every(scenarioVolledigOk);
+      }
 
-  let count = 0;
-  Object.entries(byScenario).forEach(([scenarioId, acts]) => {
-    acts.sort((a, b) => a.sort_order - b.sort_order);
-    const bottleneck = acts.find(a => (resultsMap[a.id] || 'open') !== 'ok');
-    if (!bottleneck) return;
-    const isEersteActiviteit = acts[0] && acts[0].id === bottleneck.id;
-    if (isEersteActiviteit && !eersteActiviteitMagStarten(scenarioId)) return;
-    // Zelfde regel als de OK/NOK-rechten elders: is er een acceptant,
-    // dan telt alleen die acceptant mee — niet de verantwoordelijke.
-    if (bottleneck.acceptant_org_id === orgId || (!bottleneck.acceptant_org_id && bottleneck.organisation_id === orgId)) count++;
-  });
+      let count = 0;
+      Object.entries(byScenario).forEach(([scenarioId, acts]) => {
+        acts.sort((a, b) => a.sort_order - b.sort_order);
+        const bottleneck = acts.find(a => (resultsMap[a.id] || 'open') !== 'ok');
+        if (!bottleneck) return;
+        const isEersteActiviteit = acts[0] && acts[0].id === bottleneck.id;
+        if (isEersteActiviteit && !eersteActiviteitMagStarten(scenarioId)) return;
+        // Zelfde regel als de OK/NOK-rechten elders: is er een acceptant,
+        // dan telt alleen die acceptant mee — niet de verantwoordelijke.
+        if (bottleneck.acceptant_org_id === orgId || (!bottleneck.acceptant_org_id && bottleneck.organisation_id === orgId)) count++;
+      });
 
-  if (count > 0) {
-    badge.textContent = `🔔 ${count} actie${count === 1 ? '' : 's'} voor jou`;
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
+      if (generatie !== _badgeGeneratie) return; // inmiddels verouderd: een nieuwere berekening neemt het over
+      // Alleen onthouden als álle onderliggende queries geslaagd zijn —
+      // anders zou een tijdelijke fout een verkeerd getal 45 seconden vastzetten.
+      if (data.ok && !nodeRes.error && !edgeRes.error) schrijfBadgeCache(sleutel, count);
+      toonActiesBadge(badge, count);
+    });
+  } catch (e) {
+    console.error('Kon de badge "acties voor jou" niet bijwerken:', e);
   }
 }
 
@@ -520,42 +702,50 @@ async function refreshGonogoBadge(orgId, role) {
   if (!result) { badge.style.display = 'none'; return; }
   const ketentestId = result.active.id;
 
-  const { data: scenarioData } = await sb.from('scenarios').select('id').eq('ketentest_id', ketentestId);
-  const scenarioIds = (scenarioData || []).map(s => s.id);
-  if (!scenarioIds.length) { badge.style.display = 'none'; return; }
+  const toon = tonen => {
+    if (tonen) { badge.textContent = '⚑ Go/No-go nodig'; badge.style.display = ''; }
+    else badge.style.display = 'none';
+  };
+  const sleutel = badgeCacheKey('gonogo', ketentestId, orgId);
+  const onthouden = leesBadgeCache(sleutel);
+  if (onthouden !== undefined) { toon(onthouden); return; }
+  const generatie = _badgeGeneratie;
 
-  const { data: activityData } = await fetchAllRows((from, to) =>
-    sb.from('activities').select('id,organisation_id,acceptant_org_id').in('scenario_id', scenarioIds).range(from, to)
-  );
-  const activities = activityData || [];
-  if (!activities.length) { badge.style.display = 'none'; return; }
-  const activityIds = activities.map(a => a.id);
+  try {
+    await naEersteRender(async () => {
+      const [data, bevRes, gngRes] = await Promise.all([
+        haalBadgeData(ketentestId),
+        sb.from('bevindingen').select('id,prioriteit,status').eq('ketentest_id', ketentestId),
+        sb.from('ketentest_gonogo').select('id').eq('ketentest_id', ketentestId).eq('organisation_id', orgId),
+      ]);
+      const alleOk = !bevRes.error && !gngRes.error && data.ok;
+      const bewaar = tonen => {
+        if (generatie !== _badgeGeneratie) return; // inmiddels verouderd: een nieuwere berekening neemt het over
+        if (alleOk) schrijfBadgeCache(sleutel, tonen);
+        toon(tonen);
+      };
 
-  const { data: resultData } = await fetchAllRows((from, to) =>
-    sb.from('activity_results').select('activity_id,result').in('activity_id', activityIds).range(from, to)
-  );
-  const resultsMap = {};
-  (resultData || []).forEach(r => { resultsMap[r.activity_id] = r.result; });
-  const isVolledigCompleet = activities.every(a => resultsMap[a.id] === 'ok');
-  if (!isVolledigCompleet) { badge.style.display = 'none'; return; }
+      const activities = data.activities;
+      if (!activities.length) return bewaar(false);
 
-  const { data: bevindingenData } = await sb.from('bevindingen').select('id,prioriteit,status').eq('ketentest_id', ketentestId);
-  const heeftBlokkerend = (bevindingenData || []).some(b => b.prioriteit === 'blokkerend' && b.status !== 'hertest_ok' && b.status !== 'vervallen');
-  if (heeftBlokkerend) { badge.style.display = 'none'; return; }
+      const resultsMap = {};
+      data.results.forEach(r => { resultsMap[r.activity_id] = r.result; });
+      const isVolledigCompleet = activities.every(a => resultsMap[a.id] === 'ok');
+      if (!isVolledigCompleet) return bewaar(false);
 
-  // Is deze organisatie ook echt betrokken (verantwoordelijk of acceptant
-  // van minstens 1 activiteit)? Zo niet, hoeft er niets van hen.
-  const betrokken = activities.some(a => a.organisation_id === orgId || a.acceptant_org_id === orgId);
-  if (!betrokken) { badge.style.display = 'none'; return; }
+      const heeftBlokkerend = (bevRes.data || []).some(b => b.prioriteit === 'blokkerend' && b.status !== 'hertest_ok' && b.status !== 'vervallen');
+      if (heeftBlokkerend) return bewaar(false);
 
-  const { data: gonogoData } = await sb.from('ketentest_gonogo').select('id').eq('ketentest_id', ketentestId).eq('organisation_id', orgId);
-  const alBeslist = (gonogoData || []).length > 0;
+      // Is deze organisatie ook echt betrokken (verantwoordelijk of acceptant
+      // van minstens 1 activiteit)? Zo niet, hoeft er niets van hen.
+      const betrokken = activities.some(a => a.organisation_id === orgId || a.acceptant_org_id === orgId);
+      if (!betrokken) return bewaar(false);
 
-  if (!alBeslist) {
-    badge.textContent = '⚑ Go/No-go nodig';
-    badge.style.display = '';
-  } else {
-    badge.style.display = 'none';
+      const alBeslist = (gngRes.data || []).length > 0;
+      bewaar(!alBeslist);
+    });
+  } catch (e) {
+    console.error('Kon de Go/No-go-badge niet bijwerken:', e);
   }
 }
 
