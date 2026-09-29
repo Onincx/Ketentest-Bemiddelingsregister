@@ -168,6 +168,14 @@ tr:hover td { background: var(--surface); }
   display: flex; align-items: center; justify-content: center;
   z-index: 1000; padding: 16px;
 }
+/* Deze pop-ups kunnen vanuit een al open pop-up worden geopend (bijv.
+   "Melding laten vervallen" of "Markeren als opgelost" vanuit de
+   bevinding-detailpop-up, of de bevestigingspop-up Ja/Nee vanuit
+   diezelfde of andere pop-ups). De bevinding-pop-up wordt dynamisch pas
+   ná deze in de pagina toegevoegd en zou bij een gelijke z-index er per
+   ongeluk vóór (dus overheen) komen te liggen. Vandaar hier bewust een
+   hogere z-index, zodat deze pop-ups altijd zichtbaar bovenop liggen. */
+#modalConfirm, #modalNokOpgelost, #modalNokVervallen { z-index: 1100; }
 .modal {
   background: var(--white); border-radius: var(--radius-lg);
   width: 100%; max-width: 480px;
