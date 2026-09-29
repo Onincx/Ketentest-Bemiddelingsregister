@@ -3011,9 +3011,17 @@
       // Aantal opmerkingen per bevinding in één keer ophalen (voor het
       // label op de knop) — de volledige inhoud laden we pas als de
       // modal opent.
+      // Let op: bij veel bevindingen (lange id-lijst) en/of veel opmerkingen
+      // in totaal (> 1000 rijen) gaf een enkele query hier eerder een te
+      // lage (of foutieve, stilzwijgend genegeerde) telling. Daarom via
+      // fetchInChunks (verdeelt de id-lijst én haalt alle pagina's op).
       nokNotitiesMap = {};
       if (bevindingen.length) {
-        const { data: notitiesData } = await sb.from('nok_notities').select('bevinding_id').in('bevinding_id', bevindingen.map(b => b.id));
+        const { data: notitiesData, error: notitiesError } = await fetchInChunks(
+          bevindingen.map(b => b.id),
+          ids => sb.from('nok_notities').select('bevinding_id').in('bevinding_id', ids).order('id')
+        );
+        if (notitiesError) console.error('Fout bij ophalen aantal opmerkingen:', notitiesError);
         (notitiesData || []).forEach(n => {
           nokNotitiesMap[n.bevinding_id] = (nokNotitiesMap[n.bevinding_id] || 0) + 1;
         });
@@ -3282,9 +3290,9 @@
             </details>
           </div>
           <div class="modal-footer" style="justify-content:space-between;">
-            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
+            <button class="btn btn-outline btn-sm" id="bevindingModalOpmerkingenBtn" data-bevinding-id="${b.id}" onclick="openNokNotitiesModal('${b.id}')">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Opmerkingen (${notitieCount})
+              Opmerkingen (<span id="bevindingModalOpmerkingenCount">${notitieCount}</span>)
             </button>
             <div>
               <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
@@ -3574,6 +3582,20 @@
     let nokNotitiesHuidigBevindingId = null;
     let nokNotitiesHuidig = [];
 
+    // De bevinding-detailpop-up (indien open) toont het aantal opmerkingen
+    // óók op zijn eigen "Opmerkingen (N)"-knop. Die pop-up wordt bij het
+    // toevoegen/verwijderen van een opmerking niet opnieuw opgebouwd (dat
+    // zou de opmerkingen-pop-up er zelf overheen sluiten), waardoor het
+    // getal daar tot nu toe bleef hangen op de oude waarde — dat was de
+    // gemelde telfout. Werk 'm hier expliciet bij.
+    function verversOpmerkingenTellerInBevindingModal() {
+      const btn = document.getElementById('bevindingModalOpmerkingenBtn');
+      const span = document.getElementById('bevindingModalOpmerkingenCount');
+      if (btn && span && btn.dataset.bevindingId === nokNotitiesHuidigBevindingId) {
+        span.textContent = nokNotitiesMap[nokNotitiesHuidigBevindingId] || 0;
+      }
+    }
+
     async function openNokNotitiesModal(bevindingId) {
       nokNotitiesHuidigBevindingId = bevindingId;
       const b = bevindingen.find(x => x.id === bevindingId);
@@ -3640,6 +3662,7 @@
 
       renderNokNotitiesLijst();
       renderNokTable();
+      verversOpmerkingenTellerInBevindingModal();
     }
 
     function editNokNotitie(notitieId) {
@@ -3674,6 +3697,7 @@
         closeModal('modalConfirm');
         renderNokNotitiesLijst();
         renderNokTable();
+        verversOpmerkingenTellerInBevindingModal();
       };
       openModal('modalConfirm');
     }
