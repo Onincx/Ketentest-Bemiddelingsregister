@@ -546,32 +546,15 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Nummer</th><th>Titel</th><th>Scenario</th><th>Verantw.</th><th>Status</th><th>Datum melding</th><th>Opmerkingen</th></tr></thead>
-            <tbody id="nokTable"><tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Nummer</th><th>Titel</th><th>Scenario</th><th>Verantw.</th><th>Status</th><th>Datum melding</th></tr></thead>
+            <tbody id="nokTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
     </div>
 
-    <!-- Modal: opmerkingen bij een NOK -->
-    <div class="modal-overlay" id="modalNokNotities" style="display:none;" onclick="closeModalOverlay(event,'modalNokNotities')">
-      <div class="modal" style="max-width:560px;" onclick="event.stopPropagation()">
-        <div class="modal-header">
-          <h3 id="nokNotitiesTitel">Opmerkingen</h3>
-          <button class="btn btn-ghost btn-icon" onclick="closeModal('modalNokNotities')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
-        </div>
-        <div class="modal-body">
-          <div id="nokNotitieToevoegenWrap" style="display:none; margin-bottom:16px; padding-bottom:16px; border-bottom:1px solid var(--border);">
-            <textarea id="nokNieuweNotitie" placeholder="Nieuwe opmerking toevoegen..." style="min-height:70px;"></textarea>
-            <button class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="addNokNotitie()">Opmerking toevoegen</button>
-          </div>
-          <div id="nokNotitiesLijst"><p class="empty-dash">Laden...</p></div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn btn-outline" onclick="closeModal('modalNokNotities')">Sluiten</button>
-        </div>
-      </div>
-    </div>
+    <!-- De losse "Opmerkingen"-pop-up is vervallen: opmerkingen zitten nu
+         als tab in de bevinding-detailpop-up zelf (zie openBevindingModal). -->
 
     <!-- Modal: NOK op Opgelost zetten -->
     <div class="modal-overlay" id="modalNokOpgelost" style="display:none;" onclick="closeModalOverlay(event,'modalNokOpgelost')">
@@ -2923,7 +2906,6 @@
 
     // ---- NOK-OPVOLGING (nu gebaseerd op de tabel 'bevindingen') ----
     let bevindingen = [];
-    let nokNotitiesMap = {}; // bevinding_id -> aantal opmerkingen
     let nokFilter = 'open';
     const NOK_STATUS_LABELS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK', vervallen: 'Vervallen' };
 
@@ -3001,31 +2983,18 @@
 
     async function loadNokOverview() {
       const tb = document.getElementById('nokTable');
-      tb.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
+      tb.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr>';
       if (!activeKetentest) { bevindingen = []; renderNokTable(); return; }
 
       const { data, error } = await fetchAllRows((from, to) => sb.from('bevindingen').select('*').eq('ketentest_id', activeKetentest.id).order('created_at').range(from, to));
       if (error) { console.error('loadNokOverview error:', error); bevindingen = []; renderNokTable(); return; }
       bevindingen = data || [];
 
-      // Aantal opmerkingen per bevinding in één keer ophalen (voor het
-      // label op de knop) — de volledige inhoud laden we pas als de
-      // modal opent.
-      // Let op: bij veel bevindingen (lange id-lijst) en/of veel opmerkingen
-      // in totaal (> 1000 rijen) gaf een enkele query hier eerder een te
-      // lage (of foutieve, stilzwijgend genegeerde) telling. Daarom via
-      // fetchInChunks (verdeelt de id-lijst én haalt alle pagina's op).
-      nokNotitiesMap = {};
-      if (bevindingen.length) {
-        const { data: notitiesData, error: notitiesError } = await fetchInChunks(
-          bevindingen.map(b => b.id),
-          ids => sb.from('nok_notities').select('bevinding_id').in('bevinding_id', ids).order('id')
-        );
-        if (notitiesError) console.error('Fout bij ophalen aantal opmerkingen:', notitiesError);
-        (notitiesData || []).forEach(n => {
-          nokNotitiesMap[n.bevinding_id] = (nokNotitiesMap[n.bevinding_id] || 0) + 1;
-        });
-      }
+      // Het aantal opmerkingen wordt niet meer in dit overzicht getoond
+      // (die kolom is vervallen — de opmerkingen zelf zijn al zichtbaar
+      // in de bevinding zelf), dus hoeven we hier niet meer voor alle
+      // bevindingen in bulk op te halen. Bij het openen van een
+      // bevinding wordt dit per stuk geladen (zie openBevindingModal).
 
       renderNokTable();
     }
@@ -3067,7 +3036,7 @@
       let rows = bevindingen;
       if (nokFilter === 'open') rows = rows.filter(b => b.status !== 'hertest_ok' && b.status !== 'vervallen');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="7"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
         return;
       }
 
@@ -3095,7 +3064,6 @@
         const scen = act ? scenarios.find(s => s.id === act.scenario_id) : (b.scenario_id ? scenarios.find(s => s.id === b.scenario_id) : null);
         const verantwOrg = act ? orgs.find(o => o.id === act.organisation_id) : orgs.find(o => o.id === b.owner_org_id);
         const isResolved = b.status === 'hertest_ok';
-        const notitieCount = nokNotitiesMap[b.id] || 0;
         const gekoppeldAan = b.gerelateerde_bevinding_id ? bevindingen.find(x => x.id === b.gerelateerde_bevinding_id) : null;
         const isVervolg = !!gekoppeldAan;
         const prioKleur = NOK_PRIORITEIT_KLEUREN[b.prioriteit] || NOK_PRIORITEIT_KLEUREN.midden;
@@ -3115,12 +3083,6 @@
             <span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : '#f3f4f6'}; color:${isResolved ? '#065f46' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓' : ''} ${NOK_STATUS_LABELS[b.status]}</span>
           </td>
           <td style="font-size:12px; color:var(--text-muted); white-space:nowrap;">${b.created_at ? new Date(b.created_at).toLocaleDateString('nl-NL') : '—'}</td>
-          <td onclick="event.stopPropagation()">
-            <button class="btn btn-outline btn-sm" onclick="openNokNotitiesModal('${b.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              ${notitieCount}
-            </button>
-          </td>
         </tr>`;
       }).join('');
     }
@@ -3129,6 +3091,7 @@
     let bevindingTitelEditModus = false;
     let bevindingOmschrijvingEditModus = false;
     let bevindingToelichtingEditId = null;
+    let bevindingActieveTab = 'toelichting'; // 'toelichting' of 'opmerkingen'
 
     function markeerBevindingGewijzigd() {
       const opslaanBtn = document.getElementById('bevindingOpslaanBtn');
@@ -3161,11 +3124,20 @@
       // dat is niet per se dezelfde partij als de eigenaar van de
       // bevinding.
       const magToelichtingBewerken = true; // iedereen mag opmerkingen toevoegen en bewerken
-      const notitieCount = nokNotitiesMap[b.id] || 0;
-      if (!behoudEditState) { bevindingTitelEditModus = false; bevindingOmschrijvingEditModus = false; bevindingToelichtingEditId = null; }
+      // Opmerkingen (nok_notities) mogen alleen door de eigenaar-organisatie
+      // (of de beheerder) toegevoegd/bewerkt/verwijderd worden — zelfde regel
+      // als voor de overige mutaties op deze bevinding.
+      const magOpmerkingMuteren = magMuteren;
+      if (!behoudEditState) { bevindingTitelEditModus = false; bevindingOmschrijvingEditModus = false; bevindingToelichtingEditId = null; bevindingActieveTab = 'toelichting'; }
 
       const { data: toelichtingenData } = await sb.from('bevinding_toelichtingen').select('*').eq('bevinding_id', bevindingId).order('created_at', { ascending: false });
       const toelichtingen = toelichtingenData || [];
+
+      // Opmerkingen (aparte, oudere tabel nok_notities) worden nu als tab in
+      // dezelfde pop-up getoond i.p.v. in een losse pop-up.
+      const { data: notitiesData } = await sb.from('nok_notities').select('*').eq('bevinding_id', bevindingId).order('created_at', { ascending: false });
+      nokNotitiesHuidigBevindingId = bevindingId;
+      nokNotitiesHuidig = notitiesData || [];
 
       const heropen = (behoud) => `document.getElementById('bevindingModalOverlay').remove(); openBevindingModal('${b.id}'${behoud ? ', true' : ''})`;
 
@@ -3219,8 +3191,8 @@
       modal.id = 'bevindingModalOverlay';
       modal.style.display = 'flex';
       modal.innerHTML = `
-        <div class="modal" style="max-width:760px; width:92vw;" onclick="event.stopPropagation()">
-          <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:8px;">
+        <div class="modal" style="max-width:760px; width:92vw; max-height:88vh; display:flex; flex-direction:column;" onclick="event.stopPropagation()">
+          <div class="modal-header" style="flex-direction:column; align-items:stretch; gap:8px; flex-shrink:0;">
             <div style="display:flex; justify-content:space-between; align-items:flex-start; width:100%; gap:12px;">
               <div style="font-size:11px; font-family:monospace; font-weight:700; color:var(--text-muted);">B${b.bevinding_nummer}</div>
               <button class="btn btn-ghost btn-icon" onclick="document.getElementById('bevindingModalOverlay').remove()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
@@ -3236,7 +3208,7 @@
               ${act ? `<br>Activiteit: ${act.description || ''}` : ''}
             </div>
           </div>
-          <div class="modal-body" style="background:var(--surface);">
+          <div class="modal-body" style="background:var(--surface); overflow-y:auto; flex:1 1 auto;">
             <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; margin-bottom:10px;">
               ${veldKaart('Status', `<span style="display:inline-flex; align-items:center; gap:5px; background:${isResolved ? '#d1fae5' : isVervallen ? '#f3f4f6' : isLocked ? '#ede9fe' : '#f3f4f6'}; color:${isResolved ? '#065f46' : isVervallen ? '#6b7280' : isLocked ? '#5b21b6' : '#4b5563'}; font-size:11px; font-weight:700; border-radius:6px; padding:5px 10px;">${isResolved ? '✓ ' : ''}${NOK_STATUS_LABELS[b.status]}</span>${statusMenuHtml}`)}
               ${veldKaart('Prioriteit', magMuteren
@@ -3277,10 +3249,22 @@
                 : `<div style="font-size:13px; white-space:pre-wrap;">${b.omschrijving_probleem ? b.omschrijving_probleem.replace(/</g, '&lt;') : '<span style=\"color:var(--text-muted); font-style:italic;\">Nog geen omschrijving vastgelegd — deze is verplicht. Klik op het potlood om hem aan te vullen.</span>'}</div>`}
             </div>
 
-            <div style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px;">
-              <div style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px;">Toelichting</div>
+            <div style="display:flex; gap:2px; border-bottom:1px solid var(--border); margin-bottom:10px;">
+              <button type="button" id="bevindingTabBtnToelichting" onclick="wisselBevindingTab('toelichting')" style="padding:8px 14px; font-size:12.5px; font-weight:700; background:none; cursor:pointer; border:none; border-bottom:2px solid ${bevindingActieveTab === 'toelichting' ? 'var(--brand)' : 'transparent'}; color:${bevindingActieveTab === 'toelichting' ? 'var(--brand)' : 'var(--text-muted)'};">Toelichting (${toelichtingen.length})</button>
+              <button type="button" id="bevindingTabBtnOpmerkingen" onclick="wisselBevindingTab('opmerkingen')" style="padding:8px 14px; font-size:12.5px; font-weight:700; background:none; cursor:pointer; border:none; border-bottom:2px solid ${bevindingActieveTab === 'opmerkingen' ? 'var(--brand)' : 'transparent'}; color:${bevindingActieveTab === 'opmerkingen' ? 'var(--brand)' : 'var(--text-muted)'};">Opmerkingen (<span id="bevindingTabCountOpmerkingen">${nokNotitiesHuidig.length}</span>)</button>
+            </div>
+
+            <div id="bevindingTabPanelToelichting" style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px; ${bevindingActieveTab === 'toelichting' ? '' : 'display:none;'}">
               ${magToelichtingBewerken ? `<textarea id="toelichtingNieuw" placeholder="Voeg een update toe over de status van deze melding..." oninput="markeerBevindingGewijzigd()" style="width:100%; min-height:60px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:10px;"></textarea>` : ''}
               ${toelichtingHtml || '<p style="font-size:12px; color:var(--text-muted);">Nog geen toelichting vastgelegd.</p>'}
+            </div>
+
+            <div id="bevindingTabPanelOpmerkingen" style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px; ${bevindingActieveTab === 'opmerkingen' ? '' : 'display:none;'}">
+              <div id="bevindingNotitieToevoegenWrap" style="${magOpmerkingMuteren ? '' : 'display:none;'} margin-bottom:10px; padding-bottom:10px; border-bottom:1px solid var(--border);">
+                <textarea id="bevindingNieuweNotitie" placeholder="Nieuwe opmerking toevoegen..." style="width:100%; min-height:60px; font-size:13px; padding:8px 10px; border:1px solid var(--border); border-radius:6px; font-family:inherit; margin-bottom:8px;"></textarea>
+                <button class="btn btn-primary btn-sm" onclick="addNokNotitie()">Opmerking toevoegen</button>
+              </div>
+              <div id="bevindingNotitiesLijst">${nokNotitiesLijstHtml()}</div>
             </div>
 
             <details style="background:#fff; border:1px solid var(--border); border-radius:8px; padding:12px 14px; margin-top:10px;"
@@ -3289,18 +3273,27 @@
               <div id="historieBevinding" style="margin-top:8px;"></div>
             </details>
           </div>
-          <div class="modal-footer" style="justify-content:space-between;">
-            <button class="btn btn-outline btn-sm" id="bevindingModalOpmerkingenBtn" data-bevinding-id="${b.id}" onclick="openNokNotitiesModal('${b.id}')">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-              Opmerkingen (<span id="bevindingModalOpmerkingenCount">${notitieCount}</span>)
-            </button>
-            <div>
-              <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
-              <button class="btn btn-primary btn-sm" id="bevindingOpslaanBtn" style="display:none;" onclick="opslaanAlleBevindingWijzigingen('${b.id}')">Opslaan</button>
-            </div>
+          <div class="modal-footer" style="flex-shrink:0;">
+            <button class="btn btn-outline btn-sm" id="bevindingSluitenBtn" onclick="document.getElementById('bevindingModalOverlay').remove()">Sluiten</button>
+            <button class="btn btn-primary btn-sm" id="bevindingOpslaanBtn" style="display:none;" onclick="opslaanAlleBevindingWijzigingen('${b.id}')">Opslaan</button>
           </div>
         </div>`;
       document.body.appendChild(modal);
+    }
+
+    // Wisselt tussen de tabs "Toelichting" en "Opmerkingen" binnen de
+    // bevinding-pop-up, puur client-side (geen herladen van gegevens en
+    // geen reset van eventuele openstaande wijzigingen elders in de pop-up).
+    function wisselBevindingTab(tab) {
+      bevindingActieveTab = tab;
+      const paneelToelichting = document.getElementById('bevindingTabPanelToelichting');
+      const paneelOpmerkingen = document.getElementById('bevindingTabPanelOpmerkingen');
+      const btnToelichting = document.getElementById('bevindingTabBtnToelichting');
+      const btnOpmerkingen = document.getElementById('bevindingTabBtnOpmerkingen');
+      if (paneelToelichting) paneelToelichting.style.display = tab === 'toelichting' ? '' : 'none';
+      if (paneelOpmerkingen) paneelOpmerkingen.style.display = tab === 'opmerkingen' ? '' : 'none';
+      if (btnToelichting) { btnToelichting.style.borderBottomColor = tab === 'toelichting' ? 'var(--brand)' : 'transparent'; btnToelichting.style.color = tab === 'toelichting' ? 'var(--brand)' : 'var(--text-muted)'; }
+      if (btnOpmerkingen) { btnOpmerkingen.style.borderBottomColor = tab === 'opmerkingen' ? 'var(--brand)' : 'transparent'; btnOpmerkingen.style.color = tab === 'opmerkingen' ? 'var(--brand)' : 'var(--text-muted)'; }
     }
 
     async function opslaanAlleBevindingWijzigingen(bevindingId) {
@@ -3579,50 +3572,22 @@
     }
 
     // ---- NOK-OPMERKINGEN (meerdere per bevinding, nieuwste bovenin) ----
+    // Zit sinds de tabblad-indeling van de bevinding-pop-up niet meer in een
+    // losse pop-up, maar als tab "Opmerkingen" in diezelfde pop-up (zie
+    // openBevindingModal, dat nokNotitiesHuidig(BevindingId) vult).
     let nokNotitiesHuidigBevindingId = null;
     let nokNotitiesHuidig = [];
 
-    // De bevinding-detailpop-up (indien open) toont het aantal opmerkingen
-    // óók op zijn eigen "Opmerkingen (N)"-knop. Die pop-up wordt bij het
-    // toevoegen/verwijderen van een opmerking niet opnieuw opgebouwd (dat
-    // zou de opmerkingen-pop-up er zelf overheen sluiten), waardoor het
-    // getal daar tot nu toe bleef hangen op de oude waarde — dat was de
-    // gemelde telfout. Werk 'm hier expliciet bij.
-    function verversOpmerkingenTellerInBevindingModal() {
-      const btn = document.getElementById('bevindingModalOpmerkingenBtn');
-      const span = document.getElementById('bevindingModalOpmerkingenCount');
-      if (btn && span && btn.dataset.bevindingId === nokNotitiesHuidigBevindingId) {
-        span.textContent = nokNotitiesMap[nokNotitiesHuidigBevindingId] || 0;
-      }
-    }
-
-    async function openNokNotitiesModal(bevindingId) {
-      nokNotitiesHuidigBevindingId = bevindingId;
-      const b = bevindingen.find(x => x.id === bevindingId);
-      const act = b ? activities.find(a => a.id === b.activity_id) : null;
-      const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
-      document.getElementById('nokNotitiesTitel').textContent = `Opmerkingen — B${b?.bevinding_nummer || ''} (${scen ? scen.code : ''})`;
-      document.getElementById('nokNotitieToevoegenWrap').style.display = b && canMutateNok(b) ? '' : 'none';
-      document.getElementById('nokNieuweNotitie').value = '';
-      document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Laden...</p>';
-      openModal('modalNokNotities');
-
-      const { data, error } = await sb.from('nok_notities').select('*').eq('bevinding_id', bevindingId).order('created_at', { ascending: false });
-      if (error) { document.getElementById('nokNotitiesLijst').innerHTML = '<p class="empty-dash">Kon opmerkingen niet laden.</p>'; return; }
-      nokNotitiesHuidig = data || [];
-      renderNokNotitiesLijst();
-    }
-
-    function renderNokNotitiesLijst() {
-      const el = document.getElementById('nokNotitiesLijst');
+    // Bouwt de HTML voor de lijst met opmerkingen van de op dit moment in de
+    // bevinding-pop-up geopende bevinding (nokNotitiesHuidig/BevindingId).
+    function nokNotitiesLijstHtml() {
       const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
       const magMuteren = b ? canMutateNok(b) : false;
 
       if (!nokNotitiesHuidig.length) {
-        el.innerHTML = '<p class="empty-dash">Nog geen opmerkingen.</p>';
-        return;
+        return '<p style="font-size:12px; color:var(--text-muted);">Nog geen opmerkingen.</p>';
       }
-      el.innerHTML = nokNotitiesHuidig.map(n => {
+      return nokNotitiesHuidig.map(n => {
         const org = orgs.find(o => o.id === n.organisation_id);
         const datum = new Date(n.created_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         return `<div style="padding:10px 0; border-bottom:1px solid var(--border);">
@@ -3639,8 +3604,17 @@
       }).join('');
     }
 
+    // Werkt zowel de lijst als de teller in de tab-titel bij ("Opmerkingen (N)"),
+    // zonder de rest van de bevinding-pop-up opnieuw op te bouwen.
+    function renderNokNotitiesLijst() {
+      const el = document.getElementById('bevindingNotitiesLijst');
+      if (el) el.innerHTML = nokNotitiesLijstHtml();
+      const teller = document.getElementById('bevindingTabCountOpmerkingen');
+      if (teller) teller.textContent = nokNotitiesHuidig.length;
+    }
+
     async function addNokNotitie() {
-      const tekst = document.getElementById('nokNieuweNotitie').value.trim();
+      const tekst = document.getElementById('bevindingNieuweNotitie').value.trim();
       if (!tekst || !nokNotitiesHuidigBevindingId) return;
       const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
       const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
@@ -3649,20 +3623,20 @@
       }).select().single();
       if (error) { alert('Fout bij opslaan: ' + error.message); return; }
       nokNotitiesHuidig.unshift(data);
-      nokNotitiesMap[nokNotitiesHuidigBevindingId] = (nokNotitiesMap[nokNotitiesHuidigBevindingId] || 0) + 1;
-      document.getElementById('nokNieuweNotitie').value = '';
+      document.getElementById('bevindingNieuweNotitie').value = '';
 
       // Een opmerking toevoegen aan een nog niet-opgepakte bevinding
       // betekent dat er nu mee aan de slag wordt gegaan — zet de status
       // dan automatisch op "In behandeling". In alle andere gevallen
-      // (status stond al verder) gebeurt er niets extra's.
+      // (status stond al verder) gebeurt er niets extra's. Let op: dit zet
+      // de status via updateNokField, wat de hele bevinding-pop-up opnieuw
+      // opbouwt (met de zojuist toegevoegde opmerking al verwerkt).
       if (b && b.status === 'nieuw') {
         await updateNokField(nokNotitiesHuidigBevindingId, 'status', 'in_behandeling');
+        return;
       }
 
       renderNokNotitiesLijst();
-      renderNokTable();
-      verversOpmerkingenTellerInBevindingModal();
     }
 
     function editNokNotitie(notitieId) {
@@ -3693,11 +3667,8 @@
         const { error } = await sb.from('nok_notities').delete().eq('id', notitieId);
         if (error) { alert('Fout bij verwijderen: ' + error.message); closeModal('modalConfirm'); return; }
         nokNotitiesHuidig = nokNotitiesHuidig.filter(x => x.id !== notitieId);
-        nokNotitiesMap[nokNotitiesHuidigBevindingId] = Math.max(0, (nokNotitiesMap[nokNotitiesHuidigBevindingId] || 1) - 1);
         closeModal('modalConfirm');
         renderNokNotitiesLijst();
-        renderNokTable();
-        verversOpmerkingenTellerInBevindingModal();
       };
       openModal('modalConfirm');
     }
