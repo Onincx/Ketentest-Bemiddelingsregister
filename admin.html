@@ -541,7 +541,7 @@
       </div>
       <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="nokFilterBtns">
         <button class="btn btn-sm" data-f="open" onclick="setNokFilter('open',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Openstaand</button>
-        <button class="btn btn-sm btn-outline" data-f="all" onclick="setNokFilter('all',this)">Alle (incl. opgelost)</button>
+        <button class="btn btn-sm btn-outline" data-f="afgesloten" onclick="setNokFilter('afgesloten',this)">Afgesloten</button>
       </div>
       <div class="card" style="padding:0;">
         <div class="table-wrap">
@@ -3035,8 +3035,9 @@
       const tb = document.getElementById('nokTable');
       let rows = bevindingen;
       if (nokFilter === 'open') rows = rows.filter(b => b.status !== 'hertest_ok' && b.status !== 'vervallen');
+      else if (nokFilter === 'afgesloten') rows = rows.filter(b => b.status === 'hertest_ok' || b.status === 'vervallen');
       if (!rows.length) {
-        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande NOK\'s. 🎉' : 'Nog geen NOK\'s gevonden.'}</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>${nokFilter === 'open' ? 'Geen openstaande bevindingen. 🎉' : 'Geen afgesloten bevindingen gevonden.'}</p></div></td></tr>`;
         return;
       }
 
