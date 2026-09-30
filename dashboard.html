@@ -1117,7 +1117,11 @@
 
     function renderNokOverview() {
       const el = document.getElementById('nokOverview');
-      const openBevindingen = allBevindingen.filter(b => b.status !== 'hertest_ok');
+      // Alle nog niet afgehandelde bevindingen, ongeacht of ze aan een
+      // scenario/activiteit hangen of los zijn ingediend. "Afgehandeld"
+      // betekent hier: Hertest OK óf Vervallen (beide horen dus niet meer
+      // bij "openstaand").
+      const openBevindingen = allBevindingen.filter(b => b.status !== 'hertest_ok' && b.status !== 'vervallen');
       if (!openBevindingen.length) {
         el.innerHTML = '<p class="empty-dash">Geen NOK\'s gevonden. Alles loopt goed!</p>';
         return;
@@ -1137,25 +1141,33 @@
         const eerste = sorted[0];
         const vervolgen = sorted.slice(1);
         const act = activities.find(a => a.id === eerste.activity_id);
-        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : null;
+        // Een losse bevinding heeft geen activiteit, maar kan wel (optioneel)
+        // direct aan een scenario gekoppeld zijn; anders staat scen op null
+        // en tonen we de bevinding zonder scenario-koppeling.
+        const scen = act ? scenarios.find(s => s.id === act.scenario_id) : (eerste.scenario_id ? scenarios.find(s => s.id === eerste.scenario_id) : null);
         const eigenaarOrg = orgs.find(o => o.id === eerste.owner_org_id);
         return { eerste, vervolgen, act, scen, eigenaarOrg };
-      }).filter(x => x.act && x.scen)
-        .sort((a, b) => new Date(b.eerste.created_at) - new Date(a.eerste.created_at));
+      }).sort((a, b) => new Date(b.eerste.created_at) - new Date(a.eerste.created_at));
 
-      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ eerste, vervolgen, act, scen, eigenaarOrg }) => `
+      el.innerHTML = `<div style="max-height:320px; overflow-y:auto;">` + rows.map(({ eerste, vervolgen, act, scen, eigenaarOrg }) => {
+        const omschrijving = act ? (act.description || '—') : (eerste.titel || eerste.omschrijving_probleem || '—');
+        const scenarioLabel = scen
+          ? `${scen.code} — ${scen.title}`
+          : '<span style="color:#9ca3af;">Losse bevinding (niet gekoppeld aan een scenario)</span>';
+        return `
         <div class="nok-row">
           <span class="nok-badge">B${eerste.bevinding_nummer}</span>
           <div>
-            <div class="nok-desc">${act.description || '—'}</div>
+            <div class="nok-desc">${omschrijving}</div>
             <div class="nok-meta">
-              ${scen.code} — ${scen.title}
+              ${scenarioLabel}
               ${eigenaarOrg ? ` · Eigenaar: <strong>${eigenaarOrg.name}</strong>` : ''}
               ${eerste.toelichting ? ` · <em>"${eerste.toelichting.substring(0,80)}${eerste.toelichting.length>80?'...':''}"</em>` : ''}
               ${vervolgen.length ? ` · <span style="color:#7c3aed; font-weight:600;">🔗 Vervolg: ${vervolgen.map(v => 'B' + v.bevinding_nummer).join(', ')}</span>` : ''}
             </div>
           </div>
-        </div>`).join('') + `</div>`;
+        </div>`;
+      }).join('') + `</div>`;
     }
 
 
