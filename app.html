@@ -689,6 +689,11 @@
         }
       } else if (d.veldtype === 'numeriek') {
         inputHtml = `<input type="text" data-kenmerk-id="${d.id}" data-lengte="${d.validatie_lengte || ''}" data-elfproef="${d.validatie_elfproef ? '1' : '0'}" maxlength="${d.validatie_lengte || ''}" value="${esc(waarde || '')}" style="${veldStijl}" ${disabled}>`;
+      } else if (d.veldtype === 'uuid') {
+        // Handmatig in te vullen door de betrokken partijen (bijv. een
+        // UUID v4 zoals f47ac10b-58cc-4372-a567-0e02b2c3d479) — niet
+        // automatisch gegenereerd, alleen begrensd op max. 36 posities.
+        inputHtml = `<input type="text" data-kenmerk-id="${d.id}" maxlength="36" value="${esc(waarde || '')}" style="${veldStijl}" ${disabled}>`;
       } else {
         inputHtml = `<input type="text" data-kenmerk-id="${d.id}" value="${esc(waarde || '')}" style="${veldStijl}" ${disabled}>`;
       }
