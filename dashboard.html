@@ -216,7 +216,7 @@
         </div>
         <!-- Heatmap NOK's -->
         <div class="dash-card">
-          <h3><div class="dot" style="background:#dc2626;"></div>Scenario's met NOK's</h3>
+          <h3><div class="dot" style="background:#dc2626;"></div>Scenario's met bevindingen</h3>
           <div id="nokHeatmap" style="max-height:220px; overflow-y:auto;"></div>
         </div>
       </div>
@@ -245,13 +245,13 @@
 
         <!-- NOK overzicht -->
         <div class="dash-card" style="grid-column: 1 / -1;">
-          <h3><div class="dot" style="background:#dc2626;"></div>Openstaande NOK's</h3>
+          <h3><div class="dot" style="background:#dc2626;"></div>Openstaande bevindingen</h3>
           <div id="nokOverview"><p class="empty-dash">Laden...</p></div>
         </div>
 
         <!-- Afgehandelde NOK's -->
         <div class="dash-card" style="grid-column: 1 / -1;">
-          <h3><div class="dot" style="background:#16a34a;"></div>Afgehandelde NOK's</h3>
+          <h3><div class="dot" style="background:#16a34a;"></div>Afgehandelde bevindingen</h3>
           <div id="afgehandeldeNokOverview"><p class="empty-dash">Laden...</p></div>
         </div>
 
@@ -354,10 +354,18 @@
       // daadwerkelijk eigenaar is van het oplossen van een openstaande NOK.
       latestBevindingByActivity = {};
       // Alle bevindingen (ook oudere, afgehandelde, die inmiddels een
-      // nieuwere vervolgbevinding hebben) — nodig voor "Afgehandelde NOK's",
-      // want een afgeronde bevinding moet zichtbaar blijven ook als er
-      // later een vervolg-NOK aan gekoppeld is.
-      allBevindingen = (bv.data || []).filter(b => actIds.has(b.activity_id));
+      // nieuwere vervolgbevinding hebben) — nodig voor "Afgehandelde
+      // bevindingen", want een afgeronde bevinding moet zichtbaar blijven
+      // ook als er later een vervolg-NOK aan gekoppeld is.
+      // Let op: een LOSSE bevinding heeft geen activity_id (die is dan
+      // null) — de oude filter (alleen actIds.has(...)) verwierp die dus
+      // altijd, waardoor losse bevindingen nergens op dit dashboard
+      // zichtbaar waren. Zo'n bevinding hoort bij dit ketentest via
+      // ketentest_id (waar de query hierboven al op filtert), dus die
+      // laten we nu staan; alleen bevindingen mét een activity_id die naar
+      // een activiteit buiten deze ketentest wijst (zou niet moeten
+      // voorkomen, maar voor de zekerheid) worden nog steeds geweerd.
+      allBevindingen = (bv.data || []).filter(b => !b.activity_id || actIds.has(b.activity_id));
       allBevindingen.forEach(b => {
         if (!latestBevindingByActivity[b.activity_id]) {
           latestBevindingByActivity[b.activity_id] = b;
@@ -1123,7 +1131,7 @@
       // bij "openstaand").
       const openBevindingen = allBevindingen.filter(b => b.status !== 'hertest_ok' && b.status !== 'vervallen');
       if (!openBevindingen.length) {
-        el.innerHTML = '<p class="empty-dash">Geen NOK\'s gevonden. Alles loopt goed!</p>';
+        el.innerHTML = '<p class="empty-dash">Geen openstaande bevindingen. Alles loopt goed!</p>';
         return;
       }
 
