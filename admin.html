@@ -3126,12 +3126,37 @@
     // Tekent alle info van één bevinding (kerngegevens, omschrijving,
     // toelichting en opmerkingen) in het PDF-document vanaf y-positie 'y',
     // met automatische paginawissel, en geeft de nieuwe y-positie terug.
+    // Kleuren voor de status-badge in de PDF (zelfde toon als de
+    // prioriteit-kleuren hierboven, per statuswaarde).
+    const NOK_STATUS_PDF_KLEUREN = {
+      nieuw: [185, 28, 28],
+      in_behandeling: [180, 83, 9],
+      opgelost_wacht_hertest: [30, 64, 175],
+      hertest_ok: [21, 128, 61],
+      vervallen: [107, 114, 128],
+    };
+    const NOK_PRIORITEIT_PDF_KLEUREN = {
+      laag: [75, 85, 99],
+      midden: [30, 64, 175],
+      hoog: [154, 52, 18],
+      blokkerend: [153, 27, 27],
+    };
+
     function tekenBevindingPdfBlok(doc, y, b, toelichtingen, notities, pageWidth, pageHeight, margin) {
       const ctx = bevindingPdfContext(b);
-      if (y > pageHeight - 120) { doc.addPage(); y = 40; }
+      const titelTekst = `B${b.bevinding_nummer} — ${b.titel || '(geen titel)'}`;
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(13);
+      const titelLines = doc.splitTextToSize(titelTekst, pageWidth - margin * 2);
+      const titelHoogte = titelLines.length * 16;
 
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(12); doc.setTextColor(21, 66, 115);
-      doc.text(`B${b.bevinding_nummer} — ${b.titel || '(geen titel)'}`, margin, y);
+      if (y + titelHoogte > pageHeight - 120) { doc.addPage(); y = 40; }
+
+      doc.setTextColor(21, 66, 115);
+      doc.text(titelLines, margin, y);
+      y += titelHoogte + 2;
+      doc.setDrawColor(57, 135, 12);
+      doc.setLineWidth(1.4);
+      doc.line(margin, y, margin + 46, y);
       y += 16;
 
       const veldenBody = [
@@ -3148,72 +3173,111 @@
       ];
       doc.autoTable({
         startY: y, margin: { left: margin, right: margin },
-        body: veldenBody, theme: 'plain',
-        styles: { fontSize: 9, cellPadding: 2 },
+        body: veldenBody, theme: 'striped',
+        styles: { fontSize: 9, cellPadding: 4, lineColor: [235, 235, 235], lineWidth: 0.5 },
+        alternateRowStyles: { fillColor: [247, 249, 250] },
         columnStyles: { 0: { fontStyle: 'bold', cellWidth: 120, textColor: [107, 114, 128] }, 1: { cellWidth: pageWidth - margin * 2 - 120 } },
+        didParseCell: function (data) {
+          if (data.section !== 'body' || data.column.index !== 1) return;
+          if (data.row.index === 0) {
+            const kleur = NOK_STATUS_PDF_KLEUREN[b.status];
+            if (kleur) { data.cell.styles.textColor = kleur; data.cell.styles.fontStyle = 'bold'; }
+          } else if (data.row.index === 1) {
+            const kleur = NOK_PRIORITEIT_PDF_KLEUREN[b.prioriteit];
+            if (kleur) { data.cell.styles.textColor = kleur; data.cell.styles.fontStyle = 'bold'; }
+          }
+        },
       });
-      y = doc.lastAutoTable.finalY + 8;
+      y = doc.lastAutoTable.finalY + 12;
 
       doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
-      doc.text('Omschrijving probleem', margin, y);
-      y += 12;
+      doc.text('OMSCHRIJVING PROBLEEM', margin, y);
+      y += 10;
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(26, 26, 26);
-      const omschrijvingLines = doc.splitTextToSize(b.omschrijving_probleem || '(geen omschrijving vastgelegd)', pageWidth - margin * 2);
-      doc.text(omschrijvingLines, margin, y);
-      y += omschrijvingLines.length * 11 + 10;
+      const omschrijvingLines = doc.splitTextToSize(b.omschrijving_probleem || '(geen omschrijving vastgelegd)', pageWidth - margin * 2 - 16);
+      const omschrijvingBoxHoogte = omschrijvingLines.length * 11 + 16;
+      doc.setFillColor(247, 249, 250);
+      doc.setDrawColor(230, 230, 230);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(margin, y, pageWidth - margin * 2, omschrijvingBoxHoogte, 3, 3, 'FD');
+      doc.text(omschrijvingLines, margin + 8, y + 13);
+      y += omschrijvingBoxHoogte + 14;
 
-      if (y > pageHeight - 80) { doc.addPage(); y = 40; }
+      if (y > pageHeight - 90) { doc.addPage(); y = 40; }
 
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
+      doc.text(`TOELICHTING${toelichtingen.length ? ` (${toelichtingen.length})` : ''}`, margin, y);
+      y += 10;
       if (toelichtingen.length) {
         doc.autoTable({
           startY: y, margin: { left: margin, right: margin },
           head: [['Toelichting', 'Organisatie', 'Datum']],
           body: toelichtingen.map(t => [t.tekst, orgs.find(o => o.id === t.organisation_id)?.name || '—', new Date(t.created_at).toLocaleString('nl-NL')]),
-          styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-          headStyles: { fillColor: [57, 135, 12], textColor: 255, fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak', lineColor: [235, 235, 235], lineWidth: 0.5 },
+          headStyles: { fillColor: [57, 135, 12], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [247, 249, 250] },
           columnStyles: { 0: { cellWidth: pageWidth - margin * 2 - 180 }, 1: { cellWidth: 100 }, 2: { cellWidth: 80 } },
         });
-        y = doc.lastAutoTable.finalY + 8;
+        y = doc.lastAutoTable.finalY + 14;
       } else {
         doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(140, 140, 140);
         doc.text('Geen toelichting vastgelegd.', margin, y);
-        y += 14;
+        y += 18;
       }
 
-      if (y > pageHeight - 80) { doc.addPage(); y = 40; }
+      if (y > pageHeight - 90) { doc.addPage(); y = 40; }
 
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
+      doc.text(`OPMERKINGEN${notities.length ? ` (${notities.length})` : ''}`, margin, y);
+      y += 10;
       if (notities.length) {
         doc.autoTable({
           startY: y, margin: { left: margin, right: margin },
           head: [['Opmerking', 'Organisatie', 'Datum']],
           body: notities.map(n => [n.tekst, orgs.find(o => o.id === n.organisation_id)?.name || '—', new Date(n.created_at).toLocaleString('nl-NL')]),
-          styles: { fontSize: 8, cellPadding: 3, overflow: 'linebreak' },
-          headStyles: { fillColor: [37, 99, 168], textColor: 255, fontSize: 8 },
+          styles: { fontSize: 8, cellPadding: 4, overflow: 'linebreak', lineColor: [235, 235, 235], lineWidth: 0.5 },
+          headStyles: { fillColor: [37, 99, 168], textColor: 255, fontSize: 8, fontStyle: 'bold' },
+          alternateRowStyles: { fillColor: [247, 249, 250] },
           columnStyles: { 0: { cellWidth: pageWidth - margin * 2 - 180 }, 1: { cellWidth: 100 }, 2: { cellWidth: 80 } },
         });
-        y = doc.lastAutoTable.finalY + 8;
+        y = doc.lastAutoTable.finalY + 14;
       } else {
         doc.setFont('helvetica', 'italic'); doc.setFontSize(8.5); doc.setTextColor(140, 140, 140);
         doc.text('Geen opmerkingen vastgelegd.', margin, y);
-        y += 14;
+        y += 18;
       }
 
-      y += 8;
-      doc.setDrawColor(230, 230, 230);
+      doc.setDrawColor(210, 214, 220);
+      doc.setLineWidth(0.75);
       doc.line(margin, y, pageWidth - margin, y);
-      y += 18;
+      y += 22;
       return y;
     }
 
     function bevindingPdfHeader(doc, pageWidth, titel) {
       const ketentestNaam = activeKetentest?.naam || 'Ketentest';
       const datum = new Date().toLocaleDateString('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' });
+      doc.setFillColor(21, 66, 115);
+      doc.rect(0, 0, pageWidth, 60, 'F');
       doc.setFillColor(57, 135, 12);
-      doc.rect(0, 0, pageWidth, 5, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(15); doc.setTextColor(21, 66, 115);
-      doc.text(`${ketentestNaam} — ${titel}`, 40, 32);
-      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
-      doc.text(`Gegenereerd op ${datum}`, 40, 46);
+      doc.rect(0, 60, pageWidth, 3, 'F');
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(16); doc.setTextColor(255, 255, 255);
+      const titelLines = doc.splitTextToSize(`${ketentestNaam} — ${titel}`, pageWidth - 80);
+      doc.text(titelLines[0], 40, 32);
+      doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(220, 230, 240);
+      doc.text(`Gegenereerd op ${datum}`, 40, 48);
+    }
+
+    // Zet onderaan elke pagina van het document een paginanummer
+    // ("Pagina X van Y"), rechts uitgelijnd. Wordt pas aan het einde
+    // aangeroepen, wanneer het totale aantal pagina's bekend is.
+    function bevindingPdfVoegPaginanummersToe(doc, pageWidth, pageHeight, margin) {
+      const totaal = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totaal; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(150, 150, 150);
+        doc.text(`Pagina ${i} van ${totaal}`, pageWidth - margin, pageHeight - 20, { align: 'right' });
+      }
     }
 
     // Exporteert álle openstaande bevindingen (dus alles behalve Hertest OK
@@ -3246,15 +3310,16 @@
         const margin = 40;
 
         bevindingPdfHeader(doc, pageWidth, 'Openstaande bevindingen');
-        doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(107, 114, 128);
-        doc.text(`${openBevindingen.length} openstaande bevinding${openBevindingen.length !== 1 ? 'en' : ''}`, 40, 58);
+        doc.setFont('helvetica', 'bold'); doc.setFontSize(9); doc.setTextColor(255, 255, 255);
+        doc.text(`${openBevindingen.length} openstaande bevinding${openBevindingen.length !== 1 ? 'en' : ''}`, pageWidth - margin, 48, { align: 'right' });
 
         const sorted = [...openBevindingen].sort((a, b) => (a.bevinding_nummer || 0) - (b.bevinding_nummer || 0));
-        let y = 78;
+        let y = 90;
         sorted.forEach(b => {
           y = tekenBevindingPdfBlok(doc, y, b, toelichtingenPerBevinding[b.id] || [], notitiesPerBevinding[b.id] || [], pageWidth, pageHeight, margin);
         });
 
+        bevindingPdfVoegPaginanummersToe(doc, pageWidth, pageHeight, margin);
         doc.save(`bevindingen-openstaand-${bevindingPdfDatumstempel()}.pdf`);
       } catch (err) {
         alert('Er ging iets mis bij het exporteren: ' + err.message);
@@ -3282,8 +3347,9 @@
         const margin = 40;
 
         bevindingPdfHeader(doc, pageWidth, `Bevinding B${b.bevinding_nummer}`);
-        tekenBevindingPdfBlok(doc, 70, b, toelichtingenData || [], notitiesData || [], pageWidth, pageHeight, margin);
+        tekenBevindingPdfBlok(doc, 90, b, toelichtingenData || [], notitiesData || [], pageWidth, pageHeight, margin);
 
+        bevindingPdfVoegPaginanummersToe(doc, pageWidth, pageHeight, margin);
         doc.save(`bevinding-B${b.bevinding_nummer}-${bevindingPdfDatumstempel()}.pdf`);
       } catch (err) {
         alert('Er ging iets mis bij het exporteren: ' + err.message);
