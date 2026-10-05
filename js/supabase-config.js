@@ -786,3 +786,137 @@ function flowLabel(flow) {
   if (!flow) return '';
   return flow.nummer != null ? `${flow.nummer}. ${flow.name}` : flow.name;
 }
+
+// ============================================================
+// HISTORIE PER OBJECT (bevinding / scenario en zijn activiteiten)
+// Toont de regels uit activity_log die bij één object horen, op de plek
+// waar dat object wordt bekeken. Wie welke regels mag zien, regelt de
+// database (row-level security: betrokken organisaties en beheerders);
+// deze code vraagt gewoon op en toont wat terugkomt. Per regel wordt de
+// ORGANISATIE getoond, niet de persoon: gewone gebruikers mogen de
+// gebruikerslijst niet lezen.
+// ============================================================
+const HISTORIE_STATUS = { nieuw: 'Nieuw', in_behandeling: 'In behandeling', opgelost_wacht_hertest: 'Opgelost, wacht op hertest', hertest_ok: 'Hertest OK', vervallen: 'Vervallen' };
+const HISTORIE_PRIORITEIT = { laag: 'Laag', midden: 'Midden', hoog: 'Hoog', blokkerend: 'Blokkerend' };
+const HISTORIE_RESULTAAT = { ok: 'OK', nok: 'NOK', open: 'Open' };
+
+// Alles wat een gebruiker kan hebben ingetypt (titels, opmerkingen, omschrijvingen)
+// gaat door deze functie voordat het in de pagina komt.
+function historieEsc(t) {
+  return String(t ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function historieKort(t, max = 120) {
+  const s = String(t ?? '').replace(/\s+/g, ' ').trim();
+  return s.length > max ? s.slice(0, max) + '…' : s;
+}
+function historieWaarde(v) {
+  return (v === null || v === undefined || v === '') ? '<em>leeg</em>' : `“${historieEsc(historieKort(v))}”`;
+}
+function historieVet(t) { return `<strong>${historieEsc(t)}</strong>`; }
+function historieHoofdletter(t) { const s = String(t ?? ''); return s.charAt(0).toUpperCase() + s.slice(1); }
+
+// Vertaalt één logregel naar { label, html }. 'label' is een korte soortnaam (voor het
+// centrale logboek), 'html' de zin — al veilig gemaakt om in de pagina te zetten.
+function historieRegel(l, opties = {}) {
+  const d = l.details || {};
+  // In een scenario-overzicht staan de regels van meerdere activiteiten door elkaar: noem dan de activiteit erbij.
+  const actTekst = d.beschrijving || d.activity_description;
+  const act = opties.metActiviteit && actTekst ? `Activiteit “${historieEsc(historieKort(actTekst, 80))}”: ` : '';
+  const oudNieuw = (oud, nieuw, kaal = false) => `${kaal ? historieVet(oud ?? '—') : historieWaarde(oud)} → ${kaal ? historieVet(nieuw ?? '—') : historieWaarde(nieuw)}`;
+  const blok = () => `${historieEsc(historieHoofdletter(d.groep))}${d.volgnummer ? ' #' + historieEsc(d.volgnummer) : ''}`;
+
+  switch (l.action) {
+    case 'activity_result':
+      return { label: 'Resultaat gezet', html: `${act}resultaat gezet op ${historieVet(HISTORIE_RESULTAAT[d.result] || d.result || '—')}${d.notes ? ` — opmerking: “${historieEsc(historieKort(d.notes))}”` : ''}` };
+    case 'bevinding_aangemaakt':
+      return { label: 'Bevinding aangemaakt', html: `Bevinding aangemaakt: ${historieWaarde(d.titel)}${d.prioriteit ? `, prioriteit ${historieVet(HISTORIE_PRIORITEIT[d.prioriteit] || d.prioriteit)}` : ''}${d.eigenaar ? `, eigenaar ${historieVet(d.eigenaar)}` : ''}` };
+    case 'bevinding_wijziging':
+      if (d.veld === 'status') return { label: 'Bevinding gewijzigd', html: `Status: ${oudNieuw(HISTORIE_STATUS[d.oud] || d.oud, HISTORIE_STATUS[d.nieuw] || d.nieuw, true)}` };
+      if (d.veld === 'prioriteit') return { label: 'Bevinding gewijzigd', html: `Prioriteit: ${oudNieuw(HISTORIE_PRIORITEIT[d.oud] || d.oud, HISTORIE_PRIORITEIT[d.nieuw] || d.nieuw, true)}` };
+      if (d.veld === 'eigenaar') return { label: 'Bevinding gewijzigd', html: `Eigenaar: ${oudNieuw(d.oud, d.nieuw, true)}` };
+      if (d.veld === 'titel') return { label: 'Bevinding gewijzigd', html: `Titel: ${oudNieuw(d.oud, d.nieuw)}` };
+      if (d.veld === 'omschrijving_probleem') return { label: 'Bevinding gewijzigd', html: `Omschrijving probleem gewijzigd: ${oudNieuw(d.oud, d.nieuw)}` };
+      return { label: 'Bevinding gewijzigd', html: `${historieEsc(d.veld)}: ${oudNieuw(d.oud, d.nieuw)}` };
+    case 'bevinding_toelichting':
+      return { label: 'Toelichting', html: d.bewerkt ? 'Toelichting gewijzigd' : 'Toelichting toegevoegd' };
+    case 'activiteit_wijziging':
+      return { label: 'Activiteit gewijzigd', html: `${act}${historieEsc(d.veld)}: ${oudNieuw(d.oud, d.nieuw, d.veld === 'verantwoordelijke' || d.veld === 'acceptant')}` };
+    case 'activiteit_verwijderd':
+      return { label: 'Activiteit verwijderd', html: `Activiteit ${historieWaarde(d.beschrijving)} verwijderd${d.verantwoordelijke ? ` (verantwoordelijke ${historieVet(d.verantwoordelijke)}${d.acceptant ? `, acceptant ${historieVet(d.acceptant)}` : ''})` : ''}` };
+    case 'scenario_wijziging':
+      return { label: 'Scenario gewijzigd', html: `Scenario ${historieEsc(d.veld)}: ${oudNieuw(d.oud, d.nieuw)}` };
+    case 'scenario_verwijderd':
+      return { label: 'Scenario verwijderd', html: `Scenario ${historieEsc(d.code || '')} ${historieWaarde(d.titel)} verwijderd` };
+    case 'kenmerk_wijziging':
+      return { label: 'Kenmerk gewijzigd', html: `${blok()} — ${historieEsc(d.kenmerk || 'veld')}: ${oudNieuw(d.oud, d.nieuw)}` };
+    case 'kenmerk_blok_toegevoegd':
+      return { label: 'Kenmerk gewijzigd', html: `${blok()} toegevoegd` };
+    case 'kenmerk_blok_verwijderd': {
+      const waarden = Object.entries(d.waarden || {}).map(([k, v]) => `${historieEsc(k)}: ${historieWaarde(v)}`).join(', ');
+      return { label: 'Kenmerk gewijzigd', html: `${blok()} verwijderd${waarden ? ` — inhoud was: ${waarden}` : ''}` };
+    }
+    default:
+      return { label: l.action, html: historieEsc(JSON.stringify(d)) };
+  }
+}
+
+function renderHistorieHtml(rijen, opties = {}) {
+  if (!rijen || !rijen.length) {
+    return '<p style="font-size:12px; color:var(--text-muted); font-style:italic; margin:0;">Nog geen wijzigingen vastgelegd. De historie wordt bijgehouden vanaf de invoering ervan, en is alleen zichtbaar voor betrokken organisaties en beheerders.</p>';
+  }
+  return rijen.map(l => {
+    const r = historieRegel(l, opties);
+    const tijd = new Date(l.created_at).toLocaleString('nl-NL', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const org = l.details && l.details.organisatie;
+    return `<div style="padding:8px 0; border-bottom:1px solid var(--border);">
+      <div style="font-size:11px; color:var(--text-muted); margin-bottom:2px;">${historieEsc(tijd)}${org ? ` · ${historieEsc(org)}` : ''}</div>
+      <div style="font-size:13px; line-height:1.5;">${r.html}</div>
+    </div>`;
+  }).join('');
+}
+
+// soort: 'bevinding' | 'activiteit' (één activiteit) | 'scenario' (het scenario en al zijn activiteiten)
+function haalHistorie(soort, id) {
+  let q = sb.from('activity_log')
+    .select('id, action, details, created_at, object_type, object_id, scenario_id')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (soort === 'scenario') q = q.eq('scenario_id', id).in('object_type', ['scenario', 'activiteit']);
+  else q = q.eq('object_type', soort).eq('object_id', id);
+  return q;
+}
+
+async function laadHistorieIn(soort, id, containerId) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+  el.innerHTML = '<p style="font-size:12px; color:var(--text-muted); margin:0;">Laden…</p>';
+  const { data, error } = await haalHistorie(soort, id);
+  if (error) {
+    const nogNietKlaar = error.code === '42703' || /object_type|scenario_id/.test(error.message || '');
+    el.innerHTML = `<p style="font-size:12px; color:var(--danger); margin:0;">${nogNietKlaar
+      ? 'De historie is nog niet beschikbaar: het databasescript "historie-per-object-setup.sql" is nog niet uitgevoerd.'
+      : 'De historie kon niet worden geladen: ' + historieEsc(error.message)}</p>`;
+    return;
+  }
+  let rijen = data || [];
+  // Vangnet: het aanmaken van een bevinding moet ALTIJD zichtbaar zijn. Ontbreekt de
+  // logregel (bijv. omdat de database-trigger faalde), dan bouwen we die regel hier uit de
+  // bevinding zelf, zodat wie/wanneer nooit ontbreekt.
+  if (soort === 'bevinding' && !rijen.some(r => r.action === 'bevinding_aangemaakt')) {
+    const { data: b } = await sb.from('bevindingen')
+      .select('titel, prioriteit, owner_org_id, gemeld_door_org_id, created_at').eq('id', id).maybeSingle();
+    if (b && b.created_at) {
+      const ids = [b.owner_org_id, b.gemeld_door_org_id].filter(Boolean);
+      const namen = {};
+      if (ids.length) {
+        const { data: orgRijen } = await sb.from('organisations').select('id, name').in('id', ids);
+        (orgRijen || []).forEach(o => { namen[o.id] = o.name; });
+      }
+      rijen = [...rijen, {
+        id: 'afgeleid-aanmaak', action: 'bevinding_aangemaakt', created_at: b.created_at,
+        details: { titel: b.titel, prioriteit: b.prioriteit, eigenaar: namen[b.owner_org_id], organisatie: namen[b.gemeld_door_org_id] },
+      }].sort((x, y) => new Date(y.created_at) - new Date(x.created_at));
+    }
+  }
+  el.innerHTML = renderHistorieHtml(rijen, { metActiviteit: soort === 'scenario' });
+}
