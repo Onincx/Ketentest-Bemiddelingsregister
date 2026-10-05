@@ -1368,7 +1368,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
-  <script src="js/supabase-config.js?v=46"></script>
+  <script src="js/supabase-config.js?v=47"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -3468,7 +3468,7 @@
             </div>
             <div style="display:flex; align-items:center; gap:10px; width:100%;">
               ${magMuteren && bevindingTitelEditModus
-                ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="120" oninput="markeerBevindingGewijzigd()" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">`
+                ? `<input type="text" id="bevindingModalTitel" value="${b.titel ? b.titel.replace(/"/g, '&quot;') : ''}" maxlength="200" oninput="markeerBevindingGewijzigd()" style="flex:1; font-size:18px; font-weight:700; padding:8px 12px; border:1px solid var(--border); border-radius:6px; width:100%;">`
                 : `<h3 style="margin:0; flex:1;">${b.titel ? b.titel.replace(/</g, '&lt;') : '—'}</h3>
                    ${magMuteren ? `<button class="btn btn-ghost btn-icon" title="Titel bewerken" onclick="bevindingTitelEditModus=true; ${heropen(true)}"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>` : ''}`}
             </div>
