@@ -25,7 +25,8 @@
     .ma-tab.active .ma-count { background:rgba(255,255,255,0.25); }
 
     .ma-card { position:relative; background:var(--white); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px 150px 18px 20px; margin-bottom:14px; }
-    .ma-status-badge-corner { position:absolute; top:16px; right:20px; }
+    .ma-status-badge-corner { position:absolute; top:16px; right:20px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; max-width:260px; }
+    .ma-eerst-aan-zet { display:flex; flex-wrap:wrap; justify-content:flex-end; align-items:center; gap:4px; font-size:12px; color:var(--text-muted); text-align:right; }
     .ma-scenario-title { font-weight:700; font-size:14px; }
     .ma-scenario-title a { color:var(--text); text-decoration:none; }
     .ma-scenario-title a:hover { color:var(--brand); text-decoration:underline; }
@@ -364,7 +365,7 @@
     // Organisatie als gekleurde tag, zoals overal in de applicatie.
     function orgTagHtml(org) {
       const k = getOrgKleur(org.id, orgs);
-      return `<span class="badge" style="background:${k.bg}; color:${k.fg}; font-size:11px; margin-right:4px;">${esc(org.name)}</span>`;
+      return `<span class="badge" style="background:${k.bg}; color:${k.fg}; font-size:11px; margin-right:0;">${esc(org.name)}</span>`;
     }
 
     // Eerste activiteit (bottleneck) van een scenario die nog niet op OK staat,
@@ -553,13 +554,12 @@
           </div>` : '';
 
         return `<div class="ma-card">
-          <span class="ma-status-badge-corner">${statusBadge}</span>
+          <span class="ma-status-badge-corner">${statusBadge}${(bucket === 'wachtend' && wachtPartijen && wachtPartijen.length) ? `<span class="ma-eerst-aan-zet">Eerst aan zet: ${wachtPartijen.map(orgTagHtml).join('')}</span>` : ''}</span>
           <div class="ma-scenario-title">
             <a href="app.html?scenario=${scenario.id}" target="_blank">${esc(scenario.code)} — ${esc(scenario.title)}</a>
             ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
           </div>
           <div class="ma-status-line">${statusDetail}</div>
-          ${(bucket === 'wachtend' && wachtPartijen && wachtPartijen.length) ? `<div style="margin-top:6px; font-size:12px; color:var(--text-muted);">Eerst aan zet: ${wachtPartijen.map(orgTagHtml).join('')}</div>` : ''}
           ${simKnoppen}
           <div style="margin-top:12px; margin-bottom:14px;">
             <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
