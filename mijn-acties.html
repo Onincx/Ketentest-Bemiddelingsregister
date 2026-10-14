@@ -130,6 +130,8 @@
       <p style="font-size:11.5px; color:#5b21b6; margin-top:8px;">Alleen zichtbaar voor beheerders. Wijzigingen hier worden <strong>nergens opgeslagen</strong> — puur om de teksten en logica van deze pagina te controleren, ook als de ketentest nog niet écht gestart is.</p>
     </div>
 
+    <div id="partijOverzicht" style="display:none; background:#fff; border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 18px; margin-bottom:18px;"></div>
+
     <div id="noKetentestState" style="display:none;" class="empty-state">
       <p style="font-size:14px;">Er is nog geen ketentest aangemaakt of toegewezen.</p>
     </div>
@@ -355,6 +357,69 @@
       return voorgangers.every(id => isScenarioVolledigOk(id));
     }
 
+    // Eigenaar van een activiteit = wie hem moet uitvoeren/beoordelen: de
+    // acceptant, of bij ontbreken daarvan de verantwoordelijke organisatie.
+    function activiteitEigenaarOrgId(a) { return a.acceptant_org_id || a.organisation_id || null; }
+
+    // Organisatie als gekleurde tag, zoals overal in de applicatie.
+    function orgTagHtml(org) {
+      const k = getOrgKleur(org.id, orgs);
+      return `<span class="badge" style="background:${k.bg}; color:${k.fg}; font-size:11px; margin-right:4px;">${esc(org.name)}</span>`;
+    }
+
+    // Eerste activiteit (bottleneck) van een scenario die nog niet op OK staat,
+    // en of dat scenario door de flow-volgorde nog niet mag starten.
+    function scenarioBottleneck(scenarioId) {
+      const acts = scenarioActivitiesSorted(scenarioId);
+      const bottleneck = acts.find(a => getResult(a.id) !== 'ok') || null;
+      const flowBlokkeert = !!(bottleneck && acts[0] && bottleneck.id === acts[0].id && !eersteActiviteitMagStarten(scenarioId));
+      return { acts, bottleneck, flowBlokkeert };
+    }
+
+    // Bij 'wachten op vorig scenario': de partij(en) die als eerste aan zet zijn
+    // in de voorgaande scenario's, door door te lopen tot een scenario dat zelf
+    // niet meer door een voorganger geblokkeerd wordt.
+    function wachtPartijenVoorScenario(scenarioId, bezocht = new Set()) {
+      const ids = new Set();
+      directeVoorgangersInFlow(scenarioId).forEach(vId => {
+        if (bezocht.has(vId)) return;
+        bezocht.add(vId);
+        if (isScenarioVolledigOk(vId)) return;
+        const { bottleneck, flowBlokkeert } = scenarioBottleneck(vId);
+        if (!bottleneck) return;
+        if (flowBlokkeert) wachtPartijenVoorScenario(vId, bezocht).forEach(o => ids.add(o.id));
+        else { const oid = activiteitEigenaarOrgId(bottleneck); if (oid) ids.add(oid); }
+      });
+      return [...ids].map(orgById).filter(Boolean);
+    }
+
+    // Beheerders: per partij het aantal activiteiten dat nu bij die partij ligt en
+    // uitgevoerd moet worden (de eerstvolgende openstaande activiteit per scenario,
+    // zolang dat scenario niet op een voorgaand scenario wacht).
+    function renderPartijOverzicht() {
+      const el = document.getElementById('partijOverzicht');
+      if (!el) return;
+      if (currentProfile?.role !== 'admin' || !activeKetentest) { el.style.display = 'none'; return; }
+      const perOrg = {};
+      scenarios.forEach(s => {
+        const { bottleneck, flowBlokkeert } = scenarioBottleneck(s.id);
+        if (!bottleneck || flowBlokkeert) return;
+        const oid = activiteitEigenaarOrgId(bottleneck);
+        if (!oid) return;
+        (perOrg[oid] = perOrg[oid] || []).push(s.code);
+      });
+      const deelnemers = new Set();
+      activities.forEach(a => { [a.organisation_id, a.acceptant_org_id].forEach(o => { if (o) deelnemers.add(o); }); });
+      const rijen = [...deelnemers].map(orgById).filter(Boolean)
+        .map(o => ({ org: o, codes: perOrg[o.id] || [] }))
+        .sort((a, b) => b.codes.length - a.codes.length || a.org.name.localeCompare(b.org.name, 'nl'));
+      const totaal = rijen.reduce((n, r) => n + r.codes.length, 0);
+      el.innerHTML = `<div style="font-size:13px; font-weight:700; margin-bottom:4px;">Activiteiten die nu bij een partij liggen${simuleren ? ' <span style="color:#7c3aed; font-weight:600;">(simulatie)</span>' : ''}</div>
+        <div style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">Per partij het aantal scenario's waarin die partij nu aan zet is: ${totaal} in totaal. Scenario's die nog op een voorgaand scenario wachten, tellen niet mee.</div>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">${rijen.map(r => `<div title="${r.codes.length ? esc(r.codes.join(', ')) : 'Niets te doen'}" style="display:flex; align-items:center; gap:8px; border:1px solid var(--border); border-radius:8px; padding:6px 10px;">${orgTagHtml(r.org)}<strong style="font-size:15px;${r.codes.length ? '' : ' color:var(--text-muted); font-weight:500;'}">${r.codes.length}</strong></div>`).join('')}</div>`;
+      el.style.display = '';
+    }
+
     function computeMijnActiesStatussen() {
       maScenarioStatussen = [];
       const orgId = effectieveOrgId();
@@ -393,7 +458,13 @@
           ? scenarios.find(sc => directeVoorgangersInFlow(s.id).includes(sc.id))
           : null;
 
-        maScenarioStatussen.push({ scenario: s, acts, mijnActs, bottleneck, bucket, flowBlokkeert, voorgaandScenario });
+        let wachtPartijen = [];
+        if (bucket === 'wachtend') {
+          if (flowBlokkeert) wachtPartijen = wachtPartijenVoorScenario(s.id);
+          else { const wo = orgById(activiteitEigenaarOrgId(bottleneck)); if (wo) wachtPartijen = [wo]; }
+        }
+
+        maScenarioStatussen.push({ scenario: s, acts, mijnActs, bottleneck, bucket, flowBlokkeert, voorgaandScenario, wachtPartijen });
       });
 
       const volgorde = { nu_te_doen: 0, wachtend: 1, afgerond: 2 };
@@ -401,6 +472,7 @@
     }
 
     function renderMaTabsCount() {
+      renderPartijOverzicht(); // wordt bij elke herberekening (ook simulatie) mee ververst
       document.getElementById('maTabs').style.display = '';
       const counts = { nu_te_doen: 0, wachtend: 0, afgerond: 0 };
       maScenarioStatussen.forEach(x => counts[x.bucket]++);
@@ -439,7 +511,7 @@
         return;
       }
 
-      el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket, flowBlokkeert, voorgaandScenario }) => {
+      el.innerHTML = rows.map(({ scenario, acts, bottleneck, bucket, flowBlokkeert, voorgaandScenario, wachtPartijen }) => {
         let statusBadge = '';
         let statusDetail = '';
         const notStarted = isNotStartedYet();
@@ -465,10 +537,9 @@
           statusBadge = `<span class="ma-status-badge ma-status-wacht">⏳ Wachten op vorig scenario</span>`;
           statusDetail = `Wacht tot ${voorgaandScenario ? esc(voorgaandScenario.code) : 'het vorige scenario in deze flow'} volledig is afgerond (op OK staat) voordat dit scenario van start kan.`;
         } else if (bucket === 'wachtend' && bottleneck) {
-          const wachtOrg = orgById(bottleneck.acceptant_org_id) || orgById(bottleneck.organisation_id);
           const nokIndicatie = getResult(bottleneck.id) === 'nok' ? ' (staat op NOK, wacht op oplossing)' : '';
           statusBadge = `<span class="ma-status-badge ma-status-wacht">⏳ Wachten op andere partij</span>`;
-          statusDetail = `Wacht op ${wachtOrg ? esc(wachtOrg.name) : 'een andere partij'} — "${esc(bottleneck.description || '')}"${nokIndicatie}`;
+          statusDetail = `Wacht op "${esc(bottleneck.description || '')}"${nokIndicatie}`;
         } else {
           statusBadge = `<span class="ma-status-badge ma-status-af">🏁 Afgerond</span>`;
           statusDetail = `Jouw deel van dit scenario is afgerond.`;
@@ -488,6 +559,7 @@
             ${scenarioFlowMap[scenario.id] ? `<a href="flow.html?flow=${scenarioFlowMap[scenario.id].id}" target="_blank" style="display:inline-flex; align-items:center; gap:4px; background:#eef2ff; color:#3730a3; font-size:11px; font-weight:700; border-radius:6px; padding:3px 9px; margin-left:8px; text-decoration:none; vertical-align:middle;" title="Open flow: ${esc(flowLabel(scenarioFlowMap[scenario.id]))}">🔗 ${esc(flowLabel(scenarioFlowMap[scenario.id]))}</a>` : ''}
           </div>
           <div class="ma-status-line">${statusDetail}</div>
+          ${(bucket === 'wachtend' && wachtPartijen && wachtPartijen.length) ? `<div style="margin-top:6px; font-size:12px; color:var(--text-muted);">Eerst aan zet: ${wachtPartijen.map(orgTagHtml).join('')}</div>` : ''}
           ${simKnoppen}
           <div style="margin-top:12px; margin-bottom:14px;">
             <a class="btn btn-outline btn-sm ma-open-btn" href="app.html?scenario=${scenario.id}" target="_blank">Open scenario</a>
