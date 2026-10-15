@@ -488,8 +488,8 @@
       return null;
     }
 
-    // Toont, alleen bij een startscenario van een flow, het
-    // Indicatiebesluit-blok — dit heeft het losse 'Algemeen'-blok
+    // Toont bij een startscenario van een flow het bewerkbare
+    // Indicatiebesluit-blok (bij latere scenario's: alleen-lezen weergave van dat van het startscenario) — dit heeft het losse 'Algemeen'-blok
     // vervangen (Clientnaam + de rest van de indicatiegegevens staan nu
     // hier samen).
     function renderIndicatiebesluitBlok(scenarioId) {
@@ -501,8 +501,35 @@
       }
     }
 
+    // Alleen-lezen weergave van de indicatiegegevens van het startscenario, voor
+    // scenario's verderop in de flow — zodat ook wie pas bij een later scenario
+    // betrokken is kan zien om welke indicatie het gaat. Bewerken kan alleen
+    // bij het startscenario zelf.
+    function renderIndicatiebesluitVanStartscenario(scenarioId) {
+      const startId = getStartScenarioId(scenarioId);
+      if (!startId || startId === scenarioId) return '';
+      const start = scenarios.find(x => x.id === startId);
+      const ib = indicatiebesluiten.find(x => x.scenario_id === startId);
+      const kop = `<span style="font-size:10px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:0.05em;">Indicatiegegevens</span>
+        <span style="font-size:11px; color:var(--text-muted);">van startscenario ${start ? `<a href="app.html?scenario=${start.id}" target="_blank" style="color:inherit; font-weight:700;">${esc(start.code)}</a>` : ''}</span>`;
+      const kader = inhoud => `<div style="margin:8px 0; padding:8px 14px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:var(--radius);" data-indicatiegegevens-start="${startId}">${inhoud}</div>`;
+      if (!ib) {
+        return kader(`<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px;">${kop}<span style="font-size:12px; color:var(--text-muted); font-style:italic;">Nog niet ingevuld bij het startscenario.</span></div>`);
+      }
+      const datum = d => d ? new Date(d).toLocaleDateString('nl-NL') : '';
+      const velden = [
+        ['Clientnaam', start?.code], ['Fictief BSN', ib.fictief_bsn], ['Datum afgifte', datum(ib.datum_afgifte)], ['Datum ingang', datum(ib.datum_ingang)],
+        ['UZOVI', ib.uzovi], ['Adres', ib.adres],
+        ['1e grondslag', ib.grondslag_1], ['2e grondslag', ib.grondslag_2], ['3e grondslag', ib.grondslag_3], ['4e grondslag', ib.grondslag_4],
+        ['ZZP-code 1', ib.zzp_code_1], ['ZZP-code 2', ib.zzp_code_2],
+        ['VoorkeurClient', ib.voorkeur_client], ['UZOVI-uitvoerendZK', ib.uzovi_uitvoerend_zk], ['VoorkeurAanbieder', ib.voorkeur_aanbieder],
+      ].filter(([, w]) => w);
+      return kader(`<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-bottom:8px;">${kop}</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px;">${velden.map(([l, w]) => `<span>${esc(l)}: <strong>${esc(w)}</strong></span>`).join('')}</div>`);
+    }
+
     function renderIndicatiebesluitBlokInner(scenarioId) {
-      if (!isStartVanFlow(scenarioId)) return '';
+      if (!isStartVanFlow(scenarioId)) return renderIndicatiebesluitVanStartscenario(scenarioId);
 
       const betrokken = isBetrokkenBijScenario(scenarioId) || currentProfile?.role === 'admin';
       const bestaand = indicatiebesluiten.find(x => x.scenario_id === scenarioId);
