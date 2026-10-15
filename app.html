@@ -1321,6 +1321,60 @@
       return !!(node && node.is_start);
     }
 
+    // Alle scenario's van de flow waar dit scenario in zit, in de volgorde waarin ze
+    // worden uitgevoerd: vanaf het startscenario langs de verbindingen (edges).
+    // Resultaat is een lijst van "lagen"; scenario's in dezelfde laag zijn parallelle
+    // takken (staan op hetzelfde moment in de flow). Scenario's die niet met het
+    // startscenario verbonden zijn komen als laatste, op code gesorteerd.
+    function flowScenarioLagen(scenarioId) {
+      const node = flowNodes.find(n => n.scenario_id === scenarioId);
+      if (!node || !node.flow_id) return [];
+      const knopen = flowNodes.filter(n => n.flow_id === node.flow_id);
+      const ids = new Set(knopen.map(n => n.scenario_id));
+      const edges = flowEdges.filter(e => ids.has(e.from_id) && ids.has(e.to_id));
+      const start = knopen.find(n => n.is_start);
+
+      // Richting: normaal loopt een edge van eerder (from) naar later (to) scenario; staat
+      // het startscenario echter alleen aan de 'to'-kant, dan is de flow omgekeerd opgeslagen
+      // (zelfde aanpak als elders in de tool).
+      const omgekeerd = !!start && !edges.some(e => e.from_id === start.scenario_id) && edges.some(e => e.to_id === start.scenario_id);
+      const volgende = id => edges.filter(e => (omgekeerd ? e.to_id : e.from_id) === id).map(e => omgekeerd ? e.from_id : e.to_id);
+
+      const niveau = {};
+      const code = id => (scenarios.find(x => x.id === id)?.code || '');
+      if (start) {
+        // Langste afstand vanaf de start, zodat een samenkomend scenario pas ná al zijn voorgangers komt.
+        niveau[start.scenario_id] = 0;
+        const wachtrij = [start.scenario_id];
+        let veiligheid = 0;
+        while (wachtrij.length && veiligheid++ < 5000) {
+          const id = wachtrij.shift();
+          volgende(id).forEach(n => {
+            if ((niveau[n] ?? -1) < niveau[id] + 1 && niveau[id] + 1 <= ids.size) { niveau[n] = niveau[id] + 1; wachtrij.push(n); }
+          });
+        }
+      }
+      const lagenPerNiveau = {};
+      Object.entries(niveau).forEach(([id, l]) => { (lagenPerNiveau[l] = lagenPerNiveau[l] || []).push(id); });
+      const lagen = Object.keys(lagenPerNiveau).map(Number).sort((a, b) => a - b)
+        .map(l => lagenPerNiveau[l].sort((a, b) => code(a).localeCompare(code(b), undefined, { numeric: true })));
+      const losse = [...ids].filter(id => !(id in niveau)).sort((a, b) => code(a).localeCompare(code(b), undefined, { numeric: true }));
+      losse.forEach(id => lagen.push([id]));
+      return lagen.map(laag => laag.map(id => scenarios.find(x => x.id === id)).filter(Boolean)).filter(l => l.length);
+    }
+
+    // De volgorde van de flow als rij "chips"; het geopende scenario is groter en opvallend.
+    function renderFlowVolgorde(scenarioId) {
+      const lagen = flowScenarioLagen(scenarioId);
+      if (lagen.length < 2 && !(lagen[0] && lagen[0].length > 1)) return '';
+      const chip = sc => sc.id === scenarioId
+        ? `<span title="Dit scenario" style="display:inline-block; background:#39870c; color:#fff; font-size:15px; font-weight:800; border-radius:8px; padding:4px 12px;">${esc(sc.code)}</span>`
+        : `<a href="app.html?scenario=${sc.id}" target="_blank" title="${esc(sc.title || '')}" style="display:inline-block; background:#fff; color:var(--text-muted); border:1px solid #39870c55; font-size:11.5px; font-weight:600; border-radius:6px; padding:2px 8px; text-decoration:none;">${esc(sc.code)}</a>`;
+      return `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px;" title="Volgorde waarin de scenario's van deze flow worden uitgevoerd">
+        ${lagen.map((laag, i) => `${i ? '<span style="color:#39870c; font-weight:700;">→</span>' : ''}<span style="display:inline-flex; flex-direction:column; gap:3px; align-items:flex-start;">${laag.map(chip).join('')}</span>`).join('')}
+      </div>`;
+    }
+
     function isInFlow(scenarioId) {
       return flowNodes.some(n => n.scenario_id === scenarioId && n.flow_id);
     }
@@ -1856,10 +1910,10 @@
           <button onclick="toggleScenario('${id}')" style="border:1px solid var(--border);background:var(--white);cursor:pointer;color:var(--text-muted);font-size:13px;padding:4px 10px;border-radius:var(--radius);">✕ Sluiten</button>
         </div>
         <div style="padding:0 20px 16px; overflow-x:auto;">
-          ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px; margin:10px 0 4px; cursor:pointer; width:fit-content;" onclick="window.location.href='flow.html'" title="Bekijk in Flow">
+          ${isInFlow(s.id) ? `<div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px 12px; margin:10px 0 4px;"><div style="display:flex; align-items:center; gap:5px; background:#eaf3e0; border:1px solid #39870c33; border-radius:99px; padding:2px 10px; cursor:pointer; width:fit-content;" onclick="window.location.href='flow.html'" title="Bekijk in Flow">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#39870c" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
               <span style="font-size:11px; font-weight:600; color:#39870c;">Onderdeel van flow</span>
-            </div>` : ''}
+            </div>${renderFlowVolgorde(s.id)}</div>` : ''}
           ${s.description ? `<p style="font-size:13px; color:var(--text-muted); margin:8px 0;">${s.description}</p>` : ''}
           ${renderNotifLabels(getScenarioNotificaties(s.id), s.id)}
           ${renderBerichtLabels(getScenarioBerichten(s.id))}
