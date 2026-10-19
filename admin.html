@@ -5372,41 +5372,10 @@
       showAlert(`Scenario ${parsed.code} succesvol ${actie}.`, 'success');
     }
 
-    // Als dit scenario onderdeel is van een flow waarvoor al
-    // deelnamekeuzes zijn gemaakt bij Deelname, vraagt dit of die keuzes
-    // gewist moeten worden zodat organisaties opnieuw moeten beoordelen.
-    // Gebruikt door zowel scenariowijzigingen als het toevoegen/wijzigen/
-    // verwijderen van activiteiten binnen zo'n scenario.
-    async function checkEnPromptFlowHeropening(scenarioId) {
-      const flowVanScenario = scenarioFlowMap[scenarioId];
-      if (!flowVanScenario) return;
-
-      const { data: bestaandeKeuzes } = await sb.from('flow_participation').select('id').eq('flow_id', flowVanScenario.id);
-      if (!bestaandeKeuzes || !bestaandeKeuzes.length) return;
-
-      document.getElementById('confirmMsg').textContent = `Dit scenario maakt deel uit van flow ${flowLabel(flowVanScenario)}, waarvoor ${bestaandeKeuzes.length} organisatie(s) al een keuze hebben gemaakt bij Deelname. Wil je deze flow weer op "open" zetten, zodat organisaties opnieuw moeten beoordelen?`;
-      const confirmBtn = document.getElementById('confirmBtn');
-      const modalEl = document.getElementById('modalConfirm');
-      confirmBtn.textContent = 'Ja, opnieuw laten beoordelen';
-
-      // Zet de knoptekst weer terug naar de standaard zodra deze modal
-      // sluit, ongeacht hoe — zodat andere (verwijder-)bevestigingen
-      // elders niet per ongeluk deze tekst overnemen.
-      const observer = new MutationObserver(() => {
-        if (modalEl.style.display === 'none') {
-          confirmBtn.textContent = 'Verwijderen';
-          observer.disconnect();
-        }
-      });
-      observer.observe(modalEl, { attributes: true, attributeFilter: ['style'] });
-
-      confirmBtn.onclick = async () => {
-        await sb.from('flow_participation').delete().eq('flow_id', flowVanScenario.id);
-        closeModal('modalConfirm');
-        showAlert('Deelnamekeuzes voor deze flow zijn gewist — organisaties moeten de flow opnieuw beoordelen.', 'success');
-      };
-      openModal('modalConfirm');
-    }
+    // Voorheen werd hier gevraagd of gebruikers het scenario opnieuw moesten
+    // beoordelen (deelnamekeuzes wissen). Die controle is vervallen; de
+    // functie blijft bestaan zodat bestaande aanroepen niets doen.
+    async function checkEnPromptFlowHeropening(scenarioId) { return; }
 
     async function saveScenario() {
       const id = document.getElementById('scenarioId').value;
@@ -5824,13 +5793,24 @@
       const count = ids.length;
       document.getElementById('confirmMsg').textContent = `Weet je zeker dat je ${count} activiteit${count !== 1 ? 'en' : ''} wilt verwijderen?`;
       document.getElementById('confirmBtn').onclick = async () => {
-        for (const id of ids) {
-          await sb.from('activities').delete().eq('id', id);
+        const { error } = await sb.from('activities').delete().in('id', ids);
+        if (error) {
+          closeModal('modalConfirm');
+          showAlert('Verwijderen mislukt: ' + error.message, 'error');
+          return;
+        }
+        // Overgebleven activiteiten direct opnieuw nummeren (1 t/m N), zodat er geen gaten ontstaan
+        const rest = activities
+          .filter(a => a.scenario_id === scenarioId && !ids.includes(a.id))
+          .sort((a, b) => a.sort_order - b.sort_order);
+        for (let i = 0; i < rest.length; i++) {
+          if (rest[i].sort_order !== i + 1) {
+            await sb.from('activities').update({ sort_order: i + 1 }).eq('id', rest[i].id);
+          }
         }
         closeModal('modalConfirm');
         await loadActivities(); renderScenarios();
         showAlert(`${count} activiteit${count !== 1 ? 'en' : ''} verwijderd.`, 'success');
-        await checkEnPromptFlowHeropening(scenarioId);
       };
       openModal('modalConfirm');
     }
