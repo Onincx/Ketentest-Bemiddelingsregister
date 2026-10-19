@@ -637,12 +637,16 @@
       <div class="page-header">
         <div class="page-header-left">
           <h1>Functionele kenmerken</h1>
-          <p>Deze velden gelden overal hetzelfde: "Algemeen" staat 1x bij elk scenario; "Toewijzing" en "Regierol" zijn herhaalbare blokken die de betrokken organisaties zelf toevoegen bij een scenario.</p>
+          <p>Per ketentest te beheren velden, ondergebracht in groepen. "Algemeen" staat 1x bij elk scenario; herhaalbare groepen voegen de betrokken organisaties zelf toe bij een scenario. Via "Groepen beheren" bepaal je welke groepen er zijn en in welke ketentest(en) ze gebruikt mogen worden.</p>
         </div>
         <div style="display:flex; gap:8px;">
           <button class="btn btn-outline" onclick="openFunctioneelProcesIndex()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
             Index bekijken
+          </button>
+          <button class="btn btn-outline" onclick="openKenmerkGroepenModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+            Groepen beheren
           </button>
           <button class="btn btn-primary" onclick="openNewKenmerkModal()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -716,6 +720,57 @@
   </div>
 
   <!-- Modal: kenmerk toevoegen/bewerken -->
+  <div class="modal-overlay" id="modalKenmerkGroepen" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerkGroepen')">
+    <div class="modal" style="max-width:760px; width:100%;" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Kenmerk-groepen beheren</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKenmerkGroepen')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">Een groep is alleen te gebruiken (kenmerken aanmaken en invullen) in de ketentesten waaraan je hem koppelt.</p>
+        <div id="kenmerkGroepenBeheerLijst"></div>
+        <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="openKenmerkGroepModal()">+ Groep toevoegen</button>
+      </div>
+      <div class="modal-footer"><button class="btn btn-outline" onclick="closeModal('modalKenmerkGroepen')">Sluiten</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modalKenmerkGroep" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerkGroep')">
+    <div class="modal" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3 id="modalKenmerkGroepTitle">Groep toevoegen</h3>
+        <button class="btn btn-ghost btn-icon" onclick="closeModal('modalKenmerkGroep')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="kenmerkGroepId">
+        <div class="form-group">
+          <label>Naam van de groep <span style="color:var(--danger);">*</span></label>
+          <input type="text" id="kenmerkGroepTitel" placeholder="bijv. Toewijzing">
+        </div>
+        <div class="form-group">
+          <label>Soort <span style="color:var(--danger);">*</span></label>
+          <select id="kenmerkGroepSoort">
+            <option value="eenmalig">Eenmalig (maximaal 1x per scenario)</option>
+            <option value="herhaalbaar">Herhaalbaar blok (meerdere keren per scenario)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Toelichting</label>
+          <input type="text" id="kenmerkGroepToelichting" placeholder="Korte uitleg voor beheerders">
+        </div>
+        <div class="form-group" id="kenmerkGroepKetentestenWrap">
+          <label>Te gebruiken in ketentesten <span style="color:var(--danger);">*</span> <span style="color:var(--text-muted); font-weight:400;">(minimaal 1)</span></label>
+          <div id="kenmerkGroepKetentestenLijst" style="border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; max-height:180px; overflow:auto;"></div>
+        </div>
+      </div>
+      <div id="alertKenmerkGroep" class="alert" style="display:none; margin:0 24px 12px;"></div>
+      <div class="modal-footer">
+        <button class="btn btn-outline" onclick="closeModal('modalKenmerkGroep')">Annuleren</button>
+        <button class="btn btn-primary" onclick="saveKenmerkGroep()">Opslaan</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay" id="modalKenmerk" style="display:none;" onclick="closeModalOverlay(event,'modalKenmerk')">
     <div class="modal" onclick="event.stopPropagation()">
       <div class="modal-header">
@@ -726,17 +781,7 @@
         <input type="hidden" id="kenmerkDefId">
         <div class="form-group">
           <label>Groep <span style="color:var(--danger);">*</span></label>
-          <select id="kenmerkGroep">
-            <option value="algemeen">Algemeen (1x per scenario)</option>
-            <option value="toewijzing">Toewijzing (herhaalbaar blok)</option>
-            <option value="regierol">Regierol (herhaalbaar blok)</option>
-            <option value="leveringperiode">Leveringperiode (herhaalbaar blok)</option>
-            <option value="behandelingperiode">Behandelingperiode (herhaalbaar blok)</option>
-            <option value="verzoekaanbieder">VerzoekAanbieder (herhaalbaar blok)</option>
-            <option value="uitstelperiode">Uitstelperiode (1x per scenario)</option>
-            <option value="afstel">Afstel (1x per scenario)</option>
-            <option value="verzoek">Verzoek (1x per scenario)</option>
-          </select>
+          <select id="kenmerkGroep"></select>
         </div>
         <div class="form-group">
           <label>Naam <span style="color:var(--danger);">*</span></label>
@@ -2716,28 +2761,54 @@
       const { data, error } = await sb.from('kenmerk_definities').select('*').eq('ketentest_id', activeKetentest.id).order('volgorde').order('naam');
       if (error) { console.error('loadKenmerkDefinities error:', error); KENMERKDEFINITIES = []; return; }
       KENMERKDEFINITIES = data || [];
+      await loadKenmerkGroepen();
       renderKenmerkDefTable();
     }
 
-    const KENMERK_GROEP_LABELS = {
-      algemeen: { titel: 'Algemeen', toelichting: 'Staat altijd 1x bij elk scenario.' },
-      toewijzing: { titel: 'Toewijzing', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Toewijzing 1", "Toewijzing 2", ... toe bij een scenario.' },
-      regierol: { titel: 'Regierol', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Regierol 1", "Regierol 2", ... toe bij een scenario.' },
-      leveringperiode: { titel: 'Leveringperiode', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Leveringperiode 1", "Leveringperiode 2", ... toe bij een scenario.' },
-      behandelingperiode: { titel: 'Behandelingperiode', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Behandelingperiode 1", "Behandelingperiode 2", ... toe bij een scenario.' },
-      verzoekaanbieder: { titel: 'VerzoekAanbieder', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "VerzoekAanbieder 1", "VerzoekAanbieder 2", ... toe bij een scenario.' },
-      uitstelperiode: { titel: 'Uitstelperiode', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
-      afstel: { titel: 'Afstel', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
-      verzoek: { titel: 'Verzoek', toelichting: 'Staat, net als Algemeen, maximaal 1x bij elk scenario.' },
-    };
+    // Vaste standaardgroepen: alleen gebruikt als de tabel kenmerk_groepen nog niet
+    // bestaat (script kenmerk-groepen-beheer-setup.sql nog niet gedraaid).
+    const KENMERK_GROEPEN_STANDAARD = [
+      { sleutel: 'algemeen', titel: 'Algemeen', soort: 'algemeen', toelichting: 'Staat altijd 1x bij elk scenario.' },
+      { sleutel: 'toewijzing', titel: 'Toewijzing', soort: 'herhaalbaar', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Toewijzing 1", "Toewijzing 2", ... toe bij een scenario.' },
+      { sleutel: 'regierol', titel: 'Regierol', soort: 'herhaalbaar', toelichting: 'Herhaalbaar blok — de betrokken organisaties voegen zelf "Regierol 1", "Regierol 2", ... toe bij een scenario.' },
+      { sleutel: 'leveringperiode', titel: 'Leveringperiode', soort: 'herhaalbaar', toelichting: 'Herhaalbaar blok.' },
+      { sleutel: 'behandelingperiode', titel: 'Behandelingperiode', soort: 'herhaalbaar', toelichting: 'Herhaalbaar blok.' },
+      { sleutel: 'uitstelperiode', titel: 'Uitstelperiode', soort: 'eenmalig', toelichting: 'Maximaal 1x bij elk scenario.' },
+      { sleutel: 'afstel', titel: 'Afstel', soort: 'eenmalig', toelichting: 'Maximaal 1x bij elk scenario.' },
+      { sleutel: 'verzoek', titel: 'Verzoek', soort: 'eenmalig', toelichting: 'Maximaal 1x bij elk scenario.' },
+      { sleutel: 'verzoekaanbieder', titel: 'VerzoekAanbieder', soort: 'herhaalbaar', toelichting: 'Herhaalbaar blok.' },
+    ];
+    let KENMERKGROEPEN = null;          // null = tabel ontbreekt (standaardgroepen)
+    let KENMERKGROEP_KOPPELINGEN = [];  // { groep_id, ketentest_id }
+
+    async function loadKenmerkGroepen() {
+      const [g, k] = await Promise.all([
+        sb.from('kenmerk_groepen').select('*').order('volgorde').order('titel'),
+        sb.from('kenmerk_groep_ketentesten').select('groep_id, ketentest_id'),
+      ]);
+      if (g.error || k.error) { KENMERKGROEPEN = null; KENMERKGROEP_KOPPELINGEN = []; return; }
+      KENMERKGROEPEN = g.data || [];
+      KENMERKGROEP_KOPPELINGEN = k.data || [];
+    }
+
+    // Groepen die in de actieve ketentest gebruikt mogen worden ('algemeen' altijd), plus
+    // groepen waarin deze ketentest al kenmerken heeft (zodat bestaande velden niet zoekraken).
+    function kenmerkGroepenVoorActieveKetentest() {
+      if (!KENMERKGROEPEN) return KENMERK_GROEPEN_STANDAARD;
+      const gekoppeld = new Set(KENMERKGROEP_KOPPELINGEN.filter(x => x.ketentest_id === activeKetentest?.id).map(x => x.groep_id));
+      const inGebruik = new Set(KENMERKDEFINITIES.map(d => d.groep));
+      return KENMERKGROEPEN.filter(g => g.soort === 'algemeen' || gekoppeld.has(g.id) || inGebruik.has(g.sleutel));
+    }
 
     function renderKenmerkDefTable() {
       const container = document.getElementById('kenmerkGroepen');
       if (!container) return;
 
-      container.innerHTML = ['algemeen', 'toewijzing', 'regierol', 'leveringperiode', 'behandelingperiode', 'uitstelperiode', 'afstel', 'verzoek', 'verzoekaanbieder'].map(groep => {
+      const gekoppeldeIds = new Set(KENMERKGROEP_KOPPELINGEN.filter(x => x.ketentest_id === activeKetentest?.id).map(x => x.groep_id));
+      container.innerHTML = kenmerkGroepenVoorActieveKetentest().map(label => {
+        const groep = label.sleutel;
         const items = KENMERKDEFINITIES.filter(k => k.groep === groep);
-        const label = KENMERK_GROEP_LABELS[groep];
+        const nietGekoppeld = KENMERKGROEPEN && label.soort !== 'algemeen' && !gekoppeldeIds.has(label.id);
 
         const rijen = items.length
           ? items.map((k, i) => {
@@ -2761,10 +2832,11 @@
 
         return `<div style="margin-bottom:24px;">
           <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;">
-            <p class="eyebrow">${label.titel}</p>
-            <button class="btn btn-outline btn-sm" onclick="openNewKenmerkModal('${groep}')">+ Veld toevoegen aan ${label.titel}</button>
+            <p class="eyebrow">${esc(label.titel)}</p>
+            <button class="btn btn-outline btn-sm" onclick="openNewKenmerkModal('${groep}')">+ Veld toevoegen aan ${esc(label.titel)}</button>
           </div>
-          <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">${label.toelichting}</p>
+          <p style="font-size:12px; color:var(--text-muted); margin-bottom:10px;">${esc(label.toelichting || '')}</p>
+          ${nietGekoppeld ? `<p style="font-size:12px; color:var(--danger); margin-bottom:10px;">Deze groep is niet aan deze ketentest gekoppeld (wel nog velden aanwezig). Koppel hem via "Groepen beheren" of verwijder de velden.</p>` : ''}
           <div class="card" style="padding:0;">
             <div class="table-wrap">
               <table>
@@ -2775,6 +2847,127 @@
           </div>
         </div>`;
       }).join('');
+    }
+
+    // ---- GROEPEN BEHEREN ----
+    function kenmerkGroepKetentestNamen(groepId) {
+      const namen = KENMERKGROEP_KOPPELINGEN.filter(x => x.groep_id === groepId)
+        .map(x => ketentests.find(t => t.id === x.ketentest_id)?.naam).filter(Boolean).sort((a, b) => a.localeCompare(b));
+      return namen.length ? namen.map(n => esc(n)).join(', ') : '<span style="color:var(--danger); font-weight:600;">Geen ketentest gekoppeld</span>';
+    }
+
+    function openKenmerkGroepenModal() {
+      if (!window.isPageAdmin) return;
+      if (!KENMERKGROEPEN) { showAlert('Draai eerst sql/kenmerk-groepen-beheer-setup.sql in Supabase om groepen te kunnen beheren.', 'error'); return; }
+      renderKenmerkGroepenBeheer();
+      openModal('modalKenmerkGroepen');
+    }
+
+    function renderKenmerkGroepenBeheer() {
+      const soortLabel = { algemeen: 'Algemeen (altijd 1x)', eenmalig: 'Eenmalig', herhaalbaar: 'Herhaalbaar blok' };
+      document.getElementById('kenmerkGroepenBeheerLijst').innerHTML = `<div class="card" style="padding:0;"><div class="table-wrap"><table>
+        <thead><tr><th>Groep</th><th>Soort</th><th>Ketentesten</th><th></th></tr></thead>
+        <tbody>${KENMERKGROEPEN.map(g => `<tr>
+          <td><strong>${esc(g.titel)}</strong></td>
+          <td style="font-size:13px;">${soortLabel[g.soort] || g.soort}</td>
+          <td style="font-size:12px;">${g.soort === 'algemeen' ? '<span style="color:var(--text-muted)">Alle ketentesten</span>' : kenmerkGroepKetentestNamen(g.id)}</td>
+          <td style="text-align:right; white-space:nowrap;">
+            <button class="btn btn-ghost btn-sm btn-icon" onclick="openKenmerkGroepModal('${g.id}')" title="Bewerken"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+            ${g.soort === 'algemeen' ? '' : `<button class="btn btn-ghost btn-sm btn-icon" onclick="deleteKenmerkGroep('${g.id}')" title="Verwijderen"><span style="color:var(--danger)"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></span></button>`}
+          </td></tr>`).join('')}</tbody></table></div></div>`;
+    }
+
+    function openKenmerkGroepModal(id) {
+      const g = id ? KENMERKGROEPEN.find(x => x.id === id) : null;
+      document.getElementById('kenmerkGroepId').value = g ? g.id : '';
+      document.getElementById('kenmerkGroepTitel').value = g ? g.titel : '';
+      document.getElementById('kenmerkGroepToelichting').value = g ? (g.toelichting || '') : '';
+      const soortSel = document.getElementById('kenmerkGroepSoort');
+      const isAlgemeen = g?.soort === 'algemeen';
+      soortSel.disabled = isAlgemeen || (!!g); // soort ligt vast zodra de groep bestaat (bestaande invoer hangt eraan)
+      soortSel.value = g ? (isAlgemeen ? 'eenmalig' : g.soort) : 'eenmalig';
+      document.getElementById('kenmerkGroepKetentestenWrap').style.display = isAlgemeen ? 'none' : '';
+      const gekozen = g ? KENMERKGROEP_KOPPELINGEN.filter(x => x.groep_id === g.id).map(x => x.ketentest_id) : (activeKetentest ? [activeKetentest.id] : []);
+      document.getElementById('kenmerkGroepKetentestenLijst').innerHTML = [...ketentests].sort((a, b) => (a.naam || '').localeCompare(b.naam || '')).map(k => `
+        <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; cursor:pointer;">
+          <input type="checkbox" value="${k.id}" ${gekozen.includes(k.id) ? 'checked' : ''}> ${esc(k.naam)}
+        </label>`).join('');
+      document.getElementById('modalKenmerkGroepTitle').textContent = g ? 'Groep bewerken' : 'Groep toevoegen';
+      document.getElementById('alertKenmerkGroep').style.display = 'none';
+      openModal('modalKenmerkGroep');
+    }
+
+    async function saveKenmerkGroep() {
+      if (!window.isPageAdmin) return;
+      const id = document.getElementById('kenmerkGroepId').value;
+      const titel = document.getElementById('kenmerkGroepTitel').value.trim();
+      const toelichting = document.getElementById('kenmerkGroepToelichting').value.trim();
+      const soort = document.getElementById('kenmerkGroepSoort').value;
+      if (!titel) { showAlert('Vul een naam in.', 'error', 'alertKenmerkGroep'); return; }
+      const bestaand = id ? KENMERKGROEPEN.find(x => x.id === id) : null;
+      const isAlgemeen = bestaand?.soort === 'algemeen';
+      const gekozen = isAlgemeen ? [] : Array.from(document.querySelectorAll('#kenmerkGroepKetentestenLijst input[type="checkbox"]:checked')).map(el => el.value);
+      if (!isAlgemeen && !gekozen.length) { showAlert('Koppel de groep aan minimaal 1 ketentest.', 'error', 'alertKenmerkGroep'); return; }
+      if (KENMERKGROEPEN.some(x => x.id !== id && x.titel.toLowerCase() === titel.toLowerCase())) { showAlert('Er bestaat al een groep met deze naam.', 'error', 'alertKenmerkGroep'); return; }
+
+      let groepId = id;
+      if (id) {
+        const { error } = await sb.from('kenmerk_groepen').update({ titel, toelichting: toelichting || null }).eq('id', id);
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKenmerkGroep'); return; }
+      } else {
+        const sleutel = titel.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '');
+        if (!sleutel) { showAlert('Gebruik minimaal één letter of cijfer in de naam.', 'error', 'alertKenmerkGroep'); return; }
+        if (KENMERKGROEPEN.some(x => x.sleutel === sleutel)) { showAlert('Er bestaat al een groep met (vrijwel) dezelfde naam.', 'error', 'alertKenmerkGroep'); return; }
+        const volgorde = KENMERKGROEPEN.reduce((m, x) => Math.max(m, x.volgorde ?? 0), 0) + 1;
+        const { data, error } = await sb.from('kenmerk_groepen').insert({ sleutel, titel, toelichting: toelichting || null, soort, volgorde }).select().single();
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertKenmerkGroep'); return; }
+        groepId = data.id;
+      }
+
+      if (!isAlgemeen) {
+        const bestaandeIds = KENMERKGROEP_KOPPELINGEN.filter(x => x.groep_id === groepId).map(x => x.ketentest_id);
+        const weg = bestaandeIds.filter(k => !gekozen.includes(k));
+        const erbij = gekozen.filter(k => !bestaandeIds.includes(k));
+        if (weg.length) {
+          const { error } = await sb.from('kenmerk_groep_ketentesten').delete().eq('groep_id', groepId).in('ketentest_id', weg);
+          if (error) { showAlert('Koppelingen bijwerken mislukt: ' + error.message, 'error', 'alertKenmerkGroep'); return; }
+        }
+        if (erbij.length) {
+          const { error } = await sb.from('kenmerk_groep_ketentesten').insert(erbij.map(k => ({ groep_id: groepId, ketentest_id: k })));
+          if (error) { showAlert('Koppelingen bijwerken mislukt: ' + error.message, 'error', 'alertKenmerkGroep'); return; }
+        }
+      }
+
+      closeModal('modalKenmerkGroep');
+      await loadKenmerkGroepen();
+      renderKenmerkGroepenBeheer();
+      renderKenmerkDefTable();
+      showAlert('Groep opgeslagen.', 'success');
+    }
+
+    async function deleteKenmerkGroep(id) {
+      if (!window.isPageAdmin) return;
+      const g = KENMERKGROEPEN.find(x => x.id === id);
+      if (!g || g.soort === 'algemeen') return;
+      const [{ count: aantalDef }, { count: aantalInst }] = await Promise.all([
+        sb.from('kenmerk_definities').select('id', { count: 'exact', head: true }).eq('groep', g.sleutel),
+        sb.from('scenario_kenmerk_instanties').select('id', { count: 'exact', head: true }).eq('groep', g.sleutel),
+      ]);
+      if ((aantalDef || 0) > 0 || (aantalInst || 0) > 0) {
+        showAlert(`Groep "${g.titel}" kan niet worden verwijderd: er zijn nog ${aantalDef || 0} kenmerk(en) en ${aantalInst || 0} ingevulde blok(ken) in gebruik (in een of meer ketentesten). Verwijder die eerst, of haal de groep bij de ketentesten weg.`, 'error');
+        return;
+      }
+      document.getElementById('confirmMsg').textContent = `Groep "${g.titel}" verwijderen?`;
+      document.getElementById('confirmBtn').onclick = async () => {
+        const { error } = await sb.from('kenmerk_groepen').delete().eq('id', id);
+        closeModal('modalConfirm');
+        if (error) { showAlert('Fout bij verwijderen: ' + error.message, 'error'); return; }
+        await loadKenmerkGroepen();
+        renderKenmerkGroepenBeheer();
+        renderKenmerkDefTable();
+        showAlert('Groep verwijderd.', 'success');
+      };
+      openModal('modalConfirm');
     }
 
     // Zet het volgordenummer van dit kenmerk direct op de door de
@@ -2796,10 +2989,17 @@
       document.getElementById('kenmerkKeuzelijstOpties').style.display = type === 'keuzelijst' ? '' : 'none';
     }
 
+    function vulKenmerkGroepSelect(gekozen) {
+      const sel = document.getElementById('kenmerkGroep');
+      const soortTekst = { algemeen: '1x per scenario', eenmalig: '1x per scenario', herhaalbaar: 'herhaalbaar blok' };
+      sel.innerHTML = kenmerkGroepenVoorActieveKetentest().map(g => `<option value="${esc(g.sleutel)}">${esc(g.titel)} (${soortTekst[g.soort] || ''})</option>`).join('');
+      sel.value = gekozen;
+    }
+
     function openNewKenmerkModal(groep) {
       if (!window.isPageAdmin) return;
       document.getElementById('kenmerkDefId').value = '';
-      document.getElementById('kenmerkGroep').value = groep || 'algemeen';
+      vulKenmerkGroepSelect(groep || 'algemeen');
       document.getElementById('kenmerkNaam').value = '';
       document.getElementById('kenmerkVeldtype').value = 'tekst';
       document.getElementById('kenmerkValidatieLengte').value = '';
@@ -2816,7 +3016,7 @@
       const k = KENMERKDEFINITIES.find(x => x.id === id);
       if (!k) return;
       document.getElementById('kenmerkDefId').value = k.id;
-      document.getElementById('kenmerkGroep').value = k.groep || 'algemeen';
+      vulKenmerkGroepSelect(k.groep || 'algemeen');
       document.getElementById('kenmerkNaam').value = k.naam;
       document.getElementById('kenmerkVeldtype').value = k.veldtype;
       document.getElementById('kenmerkValidatieLengte').value = k.validatie_lengte || '';
@@ -4465,7 +4665,7 @@
     function closeModal(id) {
       document.getElementById(id).style.display = 'none';
       // Reset eventuele alerts in de modal
-      ['alertActivity','alertOrg','alertScenario','alertOption','alertUser'].forEach(a => {
+      ['alertActivity','alertOrg','alertScenario','alertOption','alertUser','alertKenmerkGroep'].forEach(a => {
         const el = document.getElementById(a);
         if (el) el.style.display = 'none';
       });

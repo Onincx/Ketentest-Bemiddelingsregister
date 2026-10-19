@@ -258,6 +258,25 @@
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     let currentUser = null, currentProfile = null, effectiefOrgId = null;
+    // Kenmerk-groepen die in deze ketentest gebruikt mogen worden (null = tabel ontbreekt → vaste standaardgroepen)
+    let kenmerkGroepenActief = null;
+    const KENMERK_GROEPEN_STANDAARD_APP = [
+      { sleutel: 'toewijzing', titel: 'Toewijzing', soort: 'herhaalbaar' },
+      { sleutel: 'regierol', titel: 'Regierol', soort: 'herhaalbaar' },
+      { sleutel: 'leveringperiode', titel: 'Leveringperiode', soort: 'herhaalbaar' },
+      { sleutel: 'behandelingperiode', titel: 'Behandelingperiode', soort: 'herhaalbaar' },
+      { sleutel: 'verzoekaanbieder', titel: 'VerzoekAanbieder', soort: 'herhaalbaar' },
+      { sleutel: 'uitstelperiode', titel: 'Uitstelperiode', soort: 'eenmalig' },
+      { sleutel: 'afstel', titel: 'Afstel', soort: 'eenmalig' },
+      { sleutel: 'verzoek', titel: 'Verzoek', soort: 'eenmalig' },
+    ];
+    // Alle kenmerkblokken (behalve Algemeen/Indicatiebesluit) in de volgorde van de groepen, alleen voor groepen die aan deze ketentest zijn gekoppeld
+    function renderKenmerkGroepBlokken(scenarioId) {
+      return (kenmerkGroepenActief || KENMERK_GROEPEN_STANDAARD_APP)
+        .filter(g => g.soort !== 'algemeen')
+        .map(g => g.soort === 'herhaalbaar' ? renderHerhaalbaarBlok(scenarioId, g.sleutel, esc(g.titel)) : renderEenmaligBlok(scenarioId, g.sleutel, esc(g.titel)))
+        .join('');
+    }
     let orgIdsVanKetentest = null; // Set met organisatie-id's gekoppeld aan de actieve ketentest (null = onbekend → alle organisaties)
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
@@ -344,6 +363,14 @@
       // rest nog bezig is). Voorheen liep dit als een keten van ~7
       // opeenvolgende netwerkstappen, waarvan de meeste onafhankelijk waren.
       const pOrgs = sb.from('organisations').select('*');
+      const pGroepen = Promise.all([
+        sb.from('kenmerk_groepen').select('*').order('volgorde'),
+        sb.from('kenmerk_groep_ketentesten').select('groep_id').eq('ketentest_id', kid),
+      ]).then(([g, k]) => {
+        if (g.error || k.error) { kenmerkGroepenActief = null; return; }
+        const toegestaan = new Set((k.data || []).map(x => x.groep_id));
+        kenmerkGroepenActief = (g.data || []).filter(x => x.soort === 'algemeen' || toegestaan.has(x.id));
+      }, () => { kenmerkGroepenActief = null; });
       // Koppeling organisatie ↔ ketentest (alleen voor de keuzelijst bij een nieuwe bevinding); fout/ontbrekende tabel = alle organisaties
       sb.from('organisation_ketentest_access').select('organisation_id').eq('ketentest_id', kid)
         .then(r => { orgIdsVanKetentest = r.error ? null : new Set((r.data || []).map(k => k.organisation_id)); }, () => { orgIdsVanKetentest = null; });
@@ -391,6 +418,7 @@
 
       const [orgRes, onafhankelijk, a, ki, sfp, ibz] = await Promise.all([pOrgs, pOnafhankelijk, pActivities, pKi, pSfp, pIbz]);
       await pNotif;
+      await pGroepen;
       const [r, fn, fe, fl, bv, kd, zk, fp, ecv, ecg, kua, kpc, ig, izz, fbsn] = onafhankelijk;
       allOrgs = orgRes.data || [];
 
@@ -1228,14 +1256,7 @@
       const houder = document.getElementById(`kenmerkenHouder-${scenarioId}`);
       if (!houder) return;
       houder.innerHTML = renderIndicatiebesluitBlok(scenarioId)
-        + renderHerhaalbaarBlok(scenarioId, 'toewijzing', 'Toewijzing')
-        + renderHerhaalbaarBlok(scenarioId, 'regierol', 'Regierol')
-        + renderHerhaalbaarBlok(scenarioId, 'leveringperiode', 'Leveringperiode')
-        + renderHerhaalbaarBlok(scenarioId, 'behandelingperiode', 'Behandelingperiode')
-        + renderHerhaalbaarBlok(scenarioId, 'verzoekaanbieder', 'VerzoekAanbieder')
-        + renderEenmaligBlok(scenarioId, 'uitstelperiode', 'Uitstelperiode')
-        + renderEenmaligBlok(scenarioId, 'afstel', 'Afstel')
-        + renderEenmaligBlok(scenarioId, 'verzoek', 'Verzoek');
+        + renderKenmerkGroepBlokken(scenarioId);
       // Staat de historie van dit scenario open, dan meteen bijwerken (de wijziging is net vastgelegd).
       const historie = document.getElementById(`historieScenario-${scenarioId}`);
       if (historie && historie.closest('details')?.open) laadHistorieIn('scenario', scenarioId, `historieScenario-${scenarioId}`);
@@ -1929,14 +1950,7 @@
             </div>` : ''}
           <div id="kenmerkenHouder-${s.id}">
             ${renderIndicatiebesluitBlok(s.id)}
-            ${renderHerhaalbaarBlok(s.id, 'toewijzing', 'Toewijzing')}
-            ${renderHerhaalbaarBlok(s.id, 'regierol', 'Regierol')}
-            ${renderHerhaalbaarBlok(s.id, 'leveringperiode', 'Leveringperiode')}
-            ${renderHerhaalbaarBlok(s.id, 'behandelingperiode', 'Behandelingperiode')}
-            ${renderHerhaalbaarBlok(s.id, 'verzoekaanbieder', 'VerzoekAanbieder')}
-            ${renderEenmaligBlok(s.id, 'uitstelperiode', 'Uitstelperiode')}
-            ${renderEenmaligBlok(s.id, 'afstel', 'Afstel')}
-            ${renderEenmaligBlok(s.id, 'verzoek', 'Verzoek')}
+            ${renderKenmerkGroepBlokken(s.id)}
           </div>
           ${acts.length ? renderActivities(acts) : '<p style="font-size:13px; color:var(--text-muted); font-style:italic; padding:12px 0;">Nog geen activiteiten.</p>'}
           <details style="margin-top:12px; border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px; background:var(--white);"
