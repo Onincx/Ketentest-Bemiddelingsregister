@@ -132,7 +132,7 @@
           <h1>Organisaties</h1>
           <p>Beheer de deelnemende organisaties aan de ketentest.</p>
         </div>
-        <button class="btn btn-primary" onclick="openModal('modalOrg')">
+        <button class="btn btn-primary" onclick="openAddOrg()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Organisatie toevoegen
         </button>
       </div>
@@ -142,8 +142,8 @@
       <div class="card" style="padding:0;">
         <div class="table-wrap">
           <table>
-            <thead><tr><th>Naam</th><th>Code</th><th>Gebruikers</th><th>Aangemaakt</th><th></th></tr></thead>
-            <tbody id="orgTable"><tr><td colspan="5" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
+            <thead><tr><th>Naam</th><th>Code</th><th>Ketentesten</th><th>Gebruikers</th><th>Aangemaakt</th><th></th></tr></thead>
+            <tbody id="orgTable"><tr><td colspan="6" style="text-align:center; color:var(--text-muted); padding:32px;">Laden...</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -861,6 +861,10 @@
           <label>Code <span style="color:var(--text-muted); font-weight:400;">(unieke afkorting)</span></label>
           <input type="text" id="orgCode" placeholder="bijv. GEM-AMS" style="text-transform:uppercase;">
         </div>
+        <div class="form-group">
+          <label>Ketentesten <span style="color:var(--text-muted); font-weight:400;">(minimaal 1 — de organisatie is alleen binnen deze ketentesten te kiezen)</span></label>
+          <div id="orgKetentestenLijst" style="border:1px solid var(--border); border-radius:var(--radius); padding:8px 12px; max-height:180px; overflow:auto;"></div>
+        </div>
       </div>
       <div id="alertOrg" class="alert" style="display:none; margin:0 24px 12px;"></div>
       <div class="modal-footer">
@@ -1521,9 +1525,28 @@
       activityOptions = data || [];
     }
 
+    // Koppeling organisatie ↔ ketentest. null = tabel nog niet aanwezig
+    // (script organisatie-ketentest-koppeling-setup.sql nog niet gedraaid):
+    // dan gedraagt de applicatie zich als voorheen en zijn alle organisaties kiesbaar.
+    let orgKetentestKoppelingen = null;
     async function loadOrgs() {
-      const { data } = await sb.from('organisations').select('*').order('name');
+      const [{ data }, koppRes] = await Promise.all([
+        sb.from('organisations').select('*').order('name'),
+        sb.from('organisation_ketentest_access').select('organisation_id, ketentest_id'),
+      ]);
       orgs = data || [];
+      orgKetentestKoppelingen = koppRes.error ? null : (koppRes.data || []);
+    }
+
+    // Organisaties die in de actieve ketentest gekozen mogen worden. Organisaties
+    // die in deze ketentest al ergens in gebruik zijn (oude gegevens) of expliciet
+    // worden meegegeven blijven zichtbaar, zodat bestaande keuzes niet leeg raken.
+    function orgsVoorActieveKetentest(extraIds = []) {
+      if (!orgKetentestKoppelingen || !activeKetentest) return orgs;
+      const toegestaan = new Set(orgKetentestKoppelingen.filter(k => k.ketentest_id === activeKetentest.id).map(k => k.organisation_id));
+      activities.forEach(a => { if (a.organisation_id) toegestaan.add(a.organisation_id); if (a.acceptant_org_id) toegestaan.add(a.acceptant_org_id); });
+      extraIds.forEach(id => { if (id) toegestaan.add(id); });
+      return orgs.filter(o => toegestaan.has(o.id));
     }
     let meekijkOrgsByUser = {}; // user_id -> array van organisatienamen
 
@@ -2461,7 +2484,7 @@
       document.getElementById('entryCriteriaVraagToelichting').value = v?.toelichting || '';
       document.getElementById('entryCriteriaVraagType').value = v?.antwoordtype || 'tekst';
       const gekoppeldeOrgIds = v ? entryCriteriaVraagOrgs.filter(x => x.vraag_id === v.id).map(x => x.organisation_id) : [];
-      document.getElementById('entryCriteriaVraagOrgs').innerHTML = orgs.map(o => `
+      document.getElementById('entryCriteriaVraagOrgs').innerHTML = orgsVoorActieveKetentest(gekoppeldeOrgIds).map(o => `
         <label style="display:flex; align-items:center; gap:6px; font-size:13px; cursor:pointer;">
           <input type="checkbox" value="${o.id}" ${gekoppeldeOrgIds.includes(o.id) ? 'checked' : ''}> ${esc(o.name)}
         </label>`).join('');
@@ -2940,11 +2963,11 @@
 
       const eigenaarSelect = document.getElementById('losseBevindingEigenaar');
       eigenaarSelect.innerHTML = '<option value="">Selecteer organisatie...</option>' +
-        [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
+        orgsVoorActieveKetentest().sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}">${esc(o.name)}</option>`).join('');
 
       const melderSelect = document.getElementById('losseBevindingMelder');
       melderSelect.innerHTML = '<option value="">Selecteer organisatie...</option>' +
-        [...orgs].sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}" ${o.id === currentProfile?.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
+        orgsVoorActieveKetentest([currentProfile?.organisation_id]).sort((a, b) => a.name.localeCompare(b.name)).map(o => `<option value="${o.id}" ${o.id === currentProfile?.organisation_id ? 'selected' : ''}>${esc(o.name)}</option>`).join('');
 
       openModal('modalLosseBevinding');
     }
@@ -3487,18 +3510,18 @@
                   : `<span class="badge" style="background:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).bg}; color:${(NOK_PRIORITEIT_KLEUREN[b.prioriteit]||NOK_PRIORITEIT_KLEUREN.midden).fg}; font-size:11px;">${NOK_PRIORITEIT_LABELS[b.prioriteit] || 'Midden'}</span>`)}
               ${act ? veldKaart('Verantwoordelijke', window.isPageAdmin
                   ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','organisation_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
-                      ${orgs.map(o => `<option value="${o.id}" ${act?.organisation_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                      ${orgsVoorActieveKetentest([act?.organisation_id]).map(o => `<option value="${o.id}" ${act?.organisation_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
                   : `<span class="badge" style="background:${getOrgKleur(verantwOrg?.id, orgs).bg}; color:${getOrgKleur(verantwOrg?.id, orgs).fg}; font-size:11px;">${verantwOrg?.name || '—'}</span>`) : ''}
               ${act ? veldKaart('Acceptant', window.isPageAdmin
                   ? `<select onchange="updateActiviteitOrgVeld('${b.id}','${act?.id}','acceptant_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
                       <option value="">— geen acceptant —</option>
-                      ${orgs.map(o => `<option value="${o.id}" ${act?.acceptant_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                      ${orgsVoorActieveKetentest([act?.acceptant_org_id]).map(o => `<option value="${o.id}" ${act?.acceptant_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
                   : `<span class="badge" style="background:${getOrgKleur(acceptantOrg?.id, orgs).bg}; color:${getOrgKleur(acceptantOrg?.id, orgs).fg}; font-size:11px;">${acceptantOrg?.name || '—'}</span>`) : ''}
               ${veldKaart('Eigenaar (oplossing)', window.isPageAdmin
                   ? `<select onchange="updateNokField('${b.id}','owner_org_id',this.value)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
-                      ${orgs.map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                      ${orgsVoorActieveKetentest([b.owner_org_id]).map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
                   : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`)}
               ${veldKaart('Melder', `<span style="font-size:12px;">${melderOrg?.name || '—'}</span>`)}
@@ -4414,11 +4437,11 @@
         : orgs;
 
       if (!orgs.length) {
-        tb.innerHTML = '<tr><td colspan="5"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg><p>Nog geen organisaties. Voeg er een toe.</p></div></td></tr>';
+        tb.innerHTML = '<tr><td colspan="6"><div class="empty-state"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="9" y1="22" x2="9" y2="2"/><line x1="15" y1="22" x2="15" y2="2"/><line x1="4" y1="7" x2="9" y2="7"/><line x1="4" y1="12" x2="9" y2="12"/><line x1="15" y1="7" x2="20" y2="7"/><line x1="15" y1="12" x2="20" y2="12"/></svg><p>Nog geen organisaties. Voeg er een toe.</p></div></td></tr>';
         return;
       }
       if (!filtered.length) {
-        tb.innerHTML = `<tr><td colspan="5"><div class="empty-state"><p>Geen organisaties gevonden voor "${term}".</p></div></td></tr>`;
+        tb.innerHTML = `<tr><td colspan="6"><div class="empty-state"><p>Geen organisaties gevonden voor "${term}".</p></div></td></tr>`;
         return;
       }
       tb.innerHTML = filtered.map(o => {
@@ -4427,6 +4450,7 @@
         return `<tr>
           <td><strong>${o.name}</strong></td>
           <td><span class="org-badge">${o.code}</span></td>
+          <td style="font-size:12px;">${orgKetentestNamen(o.id)}</td>
           <td>${count} gebruiker${count !== 1 ? 's' : ''}</td>
           <td style="color:var(--text-muted)">${date}</td>
           <td style="text-align:right;">
@@ -4459,12 +4483,38 @@
       // het kruisje of een Annuleren/Sluiten-knop.
     }
 
+    function orgKetentestNamen(orgId) {
+      if (!orgKetentestKoppelingen) return '<span style="color:var(--text-muted)">—</span>';
+      const namen = orgKetentestKoppelingen.filter(k => k.organisation_id === orgId)
+        .map(k => ketentests.find(t => t.id === k.ketentest_id)?.naam).filter(Boolean).sort((a, b) => a.localeCompare(b));
+      return namen.length ? namen.map(n => esc(n)).join(', ') : '<span style="color:var(--danger); font-weight:600;">Geen ketentest gekoppeld</span>';
+    }
+
+    function renderOrgKetentestenLijst(geselecteerd) {
+      document.getElementById('orgKetentestenLijst').innerHTML = ketentests.length
+        ? [...ketentests].sort((a, b) => (a.naam || '').localeCompare(b.naam || '')).map(k => `
+          <label style="display:flex; align-items:center; gap:8px; padding:4px 0; font-size:13px; cursor:pointer;">
+            <input type="checkbox" value="${k.id}" ${geselecteerd.includes(k.id) ? 'checked' : ''}> ${esc(k.naam)}
+          </label>`).join('')
+        : '<p style="font-size:12px; color:var(--text-muted);">Er zijn nog geen ketentesten. Maak er eerst een aan.</p>';
+    }
+
+    function openAddOrg() {
+      document.getElementById('orgId').value = '';
+      document.getElementById('orgName').value = '';
+      document.getElementById('orgCode').value = '';
+      document.getElementById('modalOrgTitle').textContent = 'Organisatie toevoegen';
+      renderOrgKetentestenLijst(activeKetentest ? [activeKetentest.id] : []);
+      openModal('modalOrg');
+    }
+
     function editOrg(id) {
       const o = orgs.find(x => x.id === id);
       document.getElementById('orgId').value = o.id;
       document.getElementById('orgName').value = o.name;
       document.getElementById('orgCode').value = o.code;
       document.getElementById('modalOrgTitle').textContent = 'Organisatie bewerken';
+      renderOrgKetentestenLijst((orgKetentestKoppelingen || []).filter(k => k.organisation_id === id).map(k => k.ketentest_id));
       openModal('modalOrg');
     }
 
@@ -4473,19 +4523,44 @@
       const name = document.getElementById('orgName').value.trim();
       const code = document.getElementById('orgCode').value.trim().toUpperCase();
       if (!name || !code) { showAlert('Vul alle velden in.', 'error', 'alertOrg'); return; }
+      const gekozen = Array.from(document.querySelectorAll('#orgKetentestenLijst input[type="checkbox"]:checked')).map(el => el.value);
+      if (!gekozen.length) { showAlert('Koppel de organisatie aan minimaal 1 ketentest.', 'error', 'alertOrg'); return; }
 
+      let orgId = id;
       if (id) {
-        await sb.from('organisations').update({ name, code }).eq('id', id);
+        const { error } = await sb.from('organisations').update({ name, code }).eq('id', id);
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertOrg'); return; }
       } else {
-        await sb.from('organisations').insert({ name, code });
+        const { data, error } = await sb.from('organisations').insert({ name, code }).select().single();
+        if (error) { showAlert('Fout bij opslaan: ' + error.message, 'error', 'alertOrg'); return; }
+        orgId = data.id;
       }
+
+      // Ketentest-koppelingen synchroniseren met de aangevinkte selectie
+      if (orgKetentestKoppelingen) {
+        const bestaand = orgKetentestKoppelingen.filter(k => k.organisation_id === orgId).map(k => k.ketentest_id);
+        const teVerwijderen = bestaand.filter(k => !gekozen.includes(k));
+        const toeTeVoegen = gekozen.filter(k => !bestaand.includes(k));
+        if (teVerwijderen.length) {
+          const { error } = await sb.from('organisation_ketentest_access').delete().eq('organisation_id', orgId).in('ketentest_id', teVerwijderen);
+          if (error) { showAlert('Koppelingen bijwerken mislukt: ' + error.message, 'error', 'alertOrg'); return; }
+        }
+        if (toeTeVoegen.length) {
+          const { error } = await sb.from('organisation_ketentest_access').insert(toeTeVoegen.map(k => ({ organisation_id: orgId, ketentest_id: k })));
+          if (error) { showAlert('Koppelingen bijwerken mislukt: ' + error.message, 'error', 'alertOrg'); return; }
+        }
+      } else {
+        showAlert('Organisatie opgeslagen, maar de ketentest-koppeling kon niet worden vastgelegd: draai eerst sql/organisatie-ketentest-koppeling-setup.sql in Supabase.', 'error', 'alertOrg');
+        return;
+      }
+
       closeModal('modalOrg');
       document.getElementById('orgId').value = '';
       document.getElementById('orgName').value = '';
       document.getElementById('orgCode').value = '';
       document.getElementById('modalOrgTitle').textContent = 'Organisatie toevoegen';
       await loadOrgs(); await loadUsers();
-      renderOrgs(); renderUsers();
+      renderOrgs(); renderUsers(); renderScenarios();
       showAlert('Organisatie opgeslagen.', 'success');
     }
 
@@ -4952,7 +5027,7 @@
       const wrap = document.getElementById('scenarioAdminList');
       const actOrgSel = document.getElementById('activityOrg');
       const actAccSel = document.getElementById('activityAcceptant');
-      const orgOptions = '<option value="">Selecteer organisatie...</option>' + orgs.map(o => `<option value="${o.id}">${o.name}</option>`).join('');
+      const orgOptions = '<option value="">Selecteer organisatie...</option>' + orgsVoorActieveKetentest().map(o => `<option value="${o.id}">${o.name}</option>`).join('');
       actOrgSel.innerHTML = orgOptions;
       actAccSel.innerHTML = orgOptions;
 

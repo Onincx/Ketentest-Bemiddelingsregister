@@ -258,6 +258,7 @@
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
     let currentUser = null, currentProfile = null, effectiefOrgId = null;
+    let orgIdsVanKetentest = null; // Set met organisatie-id's gekoppeld aan de actieve ketentest (null = onbekend → alle organisaties)
     let scenarios = [], activities = [], results = {}, allOrgs = [], latestBevindingByActivity = {};
     let kenmerkDefinities = [], scenarioKenmerkInstanties = [], scenarioKenmerkWaarden = [], zorgkantoorcodes = [];
     let functioneleProcessen = [], scenarioFunctioneleProcessen = [];
@@ -343,6 +344,9 @@
       // rest nog bezig is). Voorheen liep dit als een keten van ~7
       // opeenvolgende netwerkstappen, waarvan de meeste onafhankelijk waren.
       const pOrgs = sb.from('organisations').select('*');
+      // Koppeling organisatie ↔ ketentest (alleen voor de keuzelijst bij een nieuwe bevinding); fout/ontbrekende tabel = alle organisaties
+      sb.from('organisation_ketentest_access').select('organisation_id').eq('ketentest_id', kid)
+        .then(r => { orgIdsVanKetentest = r.error ? null : new Set((r.data || []).map(k => k.organisation_id)); }, () => { orgIdsVanKetentest = null; });
       const pScenarios = sb.from('scenarios').select('*').eq('ketentest_id', kid).order('code');
       const pNotif = loadNotificationDefs();
       const pOnafhankelijk = Promise.all([
@@ -1994,7 +1998,7 @@
             <div class="form-group" style="margin-top:14px;">
               <label>Eigenaar van de oplossing</label>
               <select id="nokModalEigenaar">
-                ${allOrgs.map(o => `<option value="${o.id}" ${o.id === defaultOwnerId ? 'selected' : ''}>${o.name}</option>`).join('')}
+                ${allOrgs.filter(o => !orgIdsVanKetentest || orgIdsVanKetentest.has(o.id) || o.id === defaultOwnerId).map(o => `<option value="${o.id}" ${o.id === defaultOwnerId ? 'selected' : ''}>${o.name}</option>`).join('')}
               </select>
               <p style="font-size:11px; color:var(--text-muted); margin-top:6px;">Standaard de verantwoordelijke organisatie van deze activiteit — pas aan als het probleem eigenlijk ergens anders ligt.</p>
             </div>
