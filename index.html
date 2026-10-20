@@ -132,7 +132,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=47"></script>
+  <script src="js/supabase-config.js?v=48"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
 
@@ -143,6 +143,7 @@
       }
       const user = await getCurrentUser();
       if (user) {
+        startIdleTimeoutWatcher(); // ook hier loopt de sessie door: verlopen sessie wordt meteen beëindigd
         const profile = await getUserProfile(user.id);
         await proceedAfterAuth(profile);
       }
@@ -177,6 +178,8 @@
         return;
       }
 
+      markeerActiviteit(); // nieuwe sessie: inactiviteitsklok opnieuw starten
+      startIdleTimeoutWatcher();
       const profile = await getUserProfile(data.user.id);
       await proceedAfterAuth(profile);
       btn.innerHTML = 'Inloggen'; btn.disabled = false;

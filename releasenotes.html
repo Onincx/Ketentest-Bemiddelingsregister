@@ -91,7 +91,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=47"></script>
+  <script src="js/supabase-config.js?v=48"></script>
   <script>
     // ============================================================
     // RELEASENOTES
@@ -162,6 +162,7 @@
     (async () => {
       const user = await getCurrentUser();
       if (!user) return;
+      startIdleTimeoutWatcher(); // ook op deze pagina automatisch uitloggen bij inactiviteit
       const profile = await getUserProfile(user.id);
       refreshGlobalNokBadge(profile?.organisation_id);
       refreshGonogoBadge(profile?.organisation_id, profile?.role);

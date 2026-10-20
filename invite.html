@@ -78,7 +78,7 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <script src="js/supabase-config.js?v=47"></script>
+  <script src="js/supabase-config.js?v=48"></script>
   <script>
     // Supabase verwerkt de token automatisch uit de URL hash bij het laden
     async function savePassword() {
@@ -127,6 +127,7 @@
     // het invullen van een wachtwoord.
     (async () => {
       const currentUser = await getCurrentUser();
+      if (currentUser) { markeerActiviteit(); startIdleTimeoutWatcher(); } // verse sessie via de link: klok start nu
       if (!currentUser) {
         showAlert('Deze uitnodigings-/herstellink is niet (meer) geldig — mogelijk al gebruikt, verlopen, of al "voorgeladen" door een e-mailbeveiligingsfilter voordat de link daadwerkelijk werd geopend. Vraag de beheerder om een nieuwe uitnodiging.');
         document.getElementById('saveBtn').disabled = true;
