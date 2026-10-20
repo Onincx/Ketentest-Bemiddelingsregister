@@ -259,6 +259,8 @@
 
     let currentUser = null, currentProfile = null, effectiefOrgId = null;
     // Kenmerk-groepen die in deze ketentest gebruikt mogen worden (null = tabel ontbreekt → vaste standaardgroepen)
+    const indicatieGrondslagActief = () => activeKetentest?.indicatie_grondslag_actief !== false;
+    const indicatieZzpActief = () => activeKetentest?.indicatie_zzp_actief !== false;
     let kenmerkGroepenActief = null;
     const KENMERK_GROEPEN_STANDAARD_APP = [
       { sleutel: 'toewijzing', titel: 'Toewijzing', soort: 'herhaalbaar' },
@@ -552,8 +554,8 @@
       const velden = [
         ['Clientnaam', start?.code], ['Fictief BSN', ib.fictief_bsn], ['Datum afgifte', datum(ib.datum_afgifte)], ['Datum ingang', datum(ib.datum_ingang)],
         ['UZOVI', ib.uzovi], ['Adres', ib.adres],
-        ['1e grondslag', ib.grondslag_1], ['2e grondslag', ib.grondslag_2], ['3e grondslag', ib.grondslag_3], ['4e grondslag', ib.grondslag_4],
-        ['ZZP-code 1', ib.zzp_code_1], ['ZZP-code 2', ib.zzp_code_2],
+        ...(indicatieGrondslagActief() ? [['1e grondslag', ib.grondslag_1], ['2e grondslag', ib.grondslag_2], ['3e grondslag', ib.grondslag_3], ['4e grondslag', ib.grondslag_4]] : []),
+        ...(indicatieZzpActief() ? [['ZZP-code 1', ib.zzp_code_1], ['ZZP-code 2', ib.zzp_code_2]] : []),
         ['VoorkeurClient', ib.voorkeur_client], ['UZOVI-uitvoerendZK', ib.uzovi_uitvoerend_zk], ['VoorkeurAanbieder', ib.voorkeur_aanbieder],
       ].filter(([, w]) => w);
       return kader(`<div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 14px; margin-bottom:8px;">${kop}</div>
@@ -626,12 +628,12 @@
           <div style="width:170px;"><label style="${labelStijl}">Datum ingang</label><input type="date" id="indDatumIngang-${scenarioId}" value="${bestaand?.datum_ingang || ''}" style="${veldStijl}"></div>
           <div style="width:170px;"><label style="${labelStijl}">UZOVI</label><select id="indUzovi-${scenarioId}" onchange="vulIndicatieAdresOpties('${scenarioId}')" style="${veldStijl}">${selectOpties(uzoviOpties, huidigeUzovi, '— kies —')}</select></div>
           <div style="width:220px;"><label style="${labelStijl}">Adres</label><select id="indAdres-${scenarioId}" style="${veldStijl}">${selectOpties(adresOpties, bestaand?.adres || '', '— kies —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">1e grondslag</label><select id="indGrondslag1-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_1 || '', '— geen —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">2e grondslag</label><select id="indGrondslag2-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_2 || '', '— geen —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">3e grondslag</label><select id="indGrondslag3-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_3 || '', '— geen —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">4e grondslag</label><select id="indGrondslag4-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_4 || '', '— geen —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">ZZP-code 1</label><select id="indZzp1-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_1 || '', '— geen —')}</select></div>
-          <div style="width:170px;"><label style="${labelStijl}">ZZP-code 2</label><select id="indZzp2-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_2 || '', '— geen —')}</select></div>
+          ${indicatieGrondslagActief() ? `<div style="width:170px;"><label style="${labelStijl}">1e grondslag</label><select id="indGrondslag1-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_1 || '', '— geen —')}</select></div>` : ''}
+          ${indicatieGrondslagActief() ? `<div style="width:170px;"><label style="${labelStijl}">2e grondslag</label><select id="indGrondslag2-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_2 || '', '— geen —')}</select></div>` : ''}
+          ${indicatieGrondslagActief() ? `<div style="width:170px;"><label style="${labelStijl}">3e grondslag</label><select id="indGrondslag3-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_3 || '', '— geen —')}</select></div>` : ''}
+          ${indicatieGrondslagActief() ? `<div style="width:170px;"><label style="${labelStijl}">4e grondslag</label><select id="indGrondslag4-${scenarioId}" style="${veldStijl}">${selectOpties(grondslagWaarden, bestaand?.grondslag_4 || '', '— geen —')}</select></div>` : ''}
+          ${indicatieZzpActief() ? `<div style="width:170px;"><label style="${labelStijl}">ZZP-code 1</label><select id="indZzp1-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_1 || '', '— geen —')}</select></div>` : ''}
+          ${indicatieZzpActief() ? `<div style="width:170px;"><label style="${labelStijl}">ZZP-code 2</label><select id="indZzp2-${scenarioId}" style="${veldStijl}">${selectOpties(zzpWaarden, bestaand?.zzp_code_2 || '', '— geen —')}</select></div>` : ''}
           <div style="width:190px;"><label style="${labelStijl}">VoorkeurClient</label><input type="text" id="indVoorkeurClient-${scenarioId}" value="${esc(bestaand?.voorkeur_client || '')}" style="${veldStijl}"></div>
           <div style="width:170px;"><label style="${labelStijl}">UZOVI-uitvoerendZK</label><select id="indUzoviUitvoerend-${scenarioId}" onchange="vulIndicatieAgbOpties('${scenarioId}')" style="${veldStijl}">${selectOpties(alleUzoviOpties, huidigeUzoviUitvoerend, '— kies —')}</select></div>
           <div style="width:190px;"><label style="${labelStijl}">VoorkeurAanbieder</label><select id="indVoorkeurAanbieder-${scenarioId}" style="${veldStijl}">${selectOpties(agbOpties, bestaand?.voorkeur_aanbieder || '', '— kies —')}</select></div>
@@ -669,12 +671,9 @@
         datum_ingang: veld('indDatumIngang'),
         uzovi: veld('indUzovi'),
         adres: veld('indAdres'),
-        grondslag_1: veld('indGrondslag1'),
-        grondslag_2: veld('indGrondslag2'),
-        grondslag_3: veld('indGrondslag3'),
-        grondslag_4: veld('indGrondslag4'),
-        zzp_code_1: veld('indZzp1'),
-        zzp_code_2: veld('indZzp2'),
+        // Velden die voor deze ketentest uit staan worden niet aangeraakt (reeds ingevulde waarden blijven bewaard)
+        ...(indicatieGrondslagActief() ? { grondslag_1: veld('indGrondslag1'), grondslag_2: veld('indGrondslag2'), grondslag_3: veld('indGrondslag3'), grondslag_4: veld('indGrondslag4') } : {}),
+        ...(indicatieZzpActief() ? { zzp_code_1: veld('indZzp1'), zzp_code_2: veld('indZzp2') } : {}),
         voorkeur_client: veld('indVoorkeurClient'),
         uzovi_uitvoerend_zk: veld('indUzoviUitvoerend'),
         voorkeur_aanbieder: veld('indVoorkeurAanbieder'),
