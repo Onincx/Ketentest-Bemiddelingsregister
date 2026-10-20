@@ -676,7 +676,7 @@
 
       <div style="margin-bottom:20px;" id="indicatieSectie">
         <p class="eyebrow" style="margin-bottom:10px;">Indicatie</p>
-        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">Waardenlijsten voor het Indicatiebesluit-formulier (in te vullen vanuit Testscenario's bij een startscenario van een flow). Alleen zichtbaar voor de velden die je hieronder bij "Algemeen" hebt aangezet voor deze ketentest.</p>
+        <p style="font-size:12.5px; color:var(--text-muted); margin-bottom:12px;">Waardenlijsten voor het Indicatiebesluit-formulier (in te vullen vanuit Testscenario's bij een startscenario van een flow).</p>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
           <div class="card" id="indicatieBlokGrondslag" style="padding:16px 20px;">
             <p style="font-size:13px; font-weight:700; margin-bottom:10px;">Grondslag</p>
@@ -2432,34 +2432,14 @@
       };
       renderLijst('grondslagLijst', indicatieGrondslagen, 'grondslag');
       renderLijst('zzpLijst', indicatieZzpCodes, 'zzp');
-      const gOn = indicatieVeldActief('grondslag'), zOn = indicatieVeldActief('zzp');
-      const bg = document.getElementById('indicatieBlokGrondslag'), bz = document.getElementById('indicatieBlokZzp'), sec = document.getElementById('indicatieSectie');
-      if (bg) bg.style.display = gOn ? '' : 'none';
-      if (bz) bz.style.display = zOn ? '' : 'none';
-      if (sec) sec.style.display = (gOn || zOn) ? '' : 'none';
+      // Zodra de groep 'Indicatie' bestaat (script indicatie-naar-kenmerken.sql) zijn Grondslag en ZZP-code
+      // gewone keuzelijst-kenmerken en vervalt deze aparte waardenlijst.
+      const sec = document.getElementById('indicatieSectie');
+      if (sec) sec.style.display = indicatieAlsKenmerk() ? 'none' : '';
     }
 
-    // Is dit indicatieveld in de actieve ketentest in gebruik? (Kolom ontbreekt = ja, zoals voorheen.)
-    function indicatieVeldActief(soort) {
-      const v = activeKetentest?.[soort === 'grondslag' ? 'indicatie_grondslag_actief' : 'indicatie_zzp_actief'];
-      return v !== false;
-    }
-
-    async function zetIndicatieVeldActief(soort, aan) {
-      if (!window.isPageAdmin || !activeKetentest) return;
-      const kolom = soort === 'grondslag' ? 'indicatie_grondslag_actief' : 'indicatie_zzp_actief';
-      const { error } = await sb.from('ketentests').update({ [kolom]: aan }).eq('id', activeKetentest.id);
-      if (error) {
-        showAlert('Opslaan mislukt: ' + error.message + ' (draai eerst sql/indicatie-velden-per-ketentest.sql in Supabase)', 'error');
-        renderKenmerkDefTable();
-        return;
-      }
-      activeKetentest[kolom] = aan;
-      const kt = ketentests.find(k => k.id === activeKetentest.id);
-      if (kt) kt[kolom] = aan;
-      invalideerKetentestCache();
-      renderKenmerkDefTable();
-      renderIndicatieLijsten();
+    function indicatieAlsKenmerk() {
+      return !!KENMERKGROEPEN && KENMERKGROEPEN.some(g => g.sleutel === 'indicatie');
     }
 
     async function voegIndicatieWaardeToe(soort) {
@@ -2817,6 +2797,7 @@
       if (g.error || k.error) { KENMERKGROEPEN = null; KENMERKGROEP_KOPPELINGEN = []; return; }
       KENMERKGROEPEN = g.data || [];
       KENMERKGROEP_KOPPELINGEN = k.data || [];
+      if (typeof renderIndicatieLijsten === 'function') renderIndicatieLijsten();
     }
 
     // Groepen die in de actieve ketentest gebruikt mogen worden ('algemeen' altijd), plus
@@ -2838,26 +2819,8 @@
         const items = KENMERKDEFINITIES.filter(k => k.groep === groep);
         const nietGekoppeld = KENMERKGROEPEN && label.soort !== 'algemeen' && !gekoppeldeIds.has(label.id);
 
-        const indicatieRij = (soort, naam, uitleg, lijst) => {
-          const aan = indicatieVeldActief(soort);
-          return `<tr style="background:#f8faf5;">
-            <td style="color:var(--text-muted);">—</td>
-            <td><strong>${naam}</strong><div style="font-size:11.5px; color:var(--text-muted);">${uitleg}</div></td>
-            <td>Keuzelijst</td>
-            <td style="color:var(--text-muted); font-size:13px;">${lijst.length} waarde${lijst.length !== 1 ? 'n' : ''}${aan ? ' (beheer onder "Indicatie" hieronder)' : ''}</td>
-            <td style="text-align:right; white-space:nowrap;">
-              <label style="display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; cursor:pointer;">
-                <input type="checkbox" ${aan ? 'checked' : ''} onchange="zetIndicatieVeldActief('${soort}', this.checked)"> In gebruik bij deze ketentest
-              </label>
-            </td>
-          </tr>`;
-        };
-        const systeemRijen = groep === 'algemeen'
-          ? indicatieRij('grondslag', 'Grondslag', '1e t/m 4e grondslag in het Indicatiebesluit (startscenario van een flow)', indicatieGrondslagen)
-            + indicatieRij('zzp', 'ZZP-code', 'ZZP-code 1 en 2 in het Indicatiebesluit (startscenario van een flow)', indicatieZzpCodes)
-          : '';
-        const rijen = (items.length || systeemRijen)
-          ? systeemRijen + items.map((k, i) => {
+        const rijen = items.length
+          ? items.map((k, i) => {
               let validatie = '—';
               if (k.veldtype === 'numeriek') validatie = `${k.validatie_lengte || '?'} cijfers${k.validatie_elfproef ? ' + elfproef' : ''}`;
               else if (k.veldtype === 'keuzelijst') validatie = `${(k.keuzelijst_waarden || []).length} opties`;
