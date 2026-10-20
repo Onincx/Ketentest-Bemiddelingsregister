@@ -44,7 +44,7 @@ sb.auth.onAuthStateChange((event) => {
   // gebruiker in hetzelfde tabblad ze niet overneemt. (Bewust niet bij SIGNED_IN:
   // supabase-js meldt dat ook bij het terugkeren naar het tabblad, en dan zou de
   // cache continu leeggemaakt worden.)
-  if (event === 'SIGNED_OUT') invalideerBadgeCache();
+  if (event === 'SIGNED_OUT') { invalideerBadgeCache(); try { localStorage.removeItem('ketentest_laatste_activiteit'); } catch (e) { /* negeren */ } }
 });
 
 // Idem voor het profiel: requireAuth() haalt het al op, en vrijwel elke
@@ -124,38 +124,92 @@ let idleLastActivityTime = 0;
 let idleCheckInterval = null;
 let idleWaarschuwingActief = false;
 let idleWaarschuwingStartTime = 0;
+let idleLoguitBezig = false;
+
+// Het tijdstip van de laatste activiteit wordt óók in localStorage bewaard.
+// Daardoor (1) telt activiteit in één tabblad voor álle tabbladen mee,
+// (2) loopt de klok door als de browser/het tabblad is gesloten of de
+// laptop sliep: de sessie van Supabase blijft namelijk in de browser
+// bewaard, en zonder dit bleef iemand die na uren terugkwam gewoon ingelogd.
+const IDLE_ACTIVITEIT_KEY = 'ketentest_laatste_activiteit';
+
+function idleLeesOpgeslagenActiviteit() {
+  try { return parseInt(localStorage.getItem(IDLE_ACTIVITEIT_KEY) || '0', 10) || 0; } catch (e) { return 0; }
+}
+function markeerActiviteit() {
+  idleLastActivityTime = Date.now();
+  try { localStorage.setItem(IDLE_ACTIVITEIT_KEY, String(idleLastActivityTime)); } catch (e) { /* opslag geblokkeerd: dan blijft alleen de tabblad-klok */ }
+}
+function wisOpgeslagenActiviteit() {
+  try { localStorage.removeItem(IDLE_ACTIVITEIT_KEY); } catch (e) { /* negeren */ }
+}
+// Meest recente activiteit, in dit of een ander tabblad.
+function idleLaatsteActiviteit() {
+  return Math.max(idleLastActivityTime, idleLeesOpgeslagenActiviteit());
+}
 
 function startIdleTimeoutWatcher() {
   if (idleWatcherGestart) return; // voorkomt dubbele listeners bij meerdere requireAuth-aanroepen
   idleWatcherGestart = true;
-  idleLastActivityTime = Date.now();
+
+  // Was de gebruiker al langer dan de toegestane tijd weg (browser dicht, laptop dicht,
+  // tabblad lang geparkeerd), dan is de sessie verlopen: meteen uitloggen.
+  const opgeslagen = idleLeesOpgeslagenActiviteit();
+  if (opgeslagen && Date.now() - opgeslagen >= IDLE_TIMEOUT_MINUTEN * 60 * 1000) {
+    logUitWegensInactiviteit();
+    return;
+  }
+  markeerActiviteit();
+
   // Bewust beperkt tot échte, bewuste interacties met de tool zelf —
   // niet 'mousemove' of 'scroll', die ook afgaan bij de geringste
   // muistrilling of sensorruis, zonder dat er daadwerkelijk iets in de
-  // monitor gebeurt.
+  // monitor gebeurt. Met 'capture' zodat ook klikken binnen pop-ups meetellen
+  // (die stoppen het event met stopPropagation, waardoor het anders nooit
+  // bij document aankwam en iemand die in een pop-up werkte als inactief gold).
   ['click', 'keydown'].forEach(evt => {
-    document.addEventListener(evt, () => { if (!idleWaarschuwingActief) idleLastActivityTime = Date.now(); }, { passive: true });
+    document.addEventListener(evt, () => { if (!idleWaarschuwingActief) markeerActiviteit(); }, { passive: true, capture: true });
   });
 
   // Een setInterval wordt door de browser vertraagd zodra het tabblad
   // op de achtergrond staat (soms tot maar 1x per minuut of minder) —
   // maar omdat hier steeds tegen de wérkelijke kloktijd wordt
-  // vergeleken (Date.now() - idleLastActivityTime), klopt de uitkomst
-  // nog steeds zodra de check alsnog wordt uitgevoerd. Daarnaast wordt
-  // er ook direct gecontroleerd zodra het tabblad weer zichtbaar wordt,
-  // zodat er niet gewacht hoeft te worden op de eerstvolgende tick.
+  // vergeleken, klopt de uitkomst nog steeds zodra de check alsnog wordt
+  // uitgevoerd. Daarnaast wordt er ook direct gecontroleerd zodra het
+  // tabblad weer zichtbaar wordt, focus krijgt of uit de back/forward-cache
+  // terugkeert (daar staan timers stil), zodat niet op de volgende tick gewacht hoeft te worden.
   idleCheckInterval = setInterval(controleerIdleTijd, 1000);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') controleerIdleTijd();
   });
+  window.addEventListener('focus', controleerIdleTijd);
+  window.addEventListener('pageshow', controleerIdleTijd);
+
+  // Is er in een ander tabblad uitgelogd (of is de sessie anderszins beëindigd),
+  // dan hier ook meteen naar het inlogscherm in plaats van een verouderd scherm te laten staan.
+  sb.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT' && !idleLoguitBezig) {
+      idleLoguitBezig = true;
+      clearInterval(idleCheckInterval);
+      window.location.href = 'index.html';
+    }
+  });
 }
 
 function controleerIdleTijd() {
+  if (idleLoguitBezig) return;
+  const totaalMs = IDLE_TIMEOUT_MINUTEN * 60 * 1000;
   const waarschuwingsGrensMs = (IDLE_TIMEOUT_MINUTEN * 60 - IDLE_WAARSCHUWING_SECONDEN) * 1000;
+  const stilTijd = Date.now() - idleLaatsteActiviteit();
+
   if (!idleWaarschuwingActief) {
-    if (Date.now() - idleLastActivityTime >= waarschuwingsGrensMs) toonIdleWaarschuwing();
+    // Al helemaal verlopen (bijv. na slaapstand): niet nog een extra minuut aanbieden, maar meteen uitloggen.
+    if (stilTijd >= totaalMs) { logUitWegensInactiviteit(); return; }
+    if (stilTijd >= waarschuwingsGrensMs) toonIdleWaarschuwing();
     return;
   }
+  // Is er intussen in een ander tabblad activiteit geweest, dan is deze waarschuwing overbodig.
+  if (stilTijd < waarschuwingsGrensMs) { blijfAangemeld(); return; }
   // De waarschuwing staat al open: ook de aftelling zelf hier tegen de
   // kloktijd aflezen (i.p.v. simpelweg te decrementen), zodat een
   // vertraagde tick alsnog het juiste aantal seconden toont — of, als
@@ -163,7 +217,7 @@ function controleerIdleTijd() {
   const secondenOver = IDLE_WAARSCHUWING_SECONDEN - Math.floor((Date.now() - idleWaarschuwingStartTime) / 1000);
   const el = document.getElementById('idleSecondenOver');
   if (el) el.textContent = Math.max(secondenOver, 0);
-  if (secondenOver <= 0) logUitWegensInactiviteit();
+  if (secondenOver <= 0 || stilTijd >= totaalMs) logUitWegensInactiviteit();
 }
 
 function toonIdleWaarschuwing() {
@@ -190,17 +244,37 @@ function toonIdleWaarschuwing() {
 }
 
 function blijfAangemeld() {
+  // Was de tijd intussen al verstreken (bijv. na slaapstand, tick nog niet gelopen), dan niet meer verlengen.
+  if (Date.now() - idleLaatsteActiviteit() >= IDLE_TIMEOUT_MINUTEN * 60 * 1000) { logUitWegensInactiviteit(); return; }
   idleWaarschuwingActief = false;
   document.getElementById('idleWaarschuwingOverlay')?.remove();
-  idleLastActivityTime = Date.now();
+  markeerActiviteit();
 }
 
 async function logUitWegensInactiviteit() {
+  if (idleLoguitBezig) return;
+  idleLoguitBezig = true;
   idleWaarschuwingActief = false;
   clearInterval(idleCheckInterval);
   document.getElementById('idleWaarschuwingOverlay')?.remove();
-  await sb.auth.signOut();
-  window.location.href = 'index.html?reden=inactiviteit';
+  try {
+    // Niet eindeloos wachten op het netwerk: lukt de uitlogaanvraag niet (offline, trage
+    // verbinding), dan toch uitloggen en doorsturen. Eerst lokaal (dat werkt altijd),
+    // daarna proberen ook de server-kant te beëindigen.
+    await Promise.race([
+      (async () => { await sb.auth.signOut({ scope: 'local' }); try { await sb.auth.signOut(); } catch (e) { /* server onbereikbaar */ } })(),
+      new Promise(resolve => setTimeout(resolve, 4000)),
+    ]);
+  } catch (e) {
+    console.error('Uitloggen wegens inactiviteit: fout bij signOut', e);
+  } finally {
+    // Zekerheidshalve de lokaal bewaarde sessie ook handmatig wissen, zodat de gebruiker nooit ingelogd blijft.
+    try {
+      Object.keys(localStorage).filter(k => /^sb-.*-auth-token/.test(k)).forEach(k => localStorage.removeItem(k));
+    } catch (e) { /* negeren */ }
+    wisOpgeslagenActiviteit();
+    window.location.href = 'index.html?reden=inactiviteit';
+  }
 }
 
 async function requireAdmin() {
