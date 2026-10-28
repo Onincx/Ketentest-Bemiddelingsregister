@@ -4137,29 +4137,54 @@
     }
 
     async function addNokNotitie() {
-      const tekst = document.getElementById('bevindingNieuweNotitie').value.trim();
+      const invoer = document.getElementById('bevindingNieuweNotitie');
+      const tekst = invoer.value.trim();
       if (!tekst || !nokNotitiesHuidigBevindingId) return;
-      const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
+      const bevindingId = nokNotitiesHuidigBevindingId;
+      const b = bevindingen.find(x => x.id === bevindingId);
       const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
-      const { data, error } = await sb.from('nok_notities').insert({
-        bevinding_id: nokNotitiesHuidigBevindingId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
-      }).select().single();
-      if (error) { alert('Fout bij opslaan: ' + error.message); return; }
-      nokNotitiesHuidig.unshift(data);
-      document.getElementById('bevindingNieuweNotitie').value = '';
 
-      // Een opmerking toevoegen aan een nog niet-opgepakte bevinding
-      // betekent dat er nu mee aan de slag wordt gegaan — zet de status
-      // dan automatisch op "In behandeling". In alle andere gevallen
-      // (status stond al verder) gebeurt er niets extra's. Let op: dit zet
-      // de status via updateNokField, wat de hele bevinding-pop-up opnieuw
-      // opbouwt (met de zojuist toegevoegde opmerking al verwerkt).
-      if (b && b.status === 'nieuw') {
-        await updateNokField(nokNotitiesHuidigBevindingId, 'status', 'in_behandeling');
-        return;
-      }
-
+      // Direct tonen (optimistisch): de opmerking verschijnt meteen in de
+      // lijst; pas als opslaan mislukt wordt hij weer weggehaald. Het id
+      // maken we zelf, zodat we niet op het antwoord van de server hoeven
+      // te wachten.
+      const nieuw = {
+        id: (crypto.randomUUID ? crypto.randomUUID() : null),
+        bevinding_id: bevindingId, tekst, organisation_id: orgId,
+        created_by: currentUser?.id || null, created_at: new Date().toISOString(),
+      };
+      const rij = { ...nieuw }; if (!rij.id) delete rij.id;
+      invoer.value = '';
+      nokNotitiesHuidig.unshift(nieuw);
       renderNokNotitiesLijst();
+
+      // Een opmerking bij een nog niet-opgepakte bevinding zet de status
+      // op "In behandeling". Dat gebeurt tegelijk met het opslaan van de
+      // opmerking, niet erna.
+      const zetInBehandeling = !!(b && b.status === 'nieuw');
+      const [notitieRes, statusRes] = await Promise.all([
+        sb.from('nok_notities').insert(rij).select().single(),
+        zetInBehandeling ? sb.from('bevindingen').update({ status: 'in_behandeling' }).eq('id', bevindingId) : Promise.resolve({ error: null }),
+      ]);
+
+      if (notitieRes.error) {
+        nokNotitiesHuidig = nokNotitiesHuidig.filter(n => n !== nieuw);
+        renderNokNotitiesLijst();
+        invoer.value = tekst;
+        alert('Fout bij opslaan: ' + notitieRes.error.message);
+      } else {
+        // Vervang de tijdelijke rij door de echte (met serverdatum)
+        const idx = nokNotitiesHuidig.indexOf(nieuw);
+        if (idx >= 0) nokNotitiesHuidig[idx] = notitieRes.data;
+        renderNokNotitiesLijst();
+      }
+      if (statusRes.error) { alert('Fout bij opslaan van de status: ' + statusRes.error.message); return; }
+      if (zetInBehandeling && !notitieRes.error) {
+        b.status = 'in_behandeling';
+        renderNokTable();
+        document.getElementById('bevindingModalOverlay')?.remove();
+        openBevindingModal(bevindingId, true);
+      }
     }
 
     function editNokNotitie(notitieId) {
