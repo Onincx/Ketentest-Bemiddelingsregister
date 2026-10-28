@@ -3937,9 +3937,17 @@
 
       // Leg de toelichting vast als nieuwe opmerking.
       const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
-      await sb.from('nok_notities').insert({
+      const { error: notitieError } = await sb.from('nok_notities').insert({
         bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
+      if (notitieError) {
+        // Stop hier: de status is nog niet gewijzigd, de pop-up blijft open.
+        const al = document.getElementById('alertNokOpgelost');
+        al.textContent = 'De opmerking kon niet worden opgeslagen: ' + notitieError.message + ' — de status is niet gewijzigd.';
+        al.className = 'alert alert-error';
+        al.style.display = '';
+        return;
+      }
 
       // Status wordt gezet op "Opgelost, wacht op hertest". De
       // activiteit zelf wordt daarbij teruggezet naar 'open' (het
@@ -3997,9 +4005,17 @@
 
       // Leg de toelichting vast als nieuwe opmerking.
       const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
-      await sb.from('nok_notities').insert({
+      const { error: notitieError } = await sb.from('nok_notities').insert({
         bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
+      if (notitieError) {
+        // Stop hier: de status is nog niet gewijzigd, de pop-up blijft open.
+        const al = document.getElementById('alertNokVervallen');
+        al.textContent = 'De opmerking kon niet worden opgeslagen: ' + notitieError.message + ' — de status is niet gewijzigd.';
+        al.className = 'alert alert-error';
+        al.style.display = '';
+        return;
+      }
 
       // Status wordt gezet op "Vervallen". De activiteit zelf wordt
       // daarbij teruggezet naar 'open' (het activiteitresultaat wordt
