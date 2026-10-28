@@ -1514,7 +1514,7 @@
       }
 
       const requestedTab = new URLSearchParams(window.location.search).get('tab');
-      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria'];
+      const validTabs = ['ketentests','organisations','users','notifications','scenarios','logboek','berichten','nok','kenmerken','entrycriteria','onderhoudsmelding'];
 
       if (!window.isPageAdmin) {
         // Gewone gebruikers mogen alleen Notificaties, NOK-opvolging of
@@ -3936,7 +3936,7 @@
       const b = bevindingen.find(x => x.id === bevindingId);
 
       // Leg de toelichting vast als nieuwe opmerking.
-      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
+      const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
       await sb.from('nok_notities').insert({
         bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
@@ -3996,7 +3996,7 @@
       const b = bevindingen.find(x => x.id === bevindingId);
 
       // Leg de toelichting vast als nieuwe opmerking.
-      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
+      const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
       await sb.from('nok_notities').insert({
         bevinding_id: bevindingId, tekst: toelichting, organisation_id: orgId, created_by: currentUser?.id || null,
       });
@@ -4124,7 +4124,7 @@
       const tekst = document.getElementById('bevindingNieuweNotitie').value.trim();
       if (!tekst || !nokNotitiesHuidigBevindingId) return;
       const b = bevindingen.find(x => x.id === nokNotitiesHuidigBevindingId);
-      const orgId = window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id;
+      const orgId = currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null);
       const { data, error } = await sb.from('nok_notities').insert({
         bevinding_id: nokNotitiesHuidigBevindingId, tekst, organisation_id: orgId, created_by: currentUser?.id || null,
       }).select().single();
