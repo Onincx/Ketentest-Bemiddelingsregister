@@ -3849,7 +3849,7 @@
       if (nieuweToelichtingTekst) {
         const { error } = await sb.from('bevinding_toelichtingen').insert({
           bevinding_id: bevindingId, tekst: nieuweToelichtingTekst,
-          organisation_id: window.isPageAdmin ? b?.owner_org_id : currentProfile?.organisation_id,
+          organisation_id: currentProfile?.organisation_id || (window.isPageAdmin ? b?.owner_org_id : null),
           created_by: currentUser?.id || null,
         });
         if (error) { alert('Fout bij opslaan van de nieuwe toelichting: ' + error.message); return; }
