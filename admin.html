@@ -3235,6 +3235,14 @@
       // bevinding wordt dit per stuk geladen (zie openBevindingModal).
 
       renderNokTable();
+
+      // Directe link vanuit een testscenario (?tab=nok&bevinding=<id>):
+      // open meteen de betreffende bevinding.
+      if (!window._bevindingLinkAfgehandeld) {
+        window._bevindingLinkAfgehandeld = true;
+        const gevraagd = new URLSearchParams(window.location.search).get('bevinding');
+        if (gevraagd && bevindingen.some(b => b.id === gevraagd)) openBevindingModal(gevraagd);
+      }
     }
 
     function setNokFilter(filter, btn) {
