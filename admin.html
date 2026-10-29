@@ -3741,7 +3741,12 @@
                       ${orgsVoorActieveKetentest([b.owner_org_id]).map(o => `<option value="${o.id}" ${b.owner_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
                     </select>`
                   : `<span style="font-size:12px;">${orgs.find(o => o.id === b.owner_org_id)?.name || '—'}</span>`)}
-              ${veldKaart('Melder', `<span style="font-size:12px;">${melderOrg?.name || '—'}</span>`)}
+              ${veldKaart('Melder', window.isPageAdmin
+                  ? `<select onchange="updateNokField('${b.id}','gemeld_door_org_id',this.value || null)" style="font-size:12px; padding:4px 6px; border:1px solid var(--border); border-radius:6px; width:100%;">
+                      <option value="">— onbekend —</option>
+                      ${orgsVoorActieveKetentest([b.gemeld_door_org_id]).map(o => `<option value="${o.id}" ${b.gemeld_door_org_id === o.id ? 'selected' : ''}>${o.name}</option>`).join('')}
+                    </select>`
+                  : `<span style="font-size:12px;">${melderOrg?.name || '—'}</span>`)}
               ${veldKaart('Datum melding', `<span style="font-size:12px;">${setDate ? setDate.toLocaleDateString('nl-NL') : '—'}</span>`)}
               ${veldKaart('Doorlooptijd', `<span style="font-size:12px;">${doorlooptijd}</span>`)}
             </div>
