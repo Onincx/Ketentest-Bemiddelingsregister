@@ -542,6 +542,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Openstaande bevindingen als PDF
         </button>
+        <button class="btn btn-outline" id="exportBevindingenXlsxBtn" onclick="exportBevindingenExcel()" title="Alle bevindingen van deze ketentest (openstaand én afgesloten) naar Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="21"/><line x1="16" y1="13" x2="8" y2="21"/></svg>
+          Bevindingen naar Excel
+        </button>
       </div>
       <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;" id="nokFilterBtns">
         <button class="btn btn-sm" data-f="open" onclick="setNokFilter('open',this)" style="background:#2563a8;color:#fff;border-color:#2563a8;">Openstaand</button>
@@ -1417,6 +1421,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
   <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.8.2/dist/jspdf.plugin.autotable.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
   <script src="js/supabase-config.js?v=48"></script>
   <script>
     function esc(s) { return (s == null ? '' : String(s)).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;'); }
@@ -3561,6 +3566,92 @@
 
         bevindingPdfVoegPaginanummersToe(doc, pageWidth, pageHeight, margin);
         doc.save(`bevindingen-openstaand-${bevindingPdfDatumstempel()}.pdf`);
+      } catch (err) {
+        alert('Er ging iets mis bij het exporteren: ' + err.message);
+      } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = origHtml; }
+      }
+    }
+
+    // Exporteert ALLE bevindingen van de actieve ketentest (openstaand én
+    // afgesloten) naar Excel: blad 'Bevindingen' (één regel per bevinding,
+    // filterbaar op o.a. status) en blad 'Opmerkingen' (alle toelichtingen
+    // en opmerkingen, per bevinding).
+    async function exportBevindingenExcel() {
+      const btn = document.getElementById('exportBevindingenXlsxBtn');
+      const origHtml = btn ? btn.innerHTML : null;
+      if (btn) { btn.disabled = true; btn.innerHTML = '<span style="opacity:0.6">Bezig met exporteren...</span>'; }
+      try {
+        if (typeof XLSX === 'undefined') { alert('De Excel-bibliotheek is nog niet geladen. Probeer het over een paar seconden opnieuw.'); return; }
+        if (!bevindingen.length) { alert('Er zijn geen bevindingen om te exporteren.'); return; }
+
+        const ids = bevindingen.map(b => b.id);
+        const [{ data: toelichtingenData, error: e1 }, { data: notitiesData, error: e2 }] = await Promise.all([
+          fetchInChunks(ids, chunk => sb.from('bevinding_toelichtingen').select('*').in('bevinding_id', chunk).order('created_at')),
+          fetchInChunks(ids, chunk => sb.from('nok_notities').select('*').in('bevinding_id', chunk).order('created_at')),
+        ]);
+        if (e1 || e2) { alert('Fout bij ophalen van toelichtingen/opmerkingen: ' + (e1 || e2).message); return; }
+
+        const aantalPerBevinding = {};
+        [...(toelichtingenData || []), ...(notitiesData || [])].forEach(x => { aantalPerBevinding[x.bevinding_id] = (aantalPerBevinding[x.bevinding_id] || 0) + 1; });
+
+        const datum = v => v ? new Date(v) : '';
+        const sorted = [...bevindingen].sort((a, b) => (a.bevinding_nummer || 0) - (b.bevinding_nummer || 0));
+        const rijen = sorted.map(b => {
+          const ctx = bevindingPdfContext(b);
+          const einde = b.resolved_at ? new Date(b.resolved_at) : new Date();
+          const dagen = b.created_at ? Math.round((einde - new Date(b.created_at)) / 86400000) : '';
+          const gerelateerd = b.gerelateerde_bevinding_id ? bevindingen.find(x => x.id === b.gerelateerde_bevinding_id) : null;
+          return {
+            'Nummer': b.bevinding_nummer,
+            'Bevinding': `B${b.bevinding_nummer}`,
+            'Titel': b.titel || '',
+            'Status': NOK_STATUS_LABELS[b.status] || b.status,
+            'Prioriteit': NOK_PRIORITEIT_LABELS[b.prioriteit] || 'Midden',
+            'Scenario': ctx.scen ? ctx.scen.code : '',
+            'Scenario-titel': ctx.scen ? ctx.scen.title : '',
+            'Activiteit': ctx.act ? (ctx.act.description || '') : '',
+            'Verantwoordelijke': ctx.verantwOrg?.name || '',
+            'Acceptant': ctx.acceptantOrg?.name || '',
+            'Eigenaar (oplossing)': ctx.eigenaarOrg?.name || '',
+            'Melder': ctx.melderOrg?.name || '',
+            'Datum melding': datum(b.created_at),
+            'Datum afgerond': datum(b.resolved_at),
+            'Doorlooptijd (dagen)': dagen,
+            'Omschrijving probleem': b.omschrijving_probleem || '',
+            'Eerste toelichting': b.toelichting || '',
+            'Vervolg op bevinding': gerelateerd ? `B${gerelateerd.bevinding_nummer}` : '',
+            'Aantal toelichtingen/opmerkingen': aantalPerBevinding[b.id] || 0,
+          };
+        });
+
+        const nummerVan = id => 'B' + (bevindingen.find(x => x.id === id)?.bevinding_nummer ?? '?');
+        const orgNaam = id => orgs.find(o => o.id === id)?.name || '';
+        const opmerkingen = [
+          ...(toelichtingenData || []).map(t => ({ soort: 'Toelichting', ...t })),
+          ...(notitiesData || []).map(n => ({ soort: 'Opmerking', ...n })),
+        ].sort((a, b) => {
+          const na = bevindingen.find(x => x.id === a.bevinding_id)?.bevinding_nummer || 0;
+          const nb = bevindingen.find(x => x.id === b.bevinding_id)?.bevinding_nummer || 0;
+          return na - nb || new Date(a.created_at) - new Date(b.created_at);
+        }).map(x => ({
+          'Bevinding': nummerVan(x.bevinding_id),
+          'Soort': x.soort,
+          'Organisatie': orgNaam(x.organisation_id),
+          'Datum': datum(x.created_at),
+          'Tekst': x.tekst || '',
+        }));
+
+        const wb = XLSX.utils.book_new();
+        const ws1 = XLSX.utils.json_to_sheet(rijen, { cellDates: true });
+        ws1['!cols'] = [8, 11, 40, 22, 12, 12, 30, 40, 22, 22, 22, 22, 14, 14, 12, 60, 50, 12, 14].map(w => ({ wch: w }));
+        ws1['!autofilter'] = { ref: ws1['!ref'] };
+        XLSX.utils.book_append_sheet(wb, ws1, 'Bevindingen');
+        const ws2 = XLSX.utils.json_to_sheet(opmerkingen.length ? opmerkingen : [{ 'Bevinding': '', 'Soort': '', 'Organisatie': '', 'Datum': '', 'Tekst': '' }], { cellDates: true });
+        ws2['!cols'] = [11, 12, 24, 18, 90].map(w => ({ wch: w }));
+        ws2['!autofilter'] = { ref: ws2['!ref'] };
+        XLSX.utils.book_append_sheet(wb, ws2, 'Opmerkingen');
+        XLSX.writeFile(wb, `bevindingen-${bevindingPdfDatumstempel()}.xlsx`, { cellDates: true });
       } catch (err) {
         alert('Er ging iets mis bij het exporteren: ' + err.message);
       } finally {
